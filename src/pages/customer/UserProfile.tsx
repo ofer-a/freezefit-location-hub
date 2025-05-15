@@ -1,110 +1,161 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Calendar as CalendarIcon, Star, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { User, Calendar, Clock, X } from 'lucide-react';
 
-// Appointment type
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  institute: string;
-  therapist: string;
-}
+// Mock appointments for the user
+const mockUpcomingAppointments = [
+  { 
+    id: 1, 
+    instituteName: 'מרכז קריוסטיים', 
+    therapistName: 'דני כהן', 
+    service: 'טיפול סטנדרטי',
+    date: '15/05/2025', 
+    time: '10:00' 
+  },
+  { 
+    id: 2, 
+    instituteName: 'קריו פלוס', 
+    therapistName: 'רונית דוד', 
+    service: 'טיפול ספורטאים',
+    date: '20/05/2025', 
+    time: '15:30' 
+  }
+];
+
+const mockPastAppointments = [
+  { 
+    id: 3, 
+    instituteName: 'אייס פיט', 
+    therapistName: 'אלון ברק', 
+    service: 'טיפול קצר',
+    date: '05/05/2025', 
+    time: '11:00',
+    status: 'הושלם'
+  },
+  { 
+    id: 4, 
+    instituteName: 'מרכז קריוסטיים', 
+    therapistName: 'מיכל לוי', 
+    service: 'טיפול שיקום',
+    date: '01/05/2025', 
+    time: '16:45',
+    status: 'בוטל'
+  }
+];
 
 const UserProfile = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // For appointment management
-  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([
-    { id: 1, date: '15/05/2025', time: '16:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' },
-    { id: 2, date: '21/05/2025', time: '10:00', institute: 'אייס פיט', therapist: 'אלון ברק' }
-  ]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState(mockUpcomingAppointments);
+  const [pastAppointments, setPastAppointments] = useState(mockPastAppointments);
   
-  const [pastAppointments, setPastAppointments] = useState<Appointment[]>([
-    { id: 3, date: '01/05/2025', time: '12:30', institute: 'קריו פלוס', therapist: 'רונית דוד' },
-    { id: 4, date: '27/04/2025', time: '17:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' }
-  ]);
+  // Dialog states
+  const [showUpdateDetailsDialog, setShowUpdateDetailsDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   
-  // For calendar dialog
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedTime, setSelectedTime] = useState<string>("");
-  const [appointmentToModify, setAppointmentToModify] = useState<Appointment | null>(null);
+  // Form states
+  const [userDetails, setUserDetails] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: '050-1234567', // Mock data
+    address: 'רחוב האלון 5, תל אביב' // Mock data
+  });
   
-  // Mock data
-  const loyaltyPoints = 320;
-  const availableTimes = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"];
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   // Check authentication
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'customer') {
+  useState(() => {
+    if (!isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, user, navigate]);
+  });
 
+  // Handle appointment cancellation
   const handleCancelAppointment = (appointmentId: number) => {
-    // Remove the appointment from the list
-    setUpcomingAppointments(prevAppointments => 
-      prevAppointments.filter(appointment => appointment.id !== appointmentId)
-    );
+    // Move to past appointments with "cancelled" status
+    const appointmentToCancel = upcomingAppointments.find(app => app.id === appointmentId);
     
-    // Show toast notification
-    toast({
-      title: "התור בוטל בהצלחה",
-      description: "התור שלך בוטל, הודעה נשלחה למרכז הטיפול",
-    });
+    if (appointmentToCancel) {
+      setPastAppointments([
+        ...pastAppointments, 
+        { ...appointmentToCancel, status: 'בוטל' }
+      ]);
+      
+      // Remove from upcoming appointments
+      setUpcomingAppointments(upcomingAppointments.filter(app => app.id !== appointmentId));
+      
+      toast({
+        title: "התור בוטל",
+        description: "התור הועבר להיסטוריית התורים",
+      });
+    }
   };
 
-  const handleModifyAppointment = (appointment: Appointment) => {
-    setAppointmentToModify(appointment);
-    setIsCalendarOpen(true);
+  // Handle reschedule appointment
+  const handleRescheduleAppointment = (appointmentId: number) => {
+    toast({
+      title: "שינוי תור",
+      description: "פונקציונליות זו תהיה זמינה בקרוב",
+    });
+    // This would open a calendar dialog in a full implementation
   };
-  
-  const handleAddReview = (instituteId: number, therapistId: number) => {
-    navigate(`/add-review/${instituteId}/${therapistId}`);
+
+  // Handle user details update
+  const handleUpdateDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real app, this would call an API
+    toast({
+      title: "פרטים עודכנו",
+      description: "פרטי המשתמש עודכנו בהצלחה",
+    });
+    
+    setShowUpdateDetailsDialog(false);
   };
-  
-  const handleSaveNewAppointment = () => {
-    if (appointmentToModify && selectedDate && selectedTime) {
-      // Update the appointment in the list
-      setUpcomingAppointments(prevAppointments => 
-        prevAppointments.map(appointment => 
-          appointment.id === appointmentToModify.id 
-            ? { 
-                ...appointment, 
-                date: format(selectedDate, 'dd/MM/yyyy'), 
-                time: selectedTime 
-              } 
-            : appointment
-        )
-      );
-      
-      // Show toast notification
+
+  // Handle password change
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
-        title: "התור עודכן בהצלחה",
-        description: "פרטי התור החדש שלך נשמרו במערכת",
+        variant: "destructive",
+        title: "סיסמאות לא תואמות",
+        description: "אנא ודא שהסיסמאות החדשות זהות",
       });
-      
-      // Close the calendar dialog
-      setIsCalendarOpen(false);
-      setSelectedDate(undefined);
-      setSelectedTime("");
-      setAppointmentToModify(null);
+      return;
     }
+    
+    // In a real app, this would call an API
+    toast({
+      title: "סיסמא שונתה",
+      description: "הסיסמא שונתה בהצלחה",
+    });
+    
+    // Reset form and close dialog
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setShowChangePasswordDialog(false);
   };
 
   return (
@@ -113,244 +164,276 @@ const UserProfile = () => {
       
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto max-w-5xl">
-          <h1 className="text-3xl font-bold mb-8 text-center">הפרופיל שלי</h1>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* User info */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>פרטים אישיים</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col items-center">
-                  <div className="w-24 h-24 bg-freezefit-50 rounded-full flex items-center justify-center mb-4">
-                    <User className="h-12 w-12 text-freezefit-300" />
+          <div className="flex flex-col md:flex-row items-start gap-6">
+            {/* Profile sidebar */}
+            <div className="w-full md:w-1/3">
+              <Card>
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                    <User className="h-12 w-12 text-primary" />
                   </div>
-                  <h3 className="text-xl font-medium">{user?.name}</h3>
-                  <p className="text-gray-500 mb-6">{user?.email}</p>
-                  
-                  <div className="w-full py-4 px-6 bg-freezefit-50 rounded-lg mb-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">נקודות נאמנות:</span>
-                      <div className="flex items-center">
-                        <Star className="h-5 w-5 text-freezefit-300 ml-1" />
-                        <span className="text-lg font-bold">{loyaltyPoints}</span>
-                      </div>
-                    </div>
+                  <CardTitle className="text-2xl">{user?.name}</CardTitle>
+                  <p className="text-gray-500">{user?.email}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Button 
+                      className="w-full" 
+                      onClick={() => setShowUpdateDetailsDialog(true)}
+                    >
+                      עדכן פרטים
+                    </Button>
+                    <Button 
+                      className="w-full" 
+                      variant="outline" 
+                      onClick={() => setShowChangePasswordDialog(true)}
+                    >
+                      שנה סיסמה
+                    </Button>
+                    <Button 
+                      className="w-full" 
+                      variant="destructive"
+                      onClick={() => {
+                        logout();
+                        navigate('/');
+                      }}
+                    >
+                      התנתק
+                    </Button>
                   </div>
-                  
-                  <Button variant="outline" className="w-full mb-2">
-                    עדכן פרטים
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    שנה סיסמה
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
             
-            {/* Appointments */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>התורים שלי</CardTitle>
-                <CardDescription>
-                  צפייה וניהול התורים שלך
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="upcoming">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="upcoming">תורים עתידיים</TabsTrigger>
-                    <TabsTrigger value="past">היסטוריית תורים</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="upcoming" className="mt-6">
-                    {upcomingAppointments.length > 0 ? (
-                      <div className="space-y-4">
-                        {upcomingAppointments.map(appointment => (
-                          <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex justify-between">
-                              <div>
-                                <h4 className="font-medium">{appointment.institute}</h4>
-                                <p className="text-sm text-gray-600">מטפל: {appointment.therapist}</p>
-                              </div>
-                              <div className="flex items-center">
-                                <CalendarIcon className="h-5 w-5 text-freezefit-300 ml-1" />
+            {/* Main content */}
+            <div className="w-full md:w-2/3">
+              <Card>
+                <CardHeader>
+                  <CardTitle>תורים והיסטוריה</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="upcoming">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="upcoming">תורים קרובים</TabsTrigger>
+                      <TabsTrigger value="history">היסטוריית תורים</TabsTrigger>
+                    </TabsList>
+                    
+                    {/* Upcoming appointments */}
+                    <TabsContent value="upcoming" className="mt-4">
+                      {upcomingAppointments.length > 0 ? (
+                        <div className="space-y-4">
+                          {upcomingAppointments.map(appointment => (
+                            <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex justify-between items-start">
                                 <div>
-                                  <p className="text-sm font-medium">{appointment.date}</p>
-                                  <p className="text-sm text-gray-500">שעה: {appointment.time}</p>
+                                  <h3 className="font-semibold text-lg">{appointment.instituteName}</h3>
+                                  <p className="text-gray-700">{appointment.service}</p>
+                                  <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
+                                  <div className="flex items-center mt-2">
+                                    <Calendar className="h-4 w-4 ml-1" />
+                                    <span className="text-sm">{appointment.date}</span>
+                                    <Clock className="h-4 w-4 mx-1 mr-3" />
+                                    <span className="text-sm">{appointment.time}</span>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRescheduleAppointment(appointment.id)}
+                                  >
+                                    שינוי תור
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleCancelAppointment(appointment.id)}
+                                  >
+                                    ביטול תור
+                                  </Button>
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-3 flex justify-end space-x-2 rtl:space-x-reverse">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleModifyAppointment(appointment)}
-                              >
-                                שנה תור
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleCancelAppointment(appointment.id)}
-                              >
-                                בטל תור
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <CalendarIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
-                        <p>אין לך תורים עתידיים</p>
-                        <Button className="mt-4 bg-freezefit-300 hover:bg-freezefit-400 text-white" onClick={() => navigate('/find-institute')}>
-                          הזמן תור חדש
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="past" className="mt-6">
-                    {pastAppointments.length > 0 ? (
-                      <div className="space-y-4">
-                        {pastAppointments.map(appointment => (
-                          <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex justify-between">
-                              <div>
-                                <h4 className="font-medium">{appointment.institute}</h4>
-                                <p className="text-sm text-gray-600">מטפל: {appointment.therapist}</p>
-                              </div>
-                              <div className="flex items-center">
-                                <CalendarIcon className="h-5 w-5 text-gray-400 ml-1" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">אין לך תורים קרובים.</p>
+                          <Button 
+                            className="mt-4" 
+                            onClick={() => navigate('/find-institute')}
+                          >
+                            הזמן תור
+                          </Button>
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    {/* Appointment history */}
+                    <TabsContent value="history" className="mt-4">
+                      {pastAppointments.length > 0 ? (
+                        <div className="space-y-4">
+                          {pastAppointments.map(appointment => (
+                            <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex justify-between items-start">
                                 <div>
-                                  <p className="text-sm font-medium">{appointment.date}</p>
-                                  <p className="text-sm text-gray-500">שעה: {appointment.time}</p>
+                                  <h3 className="font-semibold text-lg">{appointment.instituteName}</h3>
+                                  <p className="text-gray-700">{appointment.service}</p>
+                                  <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
+                                  <div className="flex items-center mt-2">
+                                    <Calendar className="h-4 w-4 ml-1" />
+                                    <span className="text-sm">{appointment.date}</span>
+                                    <Clock className="h-4 w-4 mx-1 mr-3" />
+                                    <span className="text-sm">{appointment.time}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className={`px-3 py-1 rounded text-sm font-medium ${
+                                    appointment.status === 'הושלם' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {appointment.status}
+                                  </span>
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-3 flex justify-end">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleAddReview(1, appointment.id)} // Using appointmentId as therapistId for demo
-                              >
-                                הוסף ביקורת
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <CalendarIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
-                        <p>אין לך היסטוריית תורים</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-            
-            {/* Loyalty program */}
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle>מועדון לקוחות</CardTitle>
-                <CardDescription>
-                  ההטבות והמבצעים שלך
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-br from-freezefit-300 to-freezefit-400 text-white rounded-lg p-5 flex flex-col justify-between">
-                    <div>
-                      <Gift className="h-8 w-8 mb-3" />
-                      <h3 className="text-lg font-bold mb-1">הטבת יום הולדת</h3>
-                      <p className="text-sm opacity-90">טיפול חינם ביום ההולדת שלך!</p>
-                    </div>
-                    <div className="mt-4 text-xs opacity-75">
-                      בתוקף עד 30 ימים מיום ההולדת
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-freezefit-50 to-purple-100 rounded-lg p-5 flex flex-col justify-between">
-                    <div>
-                      <Star className="h-8 w-8 mb-3 text-freezefit-300" />
-                      <h3 className="text-lg font-bold mb-1">הנחת לקוח מתמיד</h3>
-                      <p className="text-sm text-gray-600">15% הנחה אחרי 5 טיפולים</p>
-                    </div>
-                    <div className="mt-4 text-xs text-gray-500">
-                      2 טיפולים נוספים להטבה
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-5 flex flex-col justify-between">
-                    <div>
-                      <CalendarIcon className="h-8 w-8 mb-3 text-freezefit-300" />
-                      <h3 className="text-lg font-bold mb-1">מבצע החודש</h3>
-                      <p className="text-sm text-gray-600">קנה 4 טיפולים, קבל 1 חינם</p>
-                    </div>
-                    <div className="mt-4 text-xs text-gray-500">
-                      בתוקף עד 31/05/2025
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">אין לך היסטוריית תורים.</p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
       
-      {/* Appointment modification dialog */}
-      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+      {/* Update details dialog */}
+      <Dialog open={showUpdateDetailsDialog} onOpenChange={setShowUpdateDetailsDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>שינוי תור</DialogTitle>
+            <DialogTitle>עדכון פרטים אישיים</DialogTitle>
+            <DialogDescription>
+              שנה את הפרטים האישיים שלך ולחץ על "שמור" כדי לעדכן.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">בחר תאריך חדש:</h4>
-              <div className="flex justify-center">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date < new Date() || date > new Date(2025, 11, 31)}
-                  className="rounded-md border mx-auto"
+          
+          <form onSubmit={handleUpdateDetails}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">שם מלא</Label>
+                <Input 
+                  id="name" 
+                  value={userDetails.name} 
+                  onChange={(e) => setUserDetails({...userDetails, name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="email">אימייל</Label>
+                <Input 
+                  id="email" 
+                  type="email"
+                  value={userDetails.email} 
+                  onChange={(e) => setUserDetails({...userDetails, email: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="phone">טלפון</Label>
+                <Input 
+                  id="phone" 
+                  value={userDetails.phone} 
+                  onChange={(e) => setUserDetails({...userDetails, phone: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="address">כתובת</Label>
+                <Input 
+                  id="address" 
+                  value={userDetails.address} 
+                  onChange={(e) => setUserDetails({...userDetails, address: e.target.value})}
                 />
               </div>
             </div>
             
-            <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">בחר שעה חדשה:</h4>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="בחר שעה" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowUpdateDetailsDialog(false)}>
+                ביטול
+              </Button>
+              <Button type="submit">
+                שמור
+              </Button>
             </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCalendarOpen(false)}
-            >
-              ביטול
-            </Button>
-            <Button 
-              onClick={handleSaveNewAppointment}
-              className="bg-freezefit-300 hover:bg-freezefit-400 text-white"
-              disabled={!selectedDate || !selectedTime}
-            >
-              עדכן תור
-            </Button>
-          </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Change password dialog */}
+      <Dialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>שינוי סיסמה</DialogTitle>
+            <DialogDescription>
+              הכנס את הסיסמה הנוכחית והסיסמה החדשה.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleChangePassword}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="currentPassword">סיסמה נוכחית</Label>
+                <Input 
+                  id="currentPassword" 
+                  type="password"
+                  value={passwordData.currentPassword} 
+                  onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="newPassword">סיסמה חדשה</Label>
+                <Input 
+                  id="newPassword" 
+                  type="password"
+                  value={passwordData.newPassword} 
+                  onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">אימות סיסמה חדשה</Label>
+                <Input 
+                  id="confirmPassword" 
+                  type="password"
+                  value={passwordData.confirmPassword} 
+                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowChangePasswordDialog(false)}>
+                ביטול
+              </Button>
+              <Button type="submit">
+                שמור
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
       

@@ -1,37 +1,53 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data for orders
-const confirmedOrders = [
-  { id: 1, customerName: 'יוסי כהן', date: '15/05/2025', time: '10:00', service: 'טיפול סטנדרטי', duration: '45 דקות', phone: '050-1234567' },
-  { id: 2, customerName: 'רונית לוי', date: '15/05/2025', time: '12:30', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '052-9876543' },
-  { id: 3, customerName: 'דוד מזרחי', date: '16/05/2025', time: '09:15', service: 'טיפול קצר', duration: '30 דקות', phone: '054-5678901' }
-];
+// Types for appointments
+type AppointmentStatus = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
-const pendingOrders = [
-  { id: 4, customerName: 'משה גולן', date: '15/05/2025', time: '15:00', service: 'טיפול ראשון', duration: '60 דקות', phone: '053-1112222' },
-  { id: 5, customerName: 'מיכל דוידוב', date: '17/05/2025', time: '11:45', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '050-3334444' }
-];
-
-const historyOrders = [
-  { id: 6, customerName: 'אורי גבאי', date: '10/05/2025', time: '14:00', service: 'טיפול סטנדרטי', duration: '45 דקות', status: 'הושלם' },
-  { id: 7, customerName: 'יעל פרץ', date: '11/05/2025', time: '16:30', service: 'טיפול שיקום', duration: '60 דקות', status: 'הושלם' },
-  { id: 8, customerName: 'נועם אלוני', date: '08/05/2025', time: '10:00', service: 'טיפול קצר', duration: '30 דקות', status: 'בוטל' }
-];
+interface Appointment {
+  id: number;
+  customerName: string;
+  date: string;
+  time: string;
+  service: string;
+  duration: string;
+  phone?: string;
+  status?: 'הושלם' | 'בוטל';
+}
 
 const OrderManagement = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // State for orders/appointments
+  const [confirmedOrders, setConfirmedOrders] = useState<Appointment[]>([
+    { id: 1, customerName: 'יוסי כהן', date: '15/05/2025', time: '10:00', service: 'טיפול סטנדרטי', duration: '45 דקות', phone: '050-1234567' },
+    { id: 2, customerName: 'רונית לוי', date: '15/05/2025', time: '12:30', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '052-9876543' },
+    { id: 3, customerName: 'דוד מזרחי', date: '16/05/2025', time: '09:15', service: 'טיפול קצר', duration: '30 דקות', phone: '054-5678901' }
+  ]);
+  
+  const [pendingOrders, setPendingOrders] = useState<Appointment[]>([
+    { id: 4, customerName: 'משה גולן', date: '15/05/2025', time: '15:00', service: 'טיפול ראשון', duration: '60 דקות', phone: '053-1112222' },
+    { id: 5, customerName: 'מיכל דוידוב', date: '17/05/2025', time: '11:45', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '050-3334444' }
+  ]);
+  
+  const [historyOrders, setHistoryOrders] = useState<Appointment[]>([
+    { id: 6, customerName: 'אורי גבאי', date: '10/05/2025', time: '14:00', service: 'טיפול סטנדרטי', duration: '45 דקות', status: 'הושלם' },
+    { id: 7, customerName: 'יעל פרץ', date: '11/05/2025', time: '16:30', service: 'טיפול שיקום', duration: '60 דקות', status: 'הושלם' },
+    { id: 8, customerName: 'נועם אלוני', date: '08/05/2025', time: '10:00', service: 'טיפול קצר', duration: '30 דקות', status: 'בוטל' }
+  ]);
+  
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Check authentication
   useEffect(() => {
@@ -41,29 +57,77 @@ const OrderManagement = () => {
   }, [isAuthenticated, user, navigate]);
 
   const handleApprove = (orderId: number) => {
-    toast({
-      title: "התור אושר",
-      description: "התור עבר לרשימת התורים המאושרים",
-    });
-    console.log("Approved order ID:", orderId);
+    // Find the order to approve in pending orders
+    const orderToApprove = pendingOrders.find(order => order.id === orderId);
+    
+    if (orderToApprove) {
+      // Add to confirmed orders
+      setConfirmedOrders([...confirmedOrders, orderToApprove]);
+      
+      // Remove from pending orders
+      setPendingOrders(pendingOrders.filter(order => order.id !== orderId));
+      
+      toast({
+        title: "התור אושר",
+        description: "התור עבר לרשימת התורים המאושרים",
+      });
+    }
   };
 
-  const handleReject = (orderId: number) => {
-    toast({
-      variant: "destructive",
-      title: "התור בוטל",
-      description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
-    });
-    console.log("Rejected order ID:", orderId);
+  const handleReject = (orderId: number, fromPending: boolean = true) => {
+    // Find the order to reject in the appropriate list
+    const ordersList = fromPending ? pendingOrders : confirmedOrders;
+    const orderToReject = ordersList.find(order => order.id === orderId);
+    
+    if (orderToReject) {
+      // Add to history with cancelled status
+      setHistoryOrders([...historyOrders, { ...orderToReject, status: 'בוטל' }]);
+      
+      // Remove from original list
+      if (fromPending) {
+        setPendingOrders(pendingOrders.filter(order => order.id !== orderId));
+      } else {
+        setConfirmedOrders(confirmedOrders.filter(order => order.id !== orderId));
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "התור בוטל",
+        description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
+      });
+    }
   };
 
   const handleComplete = (orderId: number) => {
-    toast({
-      title: "הטיפול הושלם",
-      description: "התור הועבר להיסטוריית התורים",
-    });
-    console.log("Completed order ID:", orderId);
+    // Find the order to complete
+    const orderToComplete = confirmedOrders.find(order => order.id === orderId);
+    
+    if (orderToComplete) {
+      // Add to history with completed status
+      setHistoryOrders([...historyOrders, { ...orderToComplete, status: 'הושלם' }]);
+      
+      // Remove from confirmed orders
+      setConfirmedOrders(confirmedOrders.filter(order => order.id !== orderId));
+      
+      toast({
+        title: "הטיפול הושלם",
+        description: "התור הועבר להיסטוריית התורים",
+      });
+    }
   };
+
+  // Filter orders based on search query
+  const filteredConfirmedOrders = confirmedOrders.filter(order => 
+    order.customerName.includes(searchQuery)
+  );
+  
+  const filteredPendingOrders = pendingOrders.filter(order => 
+    order.customerName.includes(searchQuery)
+  );
+  
+  const filteredHistoryOrders = historyOrders.filter(order => 
+    order.customerName.includes(searchQuery)
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,7 +147,9 @@ const OrderManagement = () => {
                 <input 
                   type="text" 
                   placeholder="חפש לפי שם לקוח..."
-                  className="pr-10 py-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-freezefit-300"
+                  className="pr-10 py-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Link to="/dashboard">
@@ -104,7 +170,7 @@ const OrderManagement = () => {
                 {/* Confirmed Orders Tab */}
                 <TabsContent value="confirmed" className="p-6">
                   <div className="space-y-6">
-                    {confirmedOrders.map(order => (
+                    {filteredConfirmedOrders.map(order => (
                       <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-start space-x-4 rtl:space-x-reverse">
@@ -141,7 +207,7 @@ const OrderManagement = () => {
                               <Button 
                                 variant="destructive" 
                                 size="sm"
-                                onClick={() => handleReject(order.id)}
+                                onClick={() => handleReject(order.id, false)}
                               >
                                 בטל תור
                               </Button>
@@ -151,7 +217,7 @@ const OrderManagement = () => {
                       </div>
                     ))}
                     
-                    {confirmedOrders.length === 0 && (
+                    {filteredConfirmedOrders.length === 0 && (
                       <div className="text-center py-12">
                         <CheckCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                         <h3 className="text-lg font-medium mb-1">אין תורים מאושרים</h3>
@@ -164,7 +230,7 @@ const OrderManagement = () => {
                 {/* Pending Orders Tab */}
                 <TabsContent value="pending" className="p-6">
                   <div className="space-y-6">
-                    {pendingOrders.map(order => (
+                    {filteredPendingOrders.map(order => (
                       <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-start space-x-4 rtl:space-x-reverse">
@@ -211,7 +277,7 @@ const OrderManagement = () => {
                       </div>
                     ))}
                     
-                    {pendingOrders.length === 0 && (
+                    {filteredPendingOrders.length === 0 && (
                       <div className="text-center py-12">
                         <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                         <h3 className="text-lg font-medium mb-1">אין תורים בהמתנה</h3>
@@ -224,7 +290,7 @@ const OrderManagement = () => {
                 {/* Order History Tab */}
                 <TabsContent value="history" className="p-6">
                   <div className="space-y-6">
-                    {historyOrders.map(order => (
+                    {filteredHistoryOrders.map(order => (
                       <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-start space-x-4 rtl:space-x-reverse">
@@ -256,7 +322,7 @@ const OrderManagement = () => {
                       </div>
                     ))}
                     
-                    {historyOrders.length === 0 && (
+                    {filteredHistoryOrders.length === 0 && (
                       <div className="text-center py-12">
                         <Archive className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                         <h3 className="text-lg font-medium mb-1">אין היסטוריית תורים</h3>

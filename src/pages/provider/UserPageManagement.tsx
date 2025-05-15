@@ -1,42 +1,237 @@
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  User,
-  Image, 
-  Star, 
-  PlusCircle,
-  Trash,
-  Save,
-  Upload,
-  Edit
-} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
+
+// Types for therapists and gallery
+interface Therapist {
+  id: number;
+  name: string;
+  specialty: string;
+  experience: number;
+  bio: string;
+  image: string;
+}
+
+interface GalleryImage {
+  id: number;
+  url: string;
+  title: string;
+}
+
+interface Review {
+  id: number;
+  customerName: string;
+  rating: number;
+  text: string;
+  date: string;
+}
 
 const UserPageManagement = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check authentication
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'provider') {
-      navigate('/login');
+  // State for therapists, reviews and gallery
+  const [therapists, setTherapists] = useState<Therapist[]>([
+    {
+      id: 1,
+      name: 'דני כהן',
+      specialty: 'ספורטאים',
+      experience: 5,
+      bio: 'מומחה בטיפול בספורטאים מקצועיים. בעל תואר ראשון בפיזיותרפיה ותעודת התמחות בשיקום ספורטיבי.',
+      image: '/placeholder.svg'
+    },
+    {
+      id: 2,
+      name: 'מיכל לוי',
+      specialty: 'שיקום',
+      experience: 8,
+      bio: 'מתמחה בשיקום לאחר פציעות ספורט. בעלת 8 שנות ניסיון בעבודה עם ספורטאי עילית.',
+      image: '/placeholder.svg'
     }
-  }, [isAuthenticated, user, navigate]);
+  ]);
+  
+  const [gallery, setGallery] = useState<GalleryImage[]>([
+    {
+      id: 1,
+      url: '/placeholder.svg',
+      title: 'חדר טיפולים ראשי'
+    },
+    {
+      id: 2,
+      url: '/placeholder.svg',
+      title: 'אמבטיות קרח מקצועיות'
+    },
+    {
+      id: 3,
+      url: '/placeholder.svg',
+      title: 'אזור המתנה'
+    }
+  ]);
 
-  const handleSaveChanges = () => {
+  const [reviews, setReviews] = useState<Review[]>([
+    {
+      id: 1,
+      customerName: 'יוסי ישראלי',
+      rating: 5,
+      text: 'שירות מעולה ומקצועי מאוד. התאוששתי מהר מאימון מפרך!',
+      date: '10/05/2025'
+    },
+    {
+      id: 2,
+      customerName: 'רונית כהן',
+      rating: 4,
+      text: 'צוות נחמד מאוד, נהניתי מהטיפול. ממליצה!',
+      date: '05/05/2025'
+    },
+    {
+      id: 3,
+      customerName: 'משתמש אנונימי',
+      rating: 5,
+      text: 'מתקנים ברמה גבוהה ויחס אישי. אחזור שוב בהחלט.',
+      date: '01/05/2025'
+    }
+  ]);
+  
+  // Dialog states
+  const [showNewTherapistDialog, setShowNewTherapistDialog] = useState(false);
+  const [showNewImageDialog, setShowNewImageDialog] = useState(false);
+  
+  // Selected therapist for removal
+  const [selectedTherapist, setSelectedTherapist] = useState<number | null>(null);
+  const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
+  
+  // Form states
+  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id' | 'image'>>({
+    name: '',
+    specialty: '',
+    experience: 0,
+    bio: ''
+  });
+  
+  const [newImage, setNewImage] = useState<Omit<GalleryImage, 'id' | 'url'>>({
+    title: ''
+  });
+  
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
+
+  // Handle therapist image selection
+  const handleTherapistImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setTherapistImageFile(e.target.files[0]);
+    }
+  };
+  
+  // Handle gallery image selection
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
+  // Add new therapist
+  const handleAddTherapist = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real app, we would upload the image to a server
+    // and get a URL back. Here we'll use a placeholder.
+    const imageUrl = therapistImageFile 
+      ? URL.createObjectURL(therapistImageFile) 
+      : '/placeholder.svg';
+    
+    const therapistToAdd: Therapist = {
+      id: therapists.length + 1,
+      ...newTherapist,
+      image: imageUrl
+    };
+    
+    setTherapists([...therapists, therapistToAdd]);
+    setShowNewTherapistDialog(false);
+    
+    // Reset form
+    setNewTherapist({
+      name: '',
+      specialty: '',
+      experience: 0,
+      bio: ''
+    });
+    setTherapistImageFile(null);
+    
     toast({
-      title: "שינויים נשמרו",
-      description: "השינויים נשמרו בהצלחה",
+      title: "מטפל נוסף",
+      description: "המטפל נוסף בהצלחה לרשימת המטפלים",
+    });
+  };
+
+  // Handle therapist removal
+  const handleRemoveTherapist = () => {
+    if (selectedTherapist !== null) {
+      setTherapists(therapists.filter(t => t.id !== selectedTherapist));
+      setSelectedTherapist(null);
+      setShowRemoveTherapistDialog(false);
+      
+      toast({
+        title: "מטפל הוסר",
+        description: "המטפל הוסר בהצלחה מרשימת המטפלים",
+      });
+    }
+  };
+
+  // Add new gallery image
+  const handleAddImage = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!imageFile) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "יש לבחור תמונה להעלאה",
+      });
+      return;
+    }
+    
+    // In a real app, we would upload the image to a server
+    const imageUrl = URL.createObjectURL(imageFile);
+    
+    const imageToAdd: GalleryImage = {
+      id: gallery.length + 1,
+      url: imageUrl,
+      title: newImage.title
+    };
+    
+    setGallery([...gallery, imageToAdd]);
+    setShowNewImageDialog(false);
+    
+    // Reset form
+    setNewImage({ title: '' });
+    setImageFile(null);
+    
+    toast({
+      title: "תמונה נוספה",
+      description: "התמונה נוספה בהצלחה לגלריה",
+    });
+  };
+  
+  // Remove gallery image
+  const handleRemoveImage = (id: number) => {
+    setGallery(gallery.filter(img => img.id !== id));
+    
+    toast({
+      title: "תמונה הוסרה",
+      description: "התמונה הוסרה בהצלחה מהגלריה",
     });
   };
 
@@ -48,8 +243,8 @@ const UserPageManagement = () => {
         <div className="container mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold">עיצוב דף למשתמש</h1>
-              <p className="text-gray-600 mt-1">ניהול פרטי מטפלים, גלריה וחוות דעת</p>
+              <h1 className="text-3xl font-bold">ניהול דף המכון</h1>
+              <p className="text-gray-600 mt-1">ניהול המטפלים, גלריית תמונות וביקורות</p>
             </div>
             
             <div className="mt-4 lg:mt-0">
@@ -59,483 +254,349 @@ const UserPageManagement = () => {
             </div>
           </div>
           
-          <Card>
-            <CardContent className="p-0">
-              <Tabs defaultValue="therapists" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="therapists">מטפלים</TabsTrigger>
-                  <TabsTrigger value="gallery">גלריה</TabsTrigger>
-                  <TabsTrigger value="reviews">חוות דעת</TabsTrigger>
-                </TabsList>
-                
-                {/* Therapists Tab */}
-                <TabsContent value="therapists" className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-semibold">ניהול מטפלים</h3>
-                    <div className="flex space-x-2 rtl:space-x-reverse">
-                      <Button className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
-                        <PlusCircle className="h-4 w-4 ml-1" /> הוסף מטפל
-                      </Button>
-                      <Button
-                        onClick={handleSaveChanges}
-                        variant="outline"
-                      >
-                        <Save className="h-4 w-4 ml-1" /> שמור שינויים
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {/* Therapist 1 */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="p-6">
+          <Tabs defaultValue="therapists" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="therapists">מטפלים</TabsTrigger>
+              <TabsTrigger value="gallery">גלריה</TabsTrigger>
+              <TabsTrigger value="reviews">ביקורות</TabsTrigger>
+            </TabsList>
+            
+            {/* Therapists Tab */}
+            <TabsContent value="therapists" className="mt-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>ניהול מטפלים</CardTitle>
+                  <Button onClick={() => setShowNewTherapistDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> הוסף מטפל
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {therapists.map(therapist => (
+                      <Card key={therapist.id} className="overflow-hidden">
                         <div className="flex flex-col md:flex-row">
-                          <div className="md:w-1/4 mb-4 md:mb-0 flex justify-center">
-                            <div className="relative w-32 h-32">
-                              <div className="bg-gray-200 rounded-full w-full h-full flex items-center justify-center overflow-hidden">
-                                <User className="h-16 w-16 text-gray-400" />
-                              </div>
-                              <button className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
-                                <Upload className="h-4 w-4 text-freezefit-300" />
-                              </button>
+                          <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center">
+                            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                              {therapist.image === '/placeholder.svg' ? (
+                                <User className="h-12 w-12 text-gray-500" />
+                              ) : (
+                                <img 
+                                  src={therapist.image} 
+                                  alt={therapist.name} 
+                                  className="w-full h-full object-cover" 
+                                />
+                              )}
                             </div>
                           </div>
-                          
-                          <div className="md:w-3/4 md:pr-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="md:w-2/3 p-4">
+                            <div className="flex justify-between items-start">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">שם המטפל</label>
-                                <Input defaultValue="דני כהן" />
+                                <h3 className="font-bold text-lg">{therapist.name}</h3>
+                                <p className="text-gray-700">
+                                  {therapist.specialty}, {therapist.experience} שנות ניסיון
+                                </p>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד/התמחות</label>
-                                <Input defaultValue="מומחה לטיפול בספורטאי עילית" />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">שנות ניסיון</label>
-                                <Input defaultValue="5" type="number" />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">מספר טלפון (אופציונלי)</label>
-                                <Input defaultValue="050-1234567" />
-                              </div>
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">פרטים נוספים והתמחויות</label>
-                                <Textarea 
-                                  defaultValue="דני הוא מטפל מוסמך עם ניסיון של 5 שנים בטיפולי אמבטיות קרח. מתמחה בעבודה עם ספורטאים מקצועיים, בעל תואר ראשון בפיזיותרפיה והסמכה בטיפולי קריותרפיה מתקדמים." 
-                                  rows={3}
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="flex justify-end mt-4">
-                              <Button variant="destructive" size="sm">
-                                <Trash className="h-4 w-4 ml-1" /> הסר מטפל
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  setSelectedTherapist(therapist.id);
+                                  setShowRemoveTherapistDialog(true);
+                                }}
+                              >
+                                <X className="h-4 w-4" />
                               </Button>
                             </div>
+                            <p className="text-gray-600 mt-2 text-sm">{therapist.bio}</p>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    {/* Therapist 2 */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="p-6">
-                        <div className="flex flex-col md:flex-row">
-                          <div className="md:w-1/4 mb-4 md:mb-0 flex justify-center">
-                            <div className="relative w-32 h-32">
-                              <div className="bg-gray-200 rounded-full w-full h-full flex items-center justify-center overflow-hidden">
-                                <User className="h-16 w-16 text-gray-400" />
-                              </div>
-                              <button className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
-                                <Upload className="h-4 w-4 text-freezefit-300" />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="md:w-3/4 md:pr-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">שם המטפל</label>
-                                <Input defaultValue="מיכל לוי" />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד/התמחות</label>
-                                <Input defaultValue="מומחית לשיקום ופיזיותרפיה" />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">שנות ניסיון</label>
-                                <Input defaultValue="8" type="number" />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">מספר טלפון (אופציונלי)</label>
-                                <Input defaultValue="052-7654321" />
-                              </div>
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">פרטים נוספים והתמחויות</label>
-                                <Textarea 
-                                  defaultValue="מיכל היא פיזיותרפיסטית מוסמכת עם 8 שנות ניסיון בעבודה עם מגוון מטופלים, מספורטאים ועד לאנשים הזקוקים לשיקום. בעלת תארים מתקדמים בפיזיותרפיה וטיפולי קור, והתמחות מיוחדת בטיפול בפציעות ספורט." 
-                                  rows={3}
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="flex justify-end mt-4">
-                              <Button variant="destructive" size="sm">
-                                <Trash className="h-4 w-4 ml-1" /> הסר מטפל
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Add New Therapist */}
-                    <div className="border border-dashed border-gray-300 rounded-lg p-6">
-                      <h4 className="text-lg font-medium mb-6 text-center">הוספת מטפל חדש</h4>
-                      
-                      <div className="flex flex-col md:flex-row">
-                        <div className="md:w-1/4 mb-4 md:mb-0 flex justify-center">
-                          <div className="relative w-32 h-32">
-                            <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-full w-full h-full flex items-center justify-center overflow-hidden">
-                              <Upload className="h-8 w-8 text-gray-400" />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="md:w-3/4 md:pr-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">שם המטפל</label>
-                              <Input placeholder="שם מלא" />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד/התמחות</label>
-                              <Input placeholder="תחום התמחות עיקרי" />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">שנות ניסיון</label>
-                              <Input type="number" placeholder="שנות ניסיון" />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">מספר טלפון (אופציונלי)</label>
-                              <Input placeholder="מספר טלפון" />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">פרטים נוספים והתמחויות</label>
-                              <Textarea placeholder="הכנס פרטים נוספים והתמחויות של המטפל" rows={3} />
-                            </div>
-                          </div>
-                          
-                          <div className="flex justify-end mt-4">
-                            <Button className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
-                              <PlusCircle className="h-4 w-4 ml-1" /> הוסף מטפל
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                {/* Gallery Tab */}
-                <TabsContent value="gallery" className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-semibold">גלריית תמונות</h3>
-                    <Button className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
-                      <Upload className="h-4 w-4 ml-1" /> העלה תמונות חדשות
-                    </Button>
+                      </Card>
+                    ))}
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {/* Gallery Item 1 */}
-                    <div className="relative group">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                        <Image className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <button className="p-1 bg-white rounded-full">
-                            <Edit className="h-4 w-4 text-freezefit-300" />
-                          </button>
-                          <button className="p-1 bg-white rounded-full">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </button>
+                  {therapists.length === 0 && (
+                    <div className="text-center py-12">
+                      <User className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium mb-1">אין מטפלים</h3>
+                      <p className="text-gray-600">הוסף מטפלים כדי שלקוחות יוכלו לראות אותם</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Gallery Tab */}
+            <TabsContent value="gallery" className="mt-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>גלריית תמונות</CardTitle>
+                  <Button onClick={() => setShowNewImageDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> הוסף תמונה
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {gallery.map(image => (
+                      <div key={image.id} className="relative group">
+                        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                          <img 
+                            src={image.url} 
+                            alt={image.title} 
+                            className="w-full h-full object-cover"
+                          />
                         </div>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemoveImage(image.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <p className="mt-2 text-sm font-medium text-center">{image.title}</p>
                       </div>
-                    </div>
-                    
-                    {/* Gallery Item 2 */}
-                    <div className="relative group">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                        <Image className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <button className="p-1 bg-white rounded-full">
-                            <Edit className="h-4 w-4 text-freezefit-300" />
-                          </button>
-                          <button className="p-1 bg-white rounded-full">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Gallery Item 3 */}
-                    <div className="relative group">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                        <Image className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <button className="p-1 bg-white rounded-full">
-                            <Edit className="h-4 w-4 text-freezefit-300" />
-                          </button>
-                          <button className="p-1 bg-white rounded-full">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Gallery Item 4 */}
-                    <div className="relative group">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                        <Image className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <button className="p-1 bg-white rounded-full">
-                            <Edit className="h-4 w-4 text-freezefit-300" />
-                          </button>
-                          <button className="p-1 bg-white rounded-full">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Add New Gallery Item */}
-                    <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-50">
-                      <div className="text-center">
-                        <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                        <p className="mt-2 text-sm text-gray-600">העלה תמונה</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                   
-                  <div className="mt-8">
-                    <h4 className="font-medium mb-3">הגדרות גלריה</h4>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">כותרת הגלריה (נראית למשתמשים)</label>
-                            <Input defaultValue="הצצה למכון שלנו" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור הגלריה</label>
-                            <Textarea 
-                              defaultValue="תמונות ממכון הטיפולים שלנו, כולל אמבטיות הקרח, אזורי ההמתנה והטיפול"
-                              rows={2}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4 flex justify-end">
-                          <Button
-                            onClick={handleSaveChanges}
-                            className="bg-freezefit-300 hover:bg-freezefit-400 text-white"
-                          >
-                            <Save className="h-4 w-4 ml-1" /> שמור שינויים
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-                
-                {/* Reviews Tab */}
-                <TabsContent value="reviews" className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-semibold">חוות דעת</h3>
-                    <Button onClick={handleSaveChanges} className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
-                      <Save className="h-4 w-4 ml-1" /> שמור שינויים
-                    </Button>
-                  </div>
-                  
+                  {gallery.length === 0 && (
+                    <div className="text-center py-12">
+                      <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium mb-1">אין תמונות בגלריה</h3>
+                      <p className="text-gray-600">הוסף תמונות כדי שלקוחות יוכלו לצפות במתקני המכון</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Reviews Tab */}
+            <TabsContent value="reviews" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>ניהול ביקורות</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-6">
-                    {/* Review 1 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <div className="flex items-center">
-                            <h4 className="font-semibold">יובל אדרי</h4>
-                            <div className="flex items-center mr-2">
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-500 mt-1">15/04/2025</p>
-                        </div>
-                        
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              id="approved-1"
-                              defaultChecked={true}
-                              className="w-4 h-4 text-freezefit-300 border-gray-300 rounded"
-                            />
-                            <label htmlFor="approved-1" className="mr-1 text-sm text-gray-700">
-                              מאושר
-                            </label>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <Textarea 
-                        className="mt-3"
-                        defaultValue="מכון מעולה! הטיפול עזר לי מאוד להחלמה אחרי פציעת ספורט. המטפלים מקצועיים והאווירה נעימה. אני ממליץ בחום על הטיפולים כאן, במיוחד למי שמתאמן באופן קבוע."
-                        rows={3}
-                      />
-                    </div>
-                    
-                    {/* Review 2 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <div className="flex items-center">
-                            <h4 className="font-semibold">מיכל דוידוב</h4>
-                            <div className="flex items-center mr-2">
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-gray-300" />
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-500 mt-1">02/05/2025</p>
-                        </div>
-                        
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              id="approved-2"
-                              defaultChecked={true}
-                              className="w-4 h-4 text-freezefit-300 border-gray-300 rounded"
-                            />
-                            <label htmlFor="approved-2" className="mr-1 text-sm text-gray-700">
-                              מאושר
-                            </label>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <Textarea 
-                        className="mt-3"
-                        defaultValue="השירות נהדר ומיכל המטפלת מקצועית ונעימה מאוד! הטיפולים עזרו לי בהתאוששות מהר מהצפוי. המקום נקי ומסודר. ארבעה כוכבים רק בגלל שלפעמים צריך לחכות קצת, אבל שווה את זה."
-                        rows={3}
-                      />
-                    </div>
-                    
-                    {/* Review 3 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <div className="flex items-center">
-                            <h4 className="font-semibold">אורי לוי</h4>
-                            <div className="flex items-center mr-2">
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <Star className="h-4 w-4 text-gray-300" />
-                              <Star className="h-4 w-4 text-gray-300" />
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-500 mt-1">28/04/2025</p>
-                        </div>
-                        
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              id="approved-3"
-                              defaultChecked={false}
-                              className="w-4 h-4 text-freezefit-300 border-gray-300 rounded"
-                            />
-                            <label htmlFor="approved-3" className="mr-1 text-sm text-gray-700">
-                              מאושר
-                            </label>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <Textarea 
-                        className="mt-3"
-                        defaultValue="הטיפול היה סביר, אבל המחירים גבוהים מדי לדעתי. המטפלים מקצועיים אבל היה צפוף מדי במקום כשהגעתי."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="mt-8">
-                    <h4 className="font-medium mb-3">הגדרות חוות דעת</h4>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              id="auto-approve"
-                              defaultChecked={false}
-                              className="w-4 h-4 text-freezefit-300 border-gray-300 rounded"
-                            />
-                            <label htmlFor="auto-approve" className="mr-2 text-gray-700">
-                              אישור אוטומטי של חוות דעת חדשות
-                            </label>
-                          </div>
-                          
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              id="show-rating"
-                              defaultChecked={true}
-                              className="w-4 h-4 text-freezefit-300 border-gray-300 rounded"
-                            />
-                            <label htmlFor="show-rating" className="mr-2 text-gray-700">
-                              הצג דירוג כוכבים ממוצע בדף המכון
-                            </label>
-                          </div>
-                          
+                    {reviews.map(review => (
+                      <div key={review.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">מספר חוות דעת מקסימלי להצגה</label>
-                            <Input type="number" defaultValue="10" className="max-w-[100px]" />
+                            <div className="flex items-center">
+                              <h3 className="font-bold text-lg ml-2">{review.customerName}</h3>
+                              <div className="flex">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i < review.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-gray-600 mt-2">{review.text}</p>
                           </div>
+                          <span className="text-sm text-gray-500">{review.date}</span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    ))}
+                    
+                    {reviews.length === 0 && (
+                      <div className="text-center py-12">
+                        <Star className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium mb-1">אין ביקורות</h3>
+                        <p className="text-gray-600">ביקורות יופיעו כאן כאשר לקוחות יוסיפו אותן</p>
+                      </div>
+                    )}
                   </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+      
+      {/* New Therapist Dialog */}
+      <Dialog open={showNewTherapistDialog} onOpenChange={setShowNewTherapistDialog}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>הוספת מטפל חדש</DialogTitle>
+            <DialogDescription>
+              הוסף את פרטי המטפל החדש.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddTherapist} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="therapistName">שם המטפל</Label>
+                <Input 
+                  id="therapistName" 
+                  value={newTherapist.name}
+                  onChange={(e) => setNewTherapist({...newTherapist, name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="specialty">התמחות</Label>
+                <Input 
+                  id="specialty" 
+                  value={newTherapist.specialty}
+                  onChange={(e) => setNewTherapist({...newTherapist, specialty: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="experience">שנות ניסיון</Label>
+                <Input 
+                  id="experience" 
+                  type="number"
+                  value={newTherapist.experience.toString()}
+                  onChange={(e) => setNewTherapist({...newTherapist, experience: Number(e.target.value)})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="bio">ביוגרפיה</Label>
+                <Textarea 
+                  id="bio" 
+                  rows={3}
+                  value={newTherapist.bio}
+                  onChange={(e) => setNewTherapist({...newTherapist, bio: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="therapistImage">תמונה</Label>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Input 
+                      id="therapistImage" 
+                      type="file"
+                      onChange={handleTherapistImageChange}
+                      accept="image/*"
+                    />
+                  </div>
+                  {therapistImageFile && (
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={URL.createObjectURL(therapistImageFile)} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">מומלץ: תמונה בגודל 400x400 פיקסלים</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowNewTherapistDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">הוסף מטפל</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Remove Therapist Dialog */}
+      <Dialog open={showRemoveTherapistDialog} onOpenChange={setShowRemoveTherapistDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>הסרת מטפל</DialogTitle>
+            <DialogDescription>
+              האם אתה בטוח שברצונך להסיר את המטפל?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end gap-2 py-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowRemoveTherapistDialog(false)}
+            >
+              ביטול
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleRemoveTherapist}
+            >
+              הסר מטפל
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* New Image Dialog */}
+      <Dialog open={showNewImageDialog} onOpenChange={setShowNewImageDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>הוספת תמונה לגלריה</DialogTitle>
+            <DialogDescription>
+              העלה תמונה חדשה לגלריית המכון.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddImage} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="imageTitle">כותרת התמונה</Label>
+                <Input 
+                  id="imageTitle" 
+                  value={newImage.title}
+                  onChange={(e) => setNewImage({...newImage, title: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="galleryImage">בחר תמונה</Label>
+                <div className="flex flex-col gap-4">
+                  <Input 
+                    id="galleryImage" 
+                    type="file"
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    required
+                  />
+                  
+                  {imageFile && (
+                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <img 
+                        src={URL.createObjectURL(imageFile)} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">מומלץ: תמונה באיכות גבוהה בפורמט אופקי</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowNewImageDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">הוסף תמונה</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>
