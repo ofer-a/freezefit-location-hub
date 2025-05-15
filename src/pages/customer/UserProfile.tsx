@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -7,11 +7,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Calendar, Star, Gift } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { User, Calendar as CalendarIcon, Star, Gift } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+
+// Appointment type
+interface Appointment {
+  id: number;
+  date: string;
+  time: string;
+  institute: string;
+  therapist: string;
+}
 
 const UserProfile = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // For appointment management
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([
+    { id: 1, date: '15/05/2025', time: '16:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' },
+    { id: 2, date: '21/05/2025', time: '10:00', institute: 'אייס פיט', therapist: 'אלון ברק' }
+  ]);
+  
+  const [pastAppointments, setPastAppointments] = useState<Appointment[]>([
+    { id: 3, date: '01/05/2025', time: '12:30', institute: 'קריו פלוס', therapist: 'רונית דוד' },
+    { id: 4, date: '27/04/2025', time: '17:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' }
+  ]);
+  
+  // For calendar dialog
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [appointmentToModify, setAppointmentToModify] = useState<Appointment | null>(null);
+  
+  // Mock data
+  const loyaltyPoints = 320;
+  const availableTimes = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"];
 
   // Check authentication
   useEffect(() => {
@@ -20,16 +56,56 @@ const UserProfile = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Mock data
-  const loyaltyPoints = 320;
-  const upcomingAppointments = [
-    { id: 1, date: '15/05/2025', time: '16:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' },
-    { id: 2, date: '21/05/2025', time: '10:00', institute: 'אייס פיט', therapist: 'אלון ברק' }
-  ];
-  const pastAppointments = [
-    { id: 3, date: '01/05/2025', time: '12:30', institute: 'קריו פלוס', therapist: 'רונית דוד' },
-    { id: 4, date: '27/04/2025', time: '17:00', institute: 'מרכז קריוסטיים', therapist: 'דני כהן' }
-  ];
+  const handleCancelAppointment = (appointmentId: number) => {
+    // Remove the appointment from the list
+    setUpcomingAppointments(prevAppointments => 
+      prevAppointments.filter(appointment => appointment.id !== appointmentId)
+    );
+    
+    // Show toast notification
+    toast({
+      title: "התור בוטל בהצלחה",
+      description: "התור שלך בוטל, הודעה נשלחה למרכז הטיפול",
+    });
+  };
+
+  const handleModifyAppointment = (appointment: Appointment) => {
+    setAppointmentToModify(appointment);
+    setIsCalendarOpen(true);
+  };
+  
+  const handleAddReview = (instituteId: number, therapistId: number) => {
+    navigate(`/add-review/${instituteId}/${therapistId}`);
+  };
+  
+  const handleSaveNewAppointment = () => {
+    if (appointmentToModify && selectedDate && selectedTime) {
+      // Update the appointment in the list
+      setUpcomingAppointments(prevAppointments => 
+        prevAppointments.map(appointment => 
+          appointment.id === appointmentToModify.id 
+            ? { 
+                ...appointment, 
+                date: format(selectedDate, 'dd/MM/yyyy'), 
+                time: selectedTime 
+              } 
+            : appointment
+        )
+      );
+      
+      // Show toast notification
+      toast({
+        title: "התור עודכן בהצלחה",
+        description: "פרטי התור החדש שלך נשמרו במערכת",
+      });
+      
+      // Close the calendar dialog
+      setIsCalendarOpen(false);
+      setSelectedDate(undefined);
+      setSelectedTime("");
+      setAppointmentToModify(null);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -99,7 +175,7 @@ const UserProfile = () => {
                                 <p className="text-sm text-gray-600">מטפל: {appointment.therapist}</p>
                               </div>
                               <div className="flex items-center">
-                                <Calendar className="h-5 w-5 text-freezefit-300 ml-1" />
+                                <CalendarIcon className="h-5 w-5 text-freezefit-300 ml-1" />
                                 <div>
                                   <p className="text-sm font-medium">{appointment.date}</p>
                                   <p className="text-sm text-gray-500">שעה: {appointment.time}</p>
@@ -107,10 +183,18 @@ const UserProfile = () => {
                               </div>
                             </div>
                             <div className="mt-3 flex justify-end space-x-2 rtl:space-x-reverse">
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleModifyAppointment(appointment)}
+                              >
                                 שנה תור
                               </Button>
-                              <Button variant="destructive" size="sm">
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleCancelAppointment(appointment.id)}
+                              >
                                 בטל תור
                               </Button>
                             </div>
@@ -119,7 +203,7 @@ const UserProfile = () => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Calendar className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                        <CalendarIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
                         <p>אין לך תורים עתידיים</p>
                         <Button className="mt-4 bg-freezefit-300 hover:bg-freezefit-400 text-white" onClick={() => navigate('/find-institute')}>
                           הזמן תור חדש
@@ -139,7 +223,7 @@ const UserProfile = () => {
                                 <p className="text-sm text-gray-600">מטפל: {appointment.therapist}</p>
                               </div>
                               <div className="flex items-center">
-                                <Calendar className="h-5 w-5 text-gray-400 ml-1" />
+                                <CalendarIcon className="h-5 w-5 text-gray-400 ml-1" />
                                 <div>
                                   <p className="text-sm font-medium">{appointment.date}</p>
                                   <p className="text-sm text-gray-500">שעה: {appointment.time}</p>
@@ -147,7 +231,11 @@ const UserProfile = () => {
                               </div>
                             </div>
                             <div className="mt-3 flex justify-end">
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleAddReview(1, appointment.id)} // Using appointmentId as therapistId for demo
+                              >
                                 הוסף ביקורת
                               </Button>
                             </div>
@@ -156,7 +244,7 @@ const UserProfile = () => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Calendar className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                        <CalendarIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
                         <p>אין לך היסטוריית תורים</p>
                       </div>
                     )}
@@ -199,7 +287,7 @@ const UserProfile = () => {
                   
                   <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-5 flex flex-col justify-between">
                     <div>
-                      <Calendar className="h-8 w-8 mb-3 text-freezefit-300" />
+                      <CalendarIcon className="h-8 w-8 mb-3 text-freezefit-300" />
                       <h3 className="text-lg font-bold mb-1">מבצע החודש</h3>
                       <p className="text-sm text-gray-600">קנה 4 טיפולים, קבל 1 חינם</p>
                     </div>
@@ -213,6 +301,58 @@ const UserProfile = () => {
           </div>
         </div>
       </div>
+      
+      {/* Appointment modification dialog */}
+      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>שינוי תור</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">בחר תאריך חדש:</h4>
+              <div className="flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => date < new Date() || date > new Date(2025, 11, 31)}
+                  className="rounded-md border mx-auto"
+                />
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">בחר שעה חדשה:</h4>
+              <Select value={selectedTime} onValueChange={setSelectedTime}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="בחר שעה" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={time} value={time}>{time}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCalendarOpen(false)}
+            >
+              ביטול
+            </Button>
+            <Button 
+              onClick={handleSaveNewAppointment}
+              className="bg-freezefit-300 hover:bg-freezefit-400 text-white"
+              disabled={!selectedDate || !selectedTime}
+            >
+              עדכן תור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>

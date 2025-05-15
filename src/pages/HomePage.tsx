@@ -45,6 +45,14 @@ const HomePage = () => {
     (e.target as HTMLFormElement).reset();
   };
 
+  // Smooth scroll function
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />

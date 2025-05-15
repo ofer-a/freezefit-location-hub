@@ -16,6 +16,7 @@ import OrderManagement from "./pages/provider/OrderManagement";
 import StoreManagement from "./pages/provider/StoreManagement";
 import UserPageManagement from "./pages/provider/UserPageManagement";
 import UserProfile from "./pages/customer/UserProfile";
+import AddReview from "./pages/customer/AddReview";
 
 // Authentication Context Provider
 import { AuthProvider } from "./contexts/AuthContext";
@@ -37,6 +38,7 @@ const App = () => (
             {/* Customer Routes */}
             <Route path="/find-institute" element={<FindInstitute />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/add-review/:instituteId/:therapistId" element={<AddReview />} />
             
             {/* Provider Routes */}
             <Route path="/dashboard" element={<ProviderDashboard />} />

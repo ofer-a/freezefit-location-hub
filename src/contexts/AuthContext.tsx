@@ -1,9 +1,10 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Define user types
-export type UserRole = 'customer' | 'provider' | null;
+// Define user roles
+export type UserRole = 'customer' | 'provider';
 
+// Define user type
 export interface User {
   id: string;
   name: string;
@@ -11,102 +12,121 @@ export interface User {
   role: UserRole;
 }
 
+// Define context type
 interface AuthContextType {
-  user: User | null;
   isAuthenticated: boolean;
-  role: UserRole;
+  user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
 }
 
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+// Mock users for demonstration
+const mockUsers: User[] = [
+  { id: '1', name: 'לקוח לדוגמה', email: 'customer@example.com', role: 'customer' },
+  { id: '2', name: 'ספק שירות לדוגמה', email: 'provider@example.com', role: 'provider' }
+];
 
-  // Check if user is already logged in on mount
+// Provider component
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Check local storage for existing session on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('freezefit_user');
+    
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      } catch (error) {
+        localStorage.removeItem('freezefit_user');
+      }
     }
-    setIsLoading(false);
   }, []);
 
-  // Mock login functionality (replace with real auth later)
-  const login = async (email: string, password: string) => {
-    // This is a mock implementation, replace with actual API call
-    try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock response based on email for demo purposes
-      const isProvider = email.includes('provider');
-      const mockUser: User = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: isProvider ? 'מנהל מרכז' : 'לקוח',
-        email,
-        role: isProvider ? 'provider' : 'customer',
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('freezefit_user', JSON.stringify(mockUser));
-      return mockUser;
-    } catch (error) {
-      throw new Error('שגיאה בהתחברות');
-    }
+  // Login function
+  const login = async (email: string, password: string): Promise<void> => {
+    // Simulate API call
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+        
+        if (foundUser && password === '123456') {
+          setUser(foundUser);
+          setIsAuthenticated(true);
+          localStorage.setItem('freezefit_user', JSON.stringify(foundUser));
+          resolve();
+        } else {
+          reject(new Error('אימייל או סיסמה לא נכונים'));
+        }
+      }, 500);
+    });
   };
 
-  // Mock register functionality
-  const register = async (name: string, email: string, password: string, role: UserRole) => {
-    // This is a mock implementation, replace with actual API call
-    try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const mockUser: User = {
-        id: Math.random().toString(36).substring(2, 9),
-        name,
-        email,
-        role,
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('freezefit_user', JSON.stringify(mockUser));
-      return mockUser;
-    } catch (error) {
-      throw new Error('שגיאה בהרשמה');
-    }
+  // Register function
+  const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
+    // Simulate API call
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const existingUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+        
+        if (existingUser) {
+          reject(new Error('משתמש עם אימייל זה כבר קיים במערכת'));
+          return;
+        }
+        
+        // Create new user
+        const newUser: User = {
+          id: `${mockUsers.length + 1}`,
+          name,
+          email,
+          role
+        };
+        
+        // In a real app we would save to database here
+        mockUsers.push(newUser);
+        
+        // Log in the new user
+        setUser(newUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('freezefit_user', JSON.stringify(newUser));
+        resolve();
+      }, 500);
+    });
   };
 
+  // Logout function
   const logout = () => {
     setUser(null);
+    setIsAuthenticated(false);
     localStorage.removeItem('freezefit_user');
   };
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">טוען...</div>;
-  }
+  // Create value object
+  const value = {
+    isAuthenticated,
+    user,
+    login,
+    register,
+    logout
+  };
 
+  // Provide context
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        role: user?.role || null,
-        login,
-        register,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+// Custom hook to use the context
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

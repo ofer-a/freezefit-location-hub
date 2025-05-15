@@ -1,180 +1,144 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, User, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+  NavigationMenuLink,
+} from '@/components/ui/navigation-menu';
 
 const Header = () => {
-  const { user, isAuthenticated, logout, role } = useAuth();
-  const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const isHome = location.pathname === '/';
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const scrollToSection = (sectionId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      window.location.href = `/#${sectionId}`;
+      return;
+    }
+    
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
+  const headerClass = isHome
+    ? `fixed top-0 right-0 left-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'bg-white/90 backdrop-blur shadow-md' : 'bg-transparent'
+      }`
+    : 'bg-white shadow-md';
+  
+  const textClass = isHome && !isScrolled ? 'text-white' : 'text-gray-800';
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        {/* Logo */}
-        <Link to="/" className="text-freezefit font-bold text-2xl">
-          Freezefit
-        </Link>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6 rtl:space-x-reverse">
-          <Link to="/" className="text-gray-700 hover:text-freezefit-300">
-            דף הבית
+    <header className={headerClass}>
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex justify-between items-center">
+          <Link to="/" className="flex items-center">
+            <span className={`text-xl font-bold ${textClass}`}>
+              Freezefit
+            </span>
           </Link>
-          <Link to="/#about" className="text-gray-700 hover:text-freezefit-300">
-            אודות
-          </Link>
-          <Link to="/#newsletter" className="text-gray-700 hover:text-freezefit-300">
-            הרשמה לעדכונים
-          </Link>
-          <Link to="/#contact" className="text-gray-700 hover:text-freezefit-300">
-            צור קשר
-          </Link>
-        </nav>
 
-        {/* Auth Actions */}
-        <div className="hidden md:flex items-center space-x-4 rtl:space-x-reverse">
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {role === 'customer' && (
-                  <>
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                      הפרופיל שלי
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/find-institute')}>
-                      מצא מכון
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {role === 'provider' && (
-                  <>
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                      לוח בקרה
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/order-management')}>
-                      ניהול הזמנות
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/store-management')}>
-                      ניהול חנות
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  התנתקות
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <>
-              <Link to="/login">
-                <Button variant="ghost" className="text-freezefit-300 hover:text-freezefit-400">
-                  התחברות
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
-                  הרשמה
-                </Button>
-              </Link>
-            </>
-          )}
-        </div>
-
-        {/* Mobile menu button */}
-        <button onClick={toggleMobileMenu} className="md:hidden text-gray-700">
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white shadow-md">
-          <div className="container mx-auto px-4 py-3 flex flex-col space-y-4">
-            <Link to="/" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-              דף הבית
-            </Link>
-            <Link to="/#about" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-              אודות
-            </Link>
-            <Link to="/#newsletter" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-              הרשמה לעדכונים
-            </Link>
-            <Link to="/#contact" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-              צור קשר
-            </Link>
-            <div className="border-t border-gray-200 pt-3 flex flex-col space-y-2">
+          <NavigationMenu>
+            <NavigationMenuList className="flex items-center gap-6">
+              <NavigationMenuItem>
+                <Link to="/" className={`text-sm font-medium ${textClass} hover:text-freezefit-300`}>
+                  דף הבית
+                </Link>
+              </NavigationMenuItem>
+              
+              {isHome && (
+                <>
+                  <NavigationMenuItem>
+                    <a 
+                      href="#about" 
+                      onClick={(e) => scrollToSection('about', e)} 
+                      className={`text-sm font-medium ${textClass} hover:text-freezefit-300`}
+                    >
+                      אודות
+                    </a>
+                  </NavigationMenuItem>
+                  
+                  <NavigationMenuItem>
+                    <a 
+                      href="#contact" 
+                      onClick={(e) => scrollToSection('contact', e)} 
+                      className={`text-sm font-medium ${textClass} hover:text-freezefit-300`}
+                    >
+                      צור קשר
+                    </a>
+                  </NavigationMenuItem>
+                </>
+              )}
+              
               {isAuthenticated ? (
                 <>
-                  <div className="text-gray-700 font-medium">{user?.name}</div>
-                  {role === 'customer' && (
-                    <>
-                      <Link to="/profile" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-                        הפרופיל שלי
-                      </Link>
-                      <Link to="/find-institute" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-                        מצא מכון
-                      </Link>
-                    </>
-                  )}
-                  {role === 'provider' && (
-                    <>
-                      <Link to="/dashboard" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-                        לוח בקרה
-                      </Link>
-                      <Link to="/order-management" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-                        ניהול הזמנות
-                      </Link>
-                      <Link to="/store-management" className="text-gray-700 hover:text-freezefit-300 py-2" onClick={toggleMobileMenu}>
-                        ניהול חנות
-                      </Link>
-                    </>
-                  )}
-                  <button onClick={() => { handleLogout(); toggleMobileMenu(); }} className="text-red-500 hover:text-red-700 py-2 text-right">
-                    התנתקות
-                  </button>
+                  <NavigationMenuItem>
+                    <Link 
+                      to={user?.role === 'provider' ? '/dashboard' : '/profile'} 
+                      className={`text-sm font-medium ${textClass} hover:text-freezefit-300`}
+                    >
+                      {user?.role === 'provider' ? 'לוח בקרה' : 'הפרופיל שלי'}
+                    </Link>
+                  </NavigationMenuItem>
+                  
+                  <NavigationMenuItem>
+                    <Button
+                      variant="outline"
+                      className={`border-1 ${isHome && !isScrolled ? 'border-white text-white hover:bg-white/10' : 'border-freezefit-300 text-freezefit-300 hover:bg-freezefit-50'}`}
+                      onClick={() => logout()}
+                    >
+                      התנתק
+                    </Button>
+                  </NavigationMenuItem>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="text-freezefit-300 hover:text-freezefit-400 py-2" onClick={toggleMobileMenu}>
-                    התחברות
-                  </Link>
-                  <Link to="/register" className="bg-freezefit-300 hover:bg-freezefit-400 text-white py-2 px-4 rounded text-center" onClick={toggleMobileMenu}>
-                    הרשמה
-                  </Link>
+                  <NavigationMenuItem>
+                    <Link to="/login">
+                      <Button
+                        variant="outline"
+                        className={`border-1 ${isHome && !isScrolled ? 'border-white text-white hover:bg-white/10' : 'border-freezefit-300 text-freezefit-300 hover:bg-freezefit-50'}`}
+                      >
+                        התחבר
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
+                  
+                  <NavigationMenuItem>
+                    <Link to="/register">
+                      <Button
+                        className={isHome && !isScrolled ? 'bg-white text-freezefit-300 hover:bg-white/90' : 'bg-freezefit-300 text-white hover:bg-freezefit-400'}
+                      >
+                        הרשמה
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
                 </>
               )}
-            </div>
-          </div>
+            </NavigationMenuList>
+          </NavigationMenu>
         </div>
-      )}
+      </div>
     </header>
   );
 };

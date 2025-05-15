@@ -90,7 +90,7 @@
 }
 
 .hero-section {
-  background-image: linear-gradient(to bottom, rgba(26, 31, 44, 0.7), rgba(26, 31, 44, 0.8)), url('/ice-bath.jpg');
+  background-image: linear-gradient(to bottom, rgba(26, 31, 44, 0.7), rgba(26, 31, 44, 0.8)), url('https://www.shvoong.co.il/wp-content/uploads/2023/11/shutterstock_21517838492.jpg');
   background-size: cover;
   background-position: center;
   min-height: 90vh;
