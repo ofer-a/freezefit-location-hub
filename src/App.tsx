@@ -1,26 +1,55 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+
+// Pages
+import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import FindInstitute from "./pages/customer/FindInstitute";
+import ProviderDashboard from "./pages/provider/ProviderDashboard";
+import OrderManagement from "./pages/provider/OrderManagement";
+import StoreManagement from "./pages/provider/StoreManagement";
+import UserPageManagement from "./pages/provider/UserPageManagement";
+import UserProfile from "./pages/customer/UserProfile";
+
+// Authentication Context Provider
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            
+            {/* Customer Routes */}
+            <Route path="/find-institute" element={<FindInstitute />} />
+            <Route path="/profile" element={<UserProfile />} />
+            
+            {/* Provider Routes */}
+            <Route path="/dashboard" element={<ProviderDashboard />} />
+            <Route path="/order-management" element={<OrderManagement />} />
+            <Route path="/store-management" element={<StoreManagement />} />
+            <Route path="/user-page-management" element={<UserPageManagement />} />
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

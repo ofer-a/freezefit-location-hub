@@ -1,5 +1,9 @@
-import { useLocation } from "react-router-dom";
+
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 
 const NotFound = () => {
   const location = useLocation();
@@ -12,14 +16,25 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      
+      <div className="flex-grow flex items-center justify-center py-16 px-4 bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-6xl font-bold text-freezefit-300 mb-4">404</h1>
+          <p className="text-2xl font-medium mb-6">הדף לא נמצא</p>
+          <p className="text-gray-600 mb-8">
+            מצטערים, הדף שחיפשת אינו קיים. ייתכן שהכתובת שהוזנה שגויה או שהדף הוסר.
+          </p>
+          <Link to="/">
+            <Button className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
+              חזרה לדף הבית
+            </Button>
+          </Link>
+        </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };
