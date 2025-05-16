@@ -10,11 +10,26 @@ import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+interface ContactFormData {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  submittedAt: Date;
+}
+
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
+  const [contactFormData, setContactFormData] = useState<ContactFormData>({
+    name: '',
+    email: '',
+    subject: '',
+    message: '',
+    submittedAt: new Date()
+  });
 
   const handleFindInstitute = () => {
     if (isAuthenticated) {
@@ -34,15 +49,40 @@ const HomePage = () => {
     setEmail('');
   };
 
+  const handleContactFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setContactFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     // In a real application, you would submit this to your backend
+    // For now, we'll store in local storage to simulate a backend
+    const inquiries = JSON.parse(localStorage.getItem('customerInquiries') || '[]');
+    inquiries.push({
+      ...contactFormData,
+      submittedAt: new Date().toISOString(),
+      status: 'new'
+    });
+    localStorage.setItem('customerInquiries', JSON.stringify(inquiries));
+    
     toast({
       title: "ההודעה נשלחה בהצלחה",
       description: "ניצור איתך קשר בהקדם",
     });
+    
     // Reset form
-    (e.target as HTMLFormElement).reset();
+    setContactFormData({
+      name: '',
+      email: '',
+      subject: '',
+      message: '',
+      submittedAt: new Date()
+    });
   };
 
   // Smooth scroll function
@@ -153,22 +193,22 @@ const HomePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">שם מלא</label>
-                  <Input id="name" type="text" required />
+                  <Input id="name" name="name" type="text" required value={contactFormData.name} onChange={handleContactFormChange} />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">אימייל</label>
-                  <Input id="email" type="email" required />
+                  <Input id="email" name="email" type="email" required value={contactFormData.email} onChange={handleContactFormChange} />
                 </div>
               </div>
               
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">נושא</label>
-                <Input id="subject" type="text" required />
+                <Input id="subject" name="subject" type="text" required value={contactFormData.subject} onChange={handleContactFormChange} />
               </div>
               
               <div>
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">הודעה</label>
-                <Textarea id="message" rows={5} required />
+                <Textarea id="message" name="message" rows={5} required value={contactFormData.message} onChange={handleContactFormChange} />
               </div>
               
               <div className="text-center">

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { User, Calendar, Clock, X } from 'lucide-react';
+import { User, Calendar, Clock, MessageSquare } from 'lucide-react';
 
 // Mock appointments for the user
 const mockUpcomingAppointments = [
   { 
     id: 1, 
+    instituteId: 1,
     instituteName: 'מרכז קריוסטיים', 
+    therapistId: 1,
     therapistName: 'דני כהן', 
     service: 'טיפול סטנדרטי',
     date: '15/05/2025', 
@@ -25,7 +27,9 @@ const mockUpcomingAppointments = [
   },
   { 
     id: 2, 
+    instituteId: 2,
     instituteName: 'קריו פלוס', 
+    therapistId: 3,
     therapistName: 'רונית דוד', 
     service: 'טיפול ספורטאים',
     date: '20/05/2025', 
@@ -36,7 +40,9 @@ const mockUpcomingAppointments = [
 const mockPastAppointments = [
   { 
     id: 3, 
+    instituteId: 3,
     instituteName: 'אייס פיט', 
+    therapistId: 4,
     therapistName: 'אלון ברק', 
     service: 'טיפול קצר',
     date: '05/05/2025', 
@@ -45,7 +51,9 @@ const mockPastAppointments = [
   },
   { 
     id: 4, 
+    instituteId: 1,
     instituteName: 'מרכז קריוסטיים', 
+    therapistId: 2,
     therapistName: 'מיכל לוי', 
     service: 'טיפול שיקום',
     date: '01/05/2025', 
@@ -156,6 +164,11 @@ const UserProfile = () => {
       confirmPassword: ''
     });
     setShowChangePasswordDialog(false);
+  };
+
+  // Navigate to add review page
+  const handleAddReview = (instituteId: number, therapistId: number) => {
+    navigate(`/add-review/${instituteId}/${therapistId}`);
   };
 
   return (
@@ -287,7 +300,7 @@ const UserProfile = () => {
                                     <span className="text-sm">{appointment.time}</span>
                                   </div>
                                 </div>
-                                <div>
+                                <div className="flex flex-col items-end">
                                   <span className={`px-3 py-1 rounded text-sm font-medium ${
                                     appointment.status === 'הושלם' 
                                       ? 'bg-green-100 text-green-800' 
@@ -295,6 +308,18 @@ const UserProfile = () => {
                                   }`}>
                                     {appointment.status}
                                   </span>
+                                  
+                                  {appointment.status === 'הושלם' && (
+                                    <Button 
+                                      size="sm"
+                                      variant="outline"
+                                      className="mt-2 flex items-center"
+                                      onClick={() => handleAddReview(appointment.instituteId, appointment.therapistId)}
+                                    >
+                                      <MessageSquare className="h-4 w-4 mr-2" />
+                                      הוסף ביקורת
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </div>

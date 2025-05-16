@@ -117,7 +117,7 @@ const Header = () => {
                     <Link to="/login">
                       <Button
                         variant="outline"
-                        className={`border-1 ${isHome && !isScrolled ? 'border-white text-white hover:bg-white/10' : 'border-freezefit-300 text-freezefit-300 hover:bg-freezefit-50'}`}
+                        className={`border-1 ${isHome && !isScrolled ? 'border-white text-black hover:bg-white/10' : 'border-freezefit-300 text-black hover:bg-freezefit-50'}`}
                       >
                         התחבר
                       </Button>
@@ -127,7 +127,7 @@ const Header = () => {
                   <NavigationMenuItem>
                     <Link to="/register">
                       <Button
-                        className={isHome && !isScrolled ? 'bg-white text-freezefit-300 hover:bg-white/90' : 'bg-freezefit-300 text-white hover:bg-freezefit-400'}
+                        className={isHome && !isScrolled ? 'bg-white text-black hover:bg-white/90' : 'bg-freezefit-300 text-black hover:bg-freezefit-400'}
                       >
                         הרשמה
                       </Button>
