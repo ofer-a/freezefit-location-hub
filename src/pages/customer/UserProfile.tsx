@@ -1,78 +1,37 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { User, Calendar, Clock, MessageSquare } from 'lucide-react';
-
-// Mock appointments for the user
-const mockUpcomingAppointments = [
-  { 
-    id: 1, 
-    instituteId: 1,
-    instituteName: 'מרכז קריוסטיים', 
-    therapistId: 1,
-    therapistName: 'דני כהן', 
-    service: 'טיפול סטנדרטי',
-    date: '15/05/2025', 
-    time: '10:00' 
-  },
-  { 
-    id: 2, 
-    instituteId: 2,
-    instituteName: 'קריו פלוס', 
-    therapistId: 3,
-    therapistName: 'רונית דוד', 
-    service: 'טיפול ספורטאים',
-    date: '20/05/2025', 
-    time: '15:30' 
-  }
-];
-
-const mockPastAppointments = [
-  { 
-    id: 3, 
-    instituteId: 3,
-    instituteName: 'אייס פיט', 
-    therapistId: 4,
-    therapistName: 'אלון ברק', 
-    service: 'טיפול קצר',
-    date: '05/05/2025', 
-    time: '11:00',
-    status: 'הושלם'
-  },
-  { 
-    id: 4, 
-    instituteId: 1,
-    instituteName: 'מרכז קריוסטיים', 
-    therapistId: 2,
-    therapistName: 'מיכל לוי', 
-    service: 'טיפול שיקום',
-    date: '01/05/2025', 
-    time: '16:45',
-    status: 'בוטל'
-  }
-];
+import { User, Calendar, Clock, MessageSquare, Award, Gift, Check } from 'lucide-react';
 
 const UserProfile = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { userClub, redeemGift } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [upcomingAppointments, setUpcomingAppointments] = useState(mockUpcomingAppointments);
-  const [pastAppointments, setPastAppointments] = useState(mockPastAppointments);
+  // Mock appointments from our context (in a real app, we would filter these by user)
+  const { 
+    confirmedAppointments: upcomingAppointments, 
+    historyAppointments: pastAppointments,
+    updateAppointmentStatus
+  } = useData();
   
   // Dialog states
   const [showUpdateDetailsDialog, setShowUpdateDetailsDialog] = useState(false);
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showRedeemGiftDialog, setShowRedeemGiftDialog] = useState(false);
+  const [selectedGift, setSelectedGift] = useState<{id: number; name: string; pointsCost: number} | null>(null);
   
   // Form states
   const [userDetails, setUserDetails] = useState({
@@ -97,23 +56,12 @@ const UserProfile = () => {
 
   // Handle appointment cancellation
   const handleCancelAppointment = (appointmentId: number) => {
-    // Move to past appointments with "cancelled" status
-    const appointmentToCancel = upcomingAppointments.find(app => app.id === appointmentId);
+    updateAppointmentStatus(appointmentId, 'confirmed', 'cancelled');
     
-    if (appointmentToCancel) {
-      setPastAppointments([
-        ...pastAppointments, 
-        { ...appointmentToCancel, status: 'בוטל' }
-      ]);
-      
-      // Remove from upcoming appointments
-      setUpcomingAppointments(upcomingAppointments.filter(app => app.id !== appointmentId));
-      
-      toast({
-        title: "התור בוטל",
-        description: "התור הועבר להיסטוריית התורים",
-      });
-    }
+    toast({
+      title: "התור בוטל",
+      description: "התור הועבר להיסטוריית התורים",
+    });
   };
 
   // Handle reschedule appointment
@@ -122,14 +70,12 @@ const UserProfile = () => {
       title: "שינוי תור",
       description: "פונקציונליות זו תהיה זמינה בקרוב",
     });
-    // This would open a calendar dialog in a full implementation
   };
 
   // Handle user details update
   const handleUpdateDetails = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In a real app, this would call an API
     toast({
       title: "פרטים עודכנו",
       description: "פרטי המשתמש עודכנו בהצלחה",
@@ -151,7 +97,6 @@ const UserProfile = () => {
       return;
     }
     
-    // In a real app, this would call an API
     toast({
       title: "סיסמא שונתה",
       description: "הסיסמא שונתה בהצלחה",
@@ -167,8 +112,30 @@ const UserProfile = () => {
   };
 
   // Navigate to add review page
-  const handleAddReview = (instituteId: number, therapistId: number) => {
-    navigate(`/add-review/${instituteId}/${therapistId}`);
+  const handleAddReview = (instituteId: number, therapistId: number, anonymous: boolean = false) => {
+    navigate(`/add-review/${instituteId}/${therapistId}?anonymous=${anonymous}`);
+  };
+
+  // Progress calculation for club level
+  const progressPercentage = (userClub.points / userClub.nextLevelPoints) * 100;
+  
+  // Handle gift redemption
+  const handleRedeemGift = (gift: {id: number; name: string; pointsCost: number}) => {
+    setSelectedGift(gift);
+    setShowRedeemGiftDialog(true);
+  };
+
+  const confirmRedeemGift = () => {
+    if (selectedGift) {
+      redeemGift(selectedGift.id);
+      
+      toast({
+        title: "מתנה נפדתה בהצלחה",
+        description: `נפדתה ${selectedGift.name} תמורת ${selectedGift.pointsCost} נקודות`,
+      });
+      
+      setShowRedeemGiftDialog(false);
+    }
   };
 
   return (
@@ -176,7 +143,7 @@ const UserProfile = () => {
       <Header />
       
       <div className="flex-grow py-8 px-4 bg-gray-50">
-        <div className="container mx-auto max-w-5xl">
+        <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-start gap-6">
             {/* Profile sidebar */}
             <div className="w-full md:w-1/3">
@@ -216,6 +183,51 @@ const UserProfile = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Club membership card */}
+              <Card className="mt-6">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Award className="h-5 w-5 text-yellow-500" />
+                      מועדון לקוחות
+                    </CardTitle>
+                    <span className="bg-yellow-100 text-yellow-800 text-xs font-medium py-1 px-2 rounded">
+                      רמה: {userClub.level}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>{userClub.points} נקודות</span>
+                      <span>{userClub.nextLevelPoints} נקודות לרמה הבאה</span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">ההטבות שלך:</h4>
+                    <ul className="space-y-1">
+                      {userClub.benefits.map((benefit, index) => (
+                        <li key={index} className="text-sm flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-500" />
+                          {benefit}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => navigate('/find-institute')}
+                  >
+                    צבור נקודות בטיפול הבא
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
             
             {/* Main content */}
@@ -239,9 +251,8 @@ const UserProfile = () => {
                             <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h3 className="font-semibold text-lg">{appointment.instituteName}</h3>
+                                  <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
                                   <p className="text-gray-700">{appointment.service}</p>
-                                  <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
                                   <div className="flex items-center mt-2">
                                     <Calendar className="h-4 w-4 ml-1" />
                                     <span className="text-sm">{appointment.date}</span>
@@ -290,9 +301,8 @@ const UserProfile = () => {
                             <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h3 className="font-semibold text-lg">{appointment.instituteName}</h3>
+                                  <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
                                   <p className="text-gray-700">{appointment.service}</p>
-                                  <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
                                   <div className="flex items-center mt-2">
                                     <Calendar className="h-4 w-4 ml-1" />
                                     <span className="text-sm">{appointment.date}</span>
@@ -310,15 +320,26 @@ const UserProfile = () => {
                                   </span>
                                   
                                   {appointment.status === 'הושלם' && (
-                                    <Button 
-                                      size="sm"
-                                      variant="outline"
-                                      className="mt-2 flex items-center"
-                                      onClick={() => handleAddReview(appointment.instituteId, appointment.therapistId)}
-                                    >
-                                      <MessageSquare className="h-4 w-4 mr-2" />
-                                      הוסף ביקורת
-                                    </Button>
+                                    <div className="mt-2 flex flex-col gap-2">
+                                      <Button 
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex items-center gap-2"
+                                        onClick={() => handleAddReview(1, 1, false)}
+                                      >
+                                        <MessageSquare className="h-4 w-4" />
+                                        הוסף ביקורת
+                                      </Button>
+                                      
+                                      <Button 
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs flex items-center gap-2"
+                                        onClick={() => handleAddReview(1, 1, true)}
+                                      >
+                                        הוסף ביקורת אנונימית
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -332,6 +353,41 @@ const UserProfile = () => {
                       )}
                     </TabsContent>
                   </Tabs>
+                </CardContent>
+              </Card>
+              
+              {/* Club gifts section */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-primary" />
+                    מתנות והטבות זמינות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {userClub.availableGifts.map((gift) => (
+                      <Card key={gift.id} className="overflow-hidden">
+                        <div className="h-32 bg-gray-100 flex items-center justify-center">
+                          <img src={gift.image} alt={gift.name} className="h-24 w-24 object-contain" />
+                        </div>
+                        <CardContent className="pt-4">
+                          <h4 className="font-semibold">{gift.name}</h4>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-sm text-gray-600">{gift.pointsCost} נקודות</span>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              disabled={userClub.points < gift.pointsCost}
+                              onClick={() => handleRedeemGift(gift)}
+                            >
+                              פדה מתנה
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -459,6 +515,36 @@ const UserProfile = () => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Gift redemption dialog */}
+      <Dialog open={showRedeemGiftDialog} onOpenChange={setShowRedeemGiftDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>פדיית מתנה</DialogTitle>
+            <DialogDescription>
+              האם אתה בטוח שברצונך לפדות את המתנה הזו?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedGift && (
+            <div className="py-4">
+              <div className="text-center mb-4">
+                <h3 className="font-semibold text-lg">{selectedGift.name}</h3>
+                <p className="text-gray-600">{selectedGift.pointsCost} נקודות</p>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowRedeemGiftDialog(false)}>
+                  ביטול
+                </Button>
+                <Button onClick={confirmRedeemGift}>
+                  אישור פדייה
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       

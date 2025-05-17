@@ -11,9 +11,11 @@ import SearchBar from '@/components/customer/SearchBar';
 import InstituteList from '@/components/customer/InstituteList';
 import { useLocation } from '@/hooks/use-location';
 import { mockInstitutes, mockSuggestions, Institute } from '@/data/mockInstitutes';
+import { useData } from '@/contexts/DataContext';
 
 const FindInstitute = () => {
   const { isAuthenticated } = useAuth();
+  const { selectedMapLocation, setSelectedMapLocation } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { userLocation } = useLocation();
@@ -30,6 +32,40 @@ const FindInstitute = () => {
       navigate('/login', { state: { redirectTo: '/find-institute' } });
     }
   }, [isAuthenticated, navigate]);
+  
+  // If we have a selected location from another screen, use it
+  useEffect(() => {
+    if (selectedMapLocation) {
+      // Find the closest institute to the selected location
+      const closest = mockInstitutes.reduce((prev, curr) => {
+        const prevDist = Math.sqrt(
+          Math.pow(prev.coordinates.lat - selectedMapLocation.lat, 2) + 
+          Math.pow(prev.coordinates.lng - selectedMapLocation.lng, 2)
+        );
+        
+        const currDist = Math.sqrt(
+          Math.pow(curr.coordinates.lat - selectedMapLocation.lat, 2) + 
+          Math.pow(curr.coordinates.lng - selectedMapLocation.lng, 2)
+        );
+        
+        return prevDist < currDist ? prev : curr;
+      });
+      
+      setSelectedInstitute(closest.id);
+      setActiveView('list');
+      
+      // Clear the selected location after using it
+      setSelectedMapLocation(null);
+      
+      // Scroll to the selected institute
+      setTimeout(() => {
+        const element = document.getElementById(`institute-${closest.id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, [selectedMapLocation, setSelectedMapLocation]);
 
   // Handle search input changes
   const handleSearchInputChange = (query: string) => {
@@ -86,6 +122,21 @@ const FindInstitute = () => {
       )
     : institutes;
 
+  // Create enhanced markers with additional institute details
+  const enhancedMarkers = filteredInstitutes.map(institute => ({
+    id: institute.id,
+    name: institute.name,
+    coordinates: institute.coordinates,
+    address: institute.address,
+    rating: institute.rating,
+    hours: institute.hours,
+    therapists: institute.therapists.map(t => ({
+      name: t.name,
+      specialty: t.specialty,
+      experience: t.experience
+    }))
+  }));
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -123,8 +174,8 @@ const FindInstitute = () => {
               
               <TabsContent value="map" className="mt-6">
                 <MapComponent 
-                  userLocation={userLocation}
-                  markers={mockInstitutes}
+                  userLocation={userLocation || { lat: 31.4117, lng: 35.0818 }} // Default to Israel's center if no user location
+                  markers={enhancedMarkers}
                   onMarkerClick={handleMarkerClick}
                 />
               </TabsContent>

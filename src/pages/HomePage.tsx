@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { ArrowLeft, MapPin, Calendar, Star, Users } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface ContactFormData {
@@ -20,6 +20,7 @@ interface ContactFormData {
 
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
+  const { addContactInquiry } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -41,7 +42,6 @@ const HomePage = () => {
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would submit this to your backend
     toast({
       title: "נרשמת בהצלחה!",
       description: "תודה על הרשמתך לעדכונים",
@@ -60,15 +60,11 @@ const HomePage = () => {
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In a real application, you would submit this to your backend
-    // For now, we'll store in local storage to simulate a backend
-    const inquiries = JSON.parse(localStorage.getItem('customerInquiries') || '[]');
-    inquiries.push({
+    // Add to our shared context
+    addContactInquiry({
       ...contactFormData,
-      submittedAt: new Date().toISOString(),
-      status: 'new'
+      submittedAt: new Date()
     });
-    localStorage.setItem('customerInquiries', JSON.stringify(inquiries));
     
     toast({
       title: "ההודעה נשלחה בהצלחה",
@@ -109,7 +105,7 @@ const HomePage = () => {
             </p>
             <Button 
               onClick={handleFindInstitute}
-              className="bg-freezefit-300 hover:bg-freezefit-400 text-white text-lg py-6 px-8 rounded-md animate-fade-in flex items-center mx-auto"
+              className="bg-freezefit-300 hover:bg-freezefit-400 text-black text-lg py-6 px-8 rounded-md animate-fade-in flex items-center mx-auto"
             >
               מצא מכון
               <ArrowLeft className="mr-2 h-5 w-5" />
@@ -212,7 +208,7 @@ const HomePage = () => {
               </div>
               
               <div className="text-center">
-                <Button type="submit" className="bg-freezefit-300 hover:bg-freezefit-400 text-white px-8">
+                <Button type="submit" className="bg-freezefit-300 hover:bg-freezefit-400 text-black px-8">
                   שלח הודעה
                 </Button>
               </div>

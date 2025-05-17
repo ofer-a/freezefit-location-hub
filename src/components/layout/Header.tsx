@@ -117,7 +117,7 @@ const Header = () => {
                     <Link to="/login">
                       <Button
                         variant="outline"
-                        className={`border-1 ${isHome && !isScrolled ? 'border-white text-black hover:bg-white/10' : 'border-freezefit-300 text-black hover:bg-freezefit-50'}`}
+                        className={`border-1 text-black ${isHome && !isScrolled ? 'border-white hover:bg-white/10' : 'border-freezefit-300 hover:bg-freezefit-50'}`}
                       >
                         התחבר
                       </Button>

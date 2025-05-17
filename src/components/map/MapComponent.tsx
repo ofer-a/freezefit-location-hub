@@ -12,6 +12,10 @@ interface MapComponentProps {
     id: number;
     name: string;
     coordinates: { lat: number; lng: number };
+    address?: string;
+    rating?: number;
+    hours?: string;
+    therapists?: Array<{ name: string; specialty: string; experience: number }>;
   }>;
   onMarkerClick?: (id: number) => void;
 }
@@ -23,31 +27,45 @@ const MapComponent: React.FC<MapComponentProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapToken, setMapToken] = useState<string>('');
   const { toast } = useToast();
   
-  // In a real app, this would be stored in environment variables
   // For demo purposes, allow user input
   const [showTokenInput, setShowTokenInput] = useState(true);
 
+  // Israel centered map coordinates
+  const israelCenter = { lng: 35.0818, lat: 31.4117 };
+
   useEffect(() => {
-    if (!mapContainer.current || !mapToken || !userLocation) return;
+    // Clean up previous markers when component unmounts
+    return () => {
+      markersRef.current.forEach(marker => marker.remove());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapContainer.current || !mapToken) return;
 
     try {
       mapboxgl.accessToken = mapToken;
       
-      // Initialize map
+      // Initialize map centered on Israel
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v11',
-        center: [userLocation.lng, userLocation.lat],
-        zoom: 11,
+        center: [israelCenter.lng, israelCenter.lat],
+        zoom: 7,
       });
 
-      // Add user location marker
-      new mapboxgl.Marker({ color: '#0000FF' })
-        .setLngLat([userLocation.lng, userLocation.lat])
-        .addTo(map.current);
+      // Add user location marker if available
+      if (userLocation) {
+        const userMarker = new mapboxgl.Marker({ color: '#3B82F6' })
+          .setLngLat([userLocation.lng, userLocation.lat])
+          .addTo(map.current);
+          
+        markersRef.current.push(userMarker);
+      }
       
       // Add institute markers
       markers.forEach(marker => {
@@ -60,16 +78,60 @@ const MapComponent: React.FC<MapComponentProps> = ({
         markerElement.style.backgroundColor = '#8257e6';
         markerElement.style.border = '2px solid white';
         markerElement.style.cursor = 'pointer';
+        markerElement.style.display = 'flex';
+        markerElement.style.alignItems = 'center';
+        markerElement.style.justifyContent = 'center';
         
-        // Create popup
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`<strong>${marker.name}</strong>`);
+        // Create popup with detailed information
+        let popupHtml = `
+          <div dir="rtl" class="p-2">
+            <h3 class="font-bold text-lg">${marker.name}</h3>
+        `;
+        
+        if (marker.address) {
+          popupHtml += `<p class="text-gray-600">${marker.address}</p>`;
+        }
+        
+        if (marker.rating) {
+          popupHtml += `
+            <div class="flex items-center mt-1">
+              <span class="mr-1">${marker.rating}</span>
+              <span class="text-yellow-500">★</span>
+            </div>
+          `;
+        }
+        
+        if (marker.hours) {
+          popupHtml += `<p class="text-sm mt-1">שעות פעילות: ${marker.hours}</p>`;
+        }
+        
+        if (marker.therapists && marker.therapists.length > 0) {
+          popupHtml += `<p class="font-medium mt-2">מטפלים:</p>`;
+          marker.therapists.forEach(therapist => {
+            popupHtml += `
+              <div class="text-sm mt-1">
+                <span class="font-medium">${therapist.name}</span> - 
+                ${therapist.specialty} (${therapist.experience} שנות ניסיון)
+              </div>
+            `;
+          });
+        }
+        
+        popupHtml += `</div>`;
+        
+        const popup = new mapboxgl.Popup({ 
+          offset: 25,
+          closeButton: true,
+          maxWidth: '300px'
+        }).setHTML(popupHtml);
         
         // Add marker to map
         const mapMarker = new mapboxgl.Marker(markerElement)
           .setLngLat([marker.coordinates.lng, marker.coordinates.lat])
           .setPopup(popup)
           .addTo(map.current);
+        
+        markersRef.current.push(mapMarker);
         
         // Add click event
         markerElement.addEventListener('click', () => {
@@ -78,6 +140,25 @@ const MapComponent: React.FC<MapComponentProps> = ({
           }
         });
       });
+
+      // Add RTL support for Hebrew
+      if (map.current) {
+        // Override RTL text labels for better Hebrew support
+        map.current.on('styledata', () => {
+          if (map.current) {
+            const layers = map.current.getStyle().layers;
+            for (const layer of layers!) {
+              if (layer.type === 'symbol' && 'layout' in layer && layer.layout && layer.layout['text-field']) {
+                map.current.setLayoutProperty(layer.id, 'text-field', [
+                  'format',
+                  ['get', 'name_he'],
+                  { 'text-font': ['Arial Unicode MS Regular'] }
+                ]);
+              }
+            }
+          }
+        });
+      }
 
       // Add navigation controls
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -7,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,25 +28,14 @@ const OrderManagement = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { 
+    pendingAppointments, 
+    confirmedAppointments, 
+    historyAppointments,
+    updateAppointmentStatus
+  } = useData();
   
   // State for orders/appointments
-  const [confirmedOrders, setConfirmedOrders] = useState<Appointment[]>([
-    { id: 1, customerName: 'יוסי כהן', date: '15/05/2025', time: '10:00', service: 'טיפול סטנדרטי', duration: '45 דקות', phone: '050-1234567' },
-    { id: 2, customerName: 'רונית לוי', date: '15/05/2025', time: '12:30', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '052-9876543' },
-    { id: 3, customerName: 'דוד מזרחי', date: '16/05/2025', time: '09:15', service: 'טיפול קצר', duration: '30 דקות', phone: '054-5678901' }
-  ]);
-  
-  const [pendingOrders, setPendingOrders] = useState<Appointment[]>([
-    { id: 4, customerName: 'משה גולן', date: '15/05/2025', time: '15:00', service: 'טיפול ראשון', duration: '60 דקות', phone: '053-1112222' },
-    { id: 5, customerName: 'מיכל דוידוב', date: '17/05/2025', time: '11:45', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '050-3334444' }
-  ]);
-  
-  const [historyOrders, setHistoryOrders] = useState<Appointment[]>([
-    { id: 6, customerName: 'אורי גבאי', date: '10/05/2025', time: '14:00', service: 'טיפול סטנדרטי', duration: '45 דקות', status: 'הושלם' },
-    { id: 7, customerName: 'יעל פרץ', date: '11/05/2025', time: '16:30', service: 'טיפול שיקום', duration: '60 דקות', status: 'הושלם' },
-    { id: 8, customerName: 'נועם אלוני', date: '08/05/2025', time: '10:00', service: 'טיפול קצר', duration: '30 דקות', status: 'בוטל' }
-  ]);
-  
   const [searchQuery, setSearchQuery] = useState('');
 
   // Check authentication
@@ -57,75 +46,47 @@ const OrderManagement = () => {
   }, [isAuthenticated, user, navigate]);
 
   const handleApprove = (orderId: number) => {
-    // Find the order to approve in pending orders
-    const orderToApprove = pendingOrders.find(order => order.id === orderId);
+    updateAppointmentStatus(orderId, 'pending', 'confirmed');
     
-    if (orderToApprove) {
-      // Add to confirmed orders
-      setConfirmedOrders([...confirmedOrders, orderToApprove]);
-      
-      // Remove from pending orders
-      setPendingOrders(pendingOrders.filter(order => order.id !== orderId));
-      
-      toast({
-        title: "התור אושר",
-        description: "התור עבר לרשימת התורים המאושרים",
-      });
-    }
+    toast({
+      title: "התור אושר",
+      description: "התור עבר לרשימת התורים המאושרים",
+    });
   };
 
   const handleReject = (orderId: number, fromPending: boolean = true) => {
-    // Find the order to reject in the appropriate list
-    const ordersList = fromPending ? pendingOrders : confirmedOrders;
-    const orderToReject = ordersList.find(order => order.id === orderId);
+    updateAppointmentStatus(
+      orderId, 
+      fromPending ? 'pending' : 'confirmed',
+      'cancelled'
+    );
     
-    if (orderToReject) {
-      // Add to history with cancelled status
-      setHistoryOrders([...historyOrders, { ...orderToReject, status: 'בוטל' }]);
-      
-      // Remove from original list
-      if (fromPending) {
-        setPendingOrders(pendingOrders.filter(order => order.id !== orderId));
-      } else {
-        setConfirmedOrders(confirmedOrders.filter(order => order.id !== orderId));
-      }
-      
-      toast({
-        variant: "destructive",
-        title: "התור בוטל",
-        description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
-      });
-    }
+    toast({
+      variant: "destructive",
+      title: "התור בוטל",
+      description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
+    });
   };
 
   const handleComplete = (orderId: number) => {
-    // Find the order to complete
-    const orderToComplete = confirmedOrders.find(order => order.id === orderId);
+    updateAppointmentStatus(orderId, 'confirmed', 'completed');
     
-    if (orderToComplete) {
-      // Add to history with completed status
-      setHistoryOrders([...historyOrders, { ...orderToComplete, status: 'הושלם' }]);
-      
-      // Remove from confirmed orders
-      setConfirmedOrders(confirmedOrders.filter(order => order.id !== orderId));
-      
-      toast({
-        title: "הטיפול הושלם",
-        description: "התור הועבר להיסטוריית התורים",
-      });
-    }
+    toast({
+      title: "הטיפול הושלם",
+      description: "התור הועבר להיסטוריית התורים",
+    });
   };
 
   // Filter orders based on search query
-  const filteredConfirmedOrders = confirmedOrders.filter(order => 
+  const filteredConfirmedOrders = confirmedAppointments.filter(order => 
     order.customerName.includes(searchQuery)
   );
   
-  const filteredPendingOrders = pendingOrders.filter(order => 
+  const filteredPendingOrders = pendingAppointments.filter(order => 
     order.customerName.includes(searchQuery)
   );
   
-  const filteredHistoryOrders = historyOrders.filter(order => 
+  const filteredHistoryOrders = historyAppointments.filter(order => 
     order.customerName.includes(searchQuery)
   );
 
