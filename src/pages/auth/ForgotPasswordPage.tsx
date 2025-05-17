@@ -22,20 +22,19 @@ const ForgotPasswordPage = () => {
     setIsLoading(true);
     
     try {
-      // Send reset code
+      // Send alternative password
       const code = await sendPasswordResetCode(email);
       
       toast({
-        title: "קוד אימות נשלח",
-        description: "בדוק את תיבת האימייל שלך לקבלת קוד האימות",
+        title: "סיסמה חלופית נשלחה",
+        description: "בדוק את תיבת האימייל שלך לקבלת הסיסמה החלופית",
       });
       
       // For demo purposes, we're passing the code in the state
       // In a real app, this would be sent via email
-      navigate('/verify-reset-code', { 
+      navigate('/reset-password', { 
         state: { 
-          email,
-          code // Only for demo purposes
+          email
         } 
       });
     } catch (error) {
@@ -58,7 +57,7 @@ const ForgotPasswordPage = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">שחזור סיסמה</CardTitle>
             <CardDescription>
-              הזן את כתובת האימייל שלך ואנו נשלח לך קוד אימות
+              הזן את כתובת האימייל שלך ואנו נשלח לך סיסמה חלופית
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -88,7 +87,7 @@ const ForgotPasswordPage = () => {
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                       שולח...
                     </>
-                  ) : 'שלח קוד אימות'}
+                  ) : 'שלח סיסמה חלופית'}
                 </Button>
               </div>
             </form>

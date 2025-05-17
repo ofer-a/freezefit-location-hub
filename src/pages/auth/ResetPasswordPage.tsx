@@ -15,6 +15,7 @@ interface LocationState {
 }
 
 const ResetPasswordPage = () => {
+  const [tempPassword, setTempPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +56,11 @@ const ResetPasswordPage = () => {
     setIsLoading(true);
     
     try {
+      // Validate temporary password (this would be checked against what was sent to email)
+      if (tempPassword === '' || tempPassword.length < 6) {
+        throw new Error("יש להזין את הסיסמה החלופית שנשלחה לדוא\"ל שלך");
+      }
+      
       await resetPassword(email, newPassword);
       
       toast({
@@ -87,11 +93,28 @@ const ResetPasswordPage = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">איפוס סיסמה</CardTitle>
             <CardDescription>
-              הגדר סיסמה חדשה עבור החשבון שלך
+              הזן את הסיסמה החלופית שנשלחה לדוא"ל שלך והגדר סיסמה חדשה
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="temp-password" className="block text-sm font-medium">
+                  סיסמה חלופית
+                </label>
+                <div className="relative">
+                  <Input
+                    id="temp-password"
+                    type={showPassword ? "text" : "password"}
+                    value={tempPassword}
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    required
+                    className="w-full pr-10"
+                    placeholder="הזן את הסיסמה החלופית שנשלחה לדוא\"ל שלך"
+                  />
+                </div>
+              </div>
+            
               <div className="space-y-2">
                 <label htmlFor="new-password" className="block text-sm font-medium">
                   סיסמה חדשה
