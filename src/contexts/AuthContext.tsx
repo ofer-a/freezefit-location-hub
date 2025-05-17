@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  resetPassword: (email: string, newPassword: string) => Promise<void>;
 }
 
 // Create context
@@ -100,6 +101,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }, 500);
     });
   };
+  
+  // Reset password function
+  const resetPassword = async (email: string, newPassword: string): Promise<void> => {
+    // Simulate API call
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+        
+        if (!foundUser) {
+          reject(new Error('לא נמצא משתמש עם האימייל הזה'));
+          return;
+        }
+        
+        // In a real app, we would update the password in the database
+        // For our mock system, we'll just resolve the promise as if the password was updated
+        resolve();
+      }, 500);
+    });
+  };
 
   // Logout function
   const logout = () => {
@@ -114,7 +134,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     login,
     register,
-    logout
+    logout,
+    resetPassword
   };
 
   // Provide context

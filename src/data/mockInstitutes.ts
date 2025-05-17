@@ -61,6 +61,47 @@ export const mockInstitutes: Institute[] = [
     ],
     hours: 'א-ה: 9:00-22:00, ו-ש: 10:00-15:00',
     coordinates: { lat: 32.0873, lng: 34.7733 }
+  },
+  {
+    id: 4,
+    name: 'קריו ירושלים',
+    address: 'דרך יפו 97, ירושלים',
+    distance: 60.5,
+    rating: 4.9,
+    reviewCount: 87,
+    therapists: [
+      { id: 6, name: 'יעקב לוי', specialty: 'כאבי שרירים', experience: 12, image: '/placeholder.svg' },
+      { id: 7, name: 'רחל אהרוני', specialty: 'ספורטאים', experience: 9, image: '/placeholder.svg' }
+    ],
+    hours: 'א-ה: 8:00-19:00, ו: 9:00-14:00',
+    coordinates: { lat: 31.7857, lng: 35.2007 }
+  },
+  {
+    id: 5,
+    name: 'חיפה קריותרפי',
+    address: 'שדרות הנשיא 124, חיפה',
+    distance: 90.2,
+    rating: 4.5,
+    reviewCount: 62,
+    therapists: [
+      { id: 8, name: 'דנה כרמלי', specialty: 'שיקום', experience: 8, image: '/placeholder.svg' },
+      { id: 9, name: 'עומר פרץ', specialty: 'טיפול מקצועי', experience: 5, image: '/placeholder.svg' }
+    ],
+    hours: 'א-ו: 9:00-20:00',
+    coordinates: { lat: 32.8184, lng: 34.9885 }
+  },
+  {
+    id: 6,
+    name: 'צפון קריו',
+    address: 'רחוב הגליל 45, כרמיאל',
+    distance: 110.7,
+    rating: 4.3,
+    reviewCount: 41,
+    therapists: [
+      { id: 10, name: 'יוסי מור', specialty: 'קריותרפיה מתקדמת', experience: 7, image: '/placeholder.svg' }
+    ],
+    hours: 'א-ה: 10:00-19:00, ו: 9:00-13:00',
+    coordinates: { lat: 32.9186, lng: 35.2939 }
   }
 ];
 
@@ -70,6 +111,8 @@ export const mockSuggestions: string[] = [
   'תל אביב, הרצל 15',
   'תל אביב, מנחם בגין 132',
   'ירושלים, יפו 97',
-  'חיפה, הנמל 11',
-  'רמת גן, ביאליק 76'
+  'חיפה, הנשיא 124',
+  'כרמיאל, הגליל 45',
+  'רמת גן, ביאליק 76',
+  'באר שבע, שדרות רגר 31'
 ];

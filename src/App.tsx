@@ -10,6 +10,9 @@ import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import VerifyResetCodePage from "./pages/auth/VerifyResetCodePage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import FindInstitute from "./pages/customer/FindInstitute";
 import ProviderDashboard from "./pages/provider/ProviderDashboard";
 import OrderManagement from "./pages/provider/OrderManagement";
@@ -37,6 +40,9 @@ const App = () => (
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/verify-reset-code" element={<VerifyResetCodePage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               
               {/* Customer Routes */}
               <Route path="/find-institute" element={<FindInstitute />} />

@@ -12,10 +12,19 @@ import InstituteList from '@/components/customer/InstituteList';
 import { useLocation } from '@/hooks/use-location';
 import { mockInstitutes, mockSuggestions, Institute } from '@/data/mockInstitutes';
 import { useData } from '@/contexts/DataContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { CalendarIcon, Clock } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const FindInstitute = () => {
-  const { isAuthenticated } = useAuth();
-  const { selectedMapLocation, setSelectedMapLocation } = useData();
+  const { isAuthenticated, user } = useAuth();
+  const { selectedMapLocation, setSelectedMapLocation, userClub } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { userLocation } = useLocation();
@@ -25,6 +34,14 @@ const FindInstitute = () => {
   const [activeView, setActiveView] = useState('list'); // 'list' or 'map'
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  // Appointment booking state
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedTherapist, setSelectedTherapist] = useState('');
+  const [bookingInstitute, setBookingInstitute] = useState<Institute | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -93,13 +110,62 @@ const FindInstitute = () => {
     setInstitutes(filtered.length > 0 ? filtered : mockInstitutes);
   };
 
+  const { confirmedAppointments, updateUserClubPoints, addNewAppointment } = useData();
+
   const handleBookAppointment = (instituteId: number) => {
+    const institute = mockInstitutes.find(inst => inst.id === instituteId);
+    if (institute) {
+      setBookingInstitute(institute);
+      setIsBookingDialogOpen(true);
+    }
+  };
+  
+  const handleConfirmBooking = () => {
+    if (!selectedDate || !selectedTime || !selectedService || !selectedTherapist || !bookingInstitute || !user) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "אנא מלא את כל השדות הנדרשים",
+      });
+      return;
+    }
+    
+    // Format date for appointment
+    const formattedDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
+    
+    // Create new appointment
+    const newAppointment = {
+      id: Date.now(),
+      customerName: user.name,
+      date: formattedDate,
+      time: selectedTime,
+      service: selectedService,
+      duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
+      phone: '050-0000000', // Mock phone number
+      therapistName: selectedTherapist,
+      institute: bookingInstitute.name
+    };
+    
+    // Add the appointment
+    addNewAppointment(newAppointment);
+    
+    // Add points to user club (50 points per appointment)
+    updateUserClubPoints(50);
+    
+    // Close dialog and show toast
+    setIsBookingDialogOpen(false);
+    
     toast({
-      title: "הזמנת תור",
-      description: "הועברת למסך הזמנת תור במרכז הנבחר",
+      title: "התור נקבע בהצלחה",
+      description: `נקבע תור ב${bookingInstitute.name} לתאריך ${formattedDate}, שעה ${selectedTime}`,
     });
-    // In a real app, navigate to booking page
-    console.log("Booking appointment at institute:", instituteId);
+    
+    // Reset form
+    setSelectedDate(undefined);
+    setSelectedTime('');
+    setSelectedService('');
+    setSelectedTherapist('');
+    setBookingInstitute(null);
   };
 
   const handleMarkerClick = (instituteId: number) => {
@@ -136,6 +202,20 @@ const FindInstitute = () => {
       experience: t.experience
     }))
   }));
+  
+  // Generate available times for booking
+  const availableTimes = [
+    '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
+    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+  ];
+  
+  // Services for booking
+  const services = [
+    'טיפול סטנדרטי',
+    'טיפול ספורטאים',
+    'טיפול שיקום',
+    'טיפול קצר'
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -183,6 +263,117 @@ const FindInstitute = () => {
           </div>
         </div>
       </div>
+      
+      {/* Booking Dialog */}
+      <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>הזמנת תור</DialogTitle>
+            <DialogDescription>
+              {bookingInstitute && `הזמנת תור במכון ${bookingInstitute.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {/* Date picker */}
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">בחר תאריך</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={!selectedDate ? "text-muted-foreground" : ""}
+                  >
+                    <CalendarIcon className="ml-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: he }) : "בחר תאריך"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    locale={he}
+                    disabled={(date) => date < new Date() || date > new Date(new Date().setMonth(new Date().getMonth() + 2))}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {/* Time picker */}
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">בחר שעה</label>
+              <Select
+                value={selectedTime}
+                onValueChange={setSelectedTime}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר שעה" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={time} value={time}>{time}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Service type */}
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">סוג טיפול</label>
+              <Select
+                value={selectedService}
+                onValueChange={setSelectedService}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר סוג טיפול" />
+                </SelectTrigger>
+                <SelectContent>
+                  {services.map((service) => (
+                    <SelectItem key={service} value={service}>{service}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Therapist selection */}
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">בחר מטפל</label>
+              <Select
+                value={selectedTherapist}
+                onValueChange={setSelectedTherapist}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר מטפל" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bookingInstitute?.therapists.map((therapist) => (
+                    <SelectItem key={therapist.id} value={therapist.name}>
+                      {therapist.name} - {therapist.specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Club points information */}
+            <div className="bg-green-50 p-3 rounded-md mt-2">
+              <p className="text-sm text-green-800">
+                הזמנת תור תזכה אותך ב-50 נקודות מועדון!
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                יתרה נוכחית: {userClub.points} נקודות
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>ביטול</Button>
+            <Button onClick={handleConfirmBooking}>אשר הזמנה</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>
