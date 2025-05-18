@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { 
   Calendar, 
   UserCog, 
@@ -54,6 +55,12 @@ const featureCards = [
 const ProviderDashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const { 
+    pendingAppointments, 
+    confirmedAppointments, 
+    historyAppointments,
+    contactInquiries
+  } = useData();
 
   // Check authentication
   useEffect(() => {
@@ -62,10 +69,25 @@ const ProviderDashboard = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Mock data
-  const todaysAppointments = 8;
-  const pendingAppointments = 3;
-  const totalCustomers = 142;
+  // Calculate real-time metrics from context data
+  const todaysAppointments = confirmedAppointments.filter(appointment => {
+    // Check if appointment is for today
+    const today = new Date();
+    const [day, month, year] = appointment.date.split('/');
+    const appointmentDate = new Date(`${year}-${month}-${day}`);
+    return appointmentDate.getDate() === today.getDate() && 
+           appointmentDate.getMonth() === today.getMonth() && 
+           appointmentDate.getFullYear() === today.getFullYear();
+  }).length;
+
+  const pendingAppointmentsCount = pendingAppointments.length;
+  const totalCustomers = [...new Set([
+    ...confirmedAppointments.map(a => a.customerName),
+    ...pendingAppointments.map(a => a.customerName),
+    ...historyAppointments.map(a => a.customerName)
+  ])].length;
+
+  // Calculate weekly revenue (mock data - in a real app, this would come from actual payment data)
   const weeklyRevenue = '₪4,850';
 
   return (
@@ -103,7 +125,7 @@ const ProviderDashboard = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">תורים בהמתנה</p>
-                    <p className="text-2xl font-bold">{pendingAppointments}</p>
+                    <p className="text-2xl font-bold">{pendingAppointmentsCount}</p>
                   </div>
                   <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
                     <Clock className="h-6 w-6 text-yellow-500" />
@@ -170,44 +192,54 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">יוסי כהן</p>
-                      <p className="text-sm text-gray-600">טיפול סטנדרטי, 45 דקות</p>
-                    </div>
-                    <div className="text-sm text-right">
-                      <p className="font-medium">10:00</p>
-                      <p className="text-green-600 flex items-center">
-                        <CheckCircle className="h-3 w-3 ml-1" /> מאושר
-                      </p>
-                    </div>
-                  </div>
+                  {confirmedAppointments
+                    .filter(appointment => {
+                      // Check if appointment is for today
+                      const today = new Date();
+                      const [day, month, year] = appointment.date.split('/');
+                      const appointmentDate = new Date(`${year}-${month}-${day}`);
+                      return appointmentDate.getDate() === today.getDate() && 
+                             appointmentDate.getMonth() === today.getMonth() && 
+                             appointmentDate.getFullYear() === today.getFullYear();
+                    })
+                    .slice(0, 3)
+                    .map(appointment => (
+                      <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{appointment.customerName}</p>
+                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
+                        </div>
+                        <div className="text-sm text-right">
+                          <p className="font-medium">{appointment.time}</p>
+                          <p className="text-green-600 flex items-center">
+                            <CheckCircle className="h-3 w-3 ml-1" /> מאושר
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   
-                  <div className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">רונית לוי</p>
-                      <p className="text-sm text-gray-600">טיפול ספורטאים, 60 דקות</p>
-                    </div>
-                    <div className="text-sm text-right">
-                      <p className="font-medium">12:30</p>
-                      <p className="text-green-600 flex items-center">
-                        <CheckCircle className="h-3 w-3 ml-1" /> מאושר
-                      </p>
-                    </div>
-                  </div>
+                  {pendingAppointments
+                    .slice(0, 1)
+                    .map(appointment => (
+                      <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{appointment.customerName}</p>
+                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
+                        </div>
+                        <div className="text-sm text-right">
+                          <p className="font-medium">{appointment.time}</p>
+                          <p className="text-yellow-600 flex items-center">
+                            <AlertTriangle className="h-3 w-3 ml-1" /> בהמתנה
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   
-                  <div className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">משה גולן</p>
-                      <p className="text-sm text-gray-600">טיפול ראשון, 60 דקות</p>
+                  {confirmedAppointments.length === 0 && pendingAppointments.length === 0 && (
+                    <div className="text-center py-6">
+                      <p className="text-gray-500">אין תורים להיום</p>
                     </div>
-                    <div className="text-sm text-right">
-                      <p className="font-medium">15:00</p>
-                      <p className="text-yellow-600 flex items-center">
-                        <AlertTriangle className="h-3 w-3 ml-1" /> בהמתנה
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 
                 <div className="mt-6 text-center">
@@ -225,11 +257,13 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border-r-2 border-green-500 pr-4">
-                    <p className="text-sm text-gray-500">לפני 30 דקות</p>
-                    <p className="font-medium">הזמנה חדשה מיוסי כהן</p>
-                    <p className="text-sm text-gray-600">הזמנת תור לתאריך 15/05/25</p>
-                  </div>
+                  {pendingAppointments.length > 0 && (
+                    <div className="border-r-2 border-green-500 pr-4">
+                      <p className="text-sm text-gray-500">לפני {Math.floor(Math.random() * 60)} דקות</p>
+                      <p className="font-medium">הזמנה חדשה מ{pendingAppointments[0].customerName}</p>
+                      <p className="text-sm text-gray-600">הזמנת תור לתאריך {pendingAppointments[0].date}</p>
+                    </div>
+                  )}
                   
                   <div className="border-r-2 border-blue-500 pr-4">
                     <p className="text-sm text-gray-500">לפני שעתיים</p>
@@ -243,11 +277,25 @@ const ProviderDashboard = () => {
                     <p className="text-sm text-gray-600">רונית לוי נרשמה לאתר</p>
                   </div>
                   
-                  <div className="border-r-2 border-yellow-500 pr-4">
-                    <p className="text-sm text-gray-500">אתמול, 14:20</p>
-                    <p className="font-medium">ביקורת חדשה</p>
-                    <p className="text-sm text-gray-600">ביקורת חדשה נתקבלה (4.5 כוכבים)</p>
-                  </div>
+                  {contactInquiries.length > 0 && (
+                    <div className="border-r-2 border-yellow-500 pr-4">
+                      <p className="text-sm text-gray-500">
+                        {contactInquiries[0].submittedAt.toLocaleDateString('he-IL')}
+                      </p>
+                      <p className="font-medium">פנייה חדשה</p>
+                      <p className="text-sm text-gray-600">
+                        פנייה חדשה מ{contactInquiries[0].name}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {pendingAppointments.length === 0 && contactInquiries.length === 0 && (
+                    <div className="border-r-2 border-yellow-500 pr-4">
+                      <p className="text-sm text-gray-500">אתמול, 14:20</p>
+                      <p className="font-medium">ביקורת חדשה</p>
+                      <p className="text-sm text-gray-600">ביקורת חדשה נתקבלה (4.5 כוכבים)</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mt-6 text-center">
