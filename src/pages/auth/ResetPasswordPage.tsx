@@ -110,7 +110,7 @@ const ResetPasswordPage = () => {
                     onChange={(e) => setTempPassword(e.target.value)}
                     required
                     className="w-full pr-10"
-                    placeholder="הזן את הסיסמה החלופית שנשלחה לדוא\"ל שלך"
+                    placeholder="הזן את הסיסמה החלופית שנשלחה לדואל שלך"
                   />
                 </div>
               </div>
