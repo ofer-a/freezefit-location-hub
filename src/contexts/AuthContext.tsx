@@ -1,5 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Define user roles
 export type UserRole = 'customer' | 'provider';
@@ -10,6 +12,11 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  full_name?: string;
+  age?: number;
+  gender?: string;
+  address?: string;
+  image_url?: string;
 }
 
 // Define context type
@@ -20,112 +27,127 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
   resetPassword: (email: string, newPassword: string) => Promise<void>;
+  loading: boolean;
 }
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demonstration
-const mockUsers: User[] = [
-  { id: '1', name: 'לקוח לדוגמה', email: 'customer@example.com', role: 'customer' },
-  { id: '2', name: 'ספק שירות לדוגמה', email: 'provider@example.com', role: 'provider' }
-];
-
 // Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Check local storage for existing session on mount
+  // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('freezefit_user');
+    getSession();
     
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        localStorage.removeItem('freezefit_user');
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+        setLoading(false);
       }
-    }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const getSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await fetchUserProfile(session.user);
+      }
+    } catch (error) {
+      console.error('Error getting session:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserProfile = async (authUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) throw error;
+
+      const userData: User = {
+        id: authUser.id,
+        name: profile.full_name || authUser.email?.split('@')[0] || '',
+        email: authUser.email || '',
+        role: profile.role || 'customer',
+        full_name: profile.full_name,
+        age: profile.age,
+        gender: profile.gender,
+        address: profile.address,
+        image_url: profile.image_url
+      };
+
+      setUser(userData);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
 
   // Login function
   const login = async (email: string, password: string): Promise<void> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (foundUser && password === '123456') {
-          setUser(foundUser);
-          setIsAuthenticated(true);
-          localStorage.setItem('freezefit_user', JSON.stringify(foundUser));
-          resolve();
-        } else {
-          reject(new Error('אימייל או סיסמה לא נכונים'));
-        }
-      }, 500);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
+
+    if (error) throw error;
+    
+    if (data.user) {
+      await fetchUserProfile(data.user);
+    }
   };
 
   // Register function
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const existingUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (existingUser) {
-          reject(new Error('משתמש עם אימייל זה כבר קיים במערכת'));
-          return;
-        }
-        
-        // Create new user
-        const newUser: User = {
-          id: `${mockUsers.length + 1}`,
-          name,
-          email,
-          role
-        };
-        
-        // In a real app we would save to database here
-        mockUsers.push(newUser);
-        
-        // Log in the new user
-        setUser(newUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('freezefit_user', JSON.stringify(newUser));
-        resolve();
-      }, 500);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          role: role,
+        },
+      },
     });
+
+    if (error) throw error;
+
+    if (data.user) {
+      await fetchUserProfile(data.user);
+    }
   };
   
   // Reset password function
   const resetPassword = async (email: string, newPassword: string): Promise<void> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (!foundUser) {
-          reject(new Error('לא נמצא משתמש עם האימייל הזה'));
-          return;
-        }
-        
-        // In a real app, we would update the password in the database
-        // For our mock system, we'll just resolve the promise as if the password was updated
-        resolve();
-      }, 500);
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
   };
 
   // Logout function
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('freezefit_user');
   };
 
   // Create value object
@@ -135,7 +157,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     register,
     logout,
-    resetPassword
+    resetPassword,
+    loading
   };
 
   // Provide context

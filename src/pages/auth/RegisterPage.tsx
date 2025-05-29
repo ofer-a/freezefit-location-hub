@@ -37,7 +37,7 @@ const RegisterPage = () => {
       toast({
         variant: "destructive",
         title: "שגיאה בהרשמה",
-        description: "לא ניתן להשלים את ההרשמה, נסה שוב",
+        description: error instanceof Error ? error.message : "לא ניתן להשלים את ההרשמה, נסה שוב",
       });
     } finally {
       setIsLoading(false);

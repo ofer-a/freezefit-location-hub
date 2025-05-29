@@ -13,13 +13,13 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   
-  // Get redirect path from state or default to '/'
-  const redirectTo = location.state?.redirectTo || '/';
+  // Get redirect path from state or default based on user role
+  const redirectTo = location.state?.redirectTo;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +31,14 @@ const LoginPage = () => {
         title: "התחברת בהצלחה",
         description: "ברוכים הבאים למערכת",
       });
-      navigate(redirectTo);
+      
+      // Redirect based on user role
+      if (redirectTo) {
+        navigate(redirectTo);
+      } else {
+        // Default redirect based on role will be handled in useEffect
+        navigate('/');
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -42,6 +49,13 @@ const LoginPage = () => {
       setIsLoading(false);
     }
   };
+
+  // Redirect providers to dashboard after successful login
+  useState(() => {
+    if (user?.role === 'provider') {
+      navigate('/dashboard');
+    }
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
