@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,26 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   
   // Get redirect path from state or default based on user role
   const redirectTo = location.state?.redirectTo;
+
+  // Redirect authenticated users
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (redirectTo) {
+        navigate(redirectTo);
+      } else if (user.role === 'provider') {
+        navigate('/dashboard');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, user, navigate, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,31 +44,28 @@ const LoginPage = () => {
         title: "התחברת בהצלחה",
         description: "ברוכים הבאים למערכת",
       });
+    } catch (error: any) {
+      console.error('Login error:', error);
       
-      // Redirect based on user role
-      if (redirectTo) {
-        navigate(redirectTo);
-      } else {
-        // Default redirect based on role will be handled in useEffect
-        navigate('/');
+      let errorMessage = "אירעה שגיאה בלתי צפויה";
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "פרטי ההתחברות שגויים. אנא בדוק את האימייל והסיסמה";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "יש לאמת את כתובת האימייל לפני ההתחברות. בדוק את תיבת הדואר שלך";
+      } else if (error.message?.includes('Too many requests')) {
+        errorMessage = "יותר מדי נסיונות התחברות. נסה שוב בעוד כמה דקות";
       }
-    } catch (error) {
+      
       toast({
         variant: "destructive",
         title: "שגיאה בהתחברות",
-        description: error instanceof Error ? error.message : "אירעה שגיאה בלתי צפויה",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Redirect providers to dashboard after successful login
-  useState(() => {
-    if (user?.role === 'provider') {
-      navigate('/dashboard');
-    }
-  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

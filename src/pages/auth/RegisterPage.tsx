@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,9 +18,20 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('customer');
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect authenticated users
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'provider') {
+        navigate('/dashboard');
+      } else {
+        navigate('/find-institute');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,12 +43,23 @@ const RegisterPage = () => {
         title: "נרשמת בהצלחה",
         description: "ברוכים הבאים ל-Freezefit",
       });
-      navigate(role === 'provider' ? '/dashboard' : '/find-institute');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      
+      let errorMessage = "לא ניתן להשלים את ההרשמה, נסה שוב";
+      
+      if (error.message?.includes('already registered')) {
+        errorMessage = "המשתמש כבר רשום במערכת. נסה להתחבר במקום זאת";
+      } else if (error.message?.includes('invalid email')) {
+        errorMessage = "כתובת האימייל אינה תקינה";
+      } else if (error.message?.includes('Password should be at least')) {
+        errorMessage = "הסיסמה חייבת להכיל לפחות 6 תווים";
+      }
+      
       toast({
         variant: "destructive",
         title: "שגיאה בהרשמה",
-        description: error instanceof Error ? error.message : "לא ניתן להשלים את ההרשמה, נסה שוב",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);

@@ -46,6 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
+        
         if (session?.user) {
           await fetchUserProfile(session.user);
         } else {
@@ -74,51 +76,96 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (authUser: SupabaseUser) => {
     try {
-      const { data: profile, error } = await supabase
+      console.log('Fetching profile for user:', authUser.id);
+      
+      let { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      // If profile doesn't exist, create it
+      if (!profile && !error) {
+        console.log('Profile not found, creating new profile');
+        const newProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '',
+          role: (authUser.user_metadata?.role as UserRole) || 'customer'
+        };
 
-      const userData: User = {
-        id: authUser.id,
-        name: profile.full_name || authUser.email?.split('@')[0] || '',
-        email: authUser.email || '',
-        role: profile.role || 'customer',
-        full_name: profile.full_name,
-        age: profile.age,
-        gender: profile.gender,
-        address: profile.address,
-        image_url: profile.image_url
-      };
+        const { data: createdProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
 
-      setUser(userData);
-      setIsAuthenticated(true);
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          throw createError;
+        }
+
+        profile = createdProfile;
+      }
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (profile) {
+        const userData: User = {
+          id: authUser.id,
+          name: profile.full_name || authUser.email?.split('@')[0] || '',
+          email: authUser.email || '',
+          role: profile.role || 'customer',
+          full_name: profile.full_name,
+          age: profile.age,
+          gender: profile.gender,
+          address: profile.address,
+          image_url: profile.image_url
+        };
+
+        console.log('User profile loaded:', userData);
+        setUser(userData);
+        setIsAuthenticated(true);
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      setUser(null);
-      setIsAuthenticated(false);
+      // Don't fail auth if profile fetch fails, create a basic user object
+      const userData: User = {
+        id: authUser.id,
+        name: authUser.email?.split('@')[0] || '',
+        email: authUser.email || '',
+        role: (authUser.user_metadata?.role as UserRole) || 'customer'
+      };
+      
+      setUser(userData);
+      setIsAuthenticated(true);
     }
   };
 
   // Login function
   const login = async (email: string, password: string): Promise<void> => {
+    console.log('Attempting login for:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
     
     if (data.user) {
+      console.log('Login successful, fetching profile');
       await fetchUserProfile(data.user);
     }
   };
 
   // Register function
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
+    console.log('Attempting registration for:', email, 'with role:', role);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -130,9 +177,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
 
     if (data.user) {
+      console.log('Registration successful, fetching profile');
       await fetchUserProfile(data.user);
     }
   };
@@ -145,6 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Logout function
   const logout = async () => {
+    console.log('Logging out');
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
