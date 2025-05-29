@@ -394,7 +394,7 @@ export const useSupabaseData = () => {
   // Update appointment status
   const useUpdateAppointment = () => {
     return useMutation({
-      mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      mutationFn: async ({ id, status }: { id: string; status: 'pending' | 'confirmed' | 'completed' | 'cancelled' }) => {
         const { data, error } = await supabase
           .from('appointments')
           .update({ status })

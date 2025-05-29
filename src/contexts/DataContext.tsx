@@ -18,6 +18,20 @@ interface UserClub {
   availableGifts: { id: number; name: string; pointsCost: number; image: string }[];
 }
 
+// Mock appointment interface for legacy features
+interface MockAppointment {
+  id: number;
+  customerName: string;
+  date: string;
+  time: string;
+  service: string;
+  duration: string;
+  phone?: string;
+  status?: 'הושלם' | 'בוטל';
+  therapistName?: string;
+  institute?: string;
+}
+
 interface DataContextType {
   contactInquiries: ContactFormData[];
   addContactInquiry: (inquiry: ContactFormData) => void;
@@ -29,6 +43,12 @@ interface DataContextType {
   sendPasswordResetCode: (email: string) => Promise<string>;
   verifyResetCode: (email: string, code: string) => Promise<boolean>;
   resetCodes: Record<string, string>;
+  // Mock appointment properties for backward compatibility
+  pendingAppointments: MockAppointment[];
+  confirmedAppointments: MockAppointment[];
+  historyAppointments: MockAppointment[];
+  updateAppointmentStatus: (id: number, fromStatus: string, toStatus: string) => void;
+  addNewAppointment: (appointment: MockAppointment) => void;
 }
 
 // Create the context
@@ -51,6 +71,44 @@ const initialClubData: UserClub = {
     { id: 3, name: "סט אביזרים", pointsCost: 500, image: "/placeholder.svg" }
   ]
 };
+
+// Mock appointment data
+const mockPendingAppointments: MockAppointment[] = [
+  {
+    id: 1,
+    customerName: "יוסי כהן",
+    date: "15/06/2024",
+    time: "14:00",
+    service: "טיפול סטנדרטי",
+    duration: "60 דקות",
+    phone: "050-1234567"
+  }
+];
+
+const mockConfirmedAppointments: MockAppointment[] = [
+  {
+    id: 2,
+    customerName: "מרים לוי",
+    date: "16/06/2024",
+    time: "10:00",
+    service: "טיפול ספורטאים",
+    duration: "90 דקות",
+    phone: "052-9876543"
+  }
+];
+
+const mockHistoryAppointments: MockAppointment[] = [
+  {
+    id: 3,
+    customerName: "דני רוזן",
+    date: "10/05/2024",
+    time: "16:00",
+    service: "טיפול שיקום",
+    duration: "45 דקות",
+    phone: "053-1122334",
+    status: "הושלם"
+  }
+];
 
 // Provider component
 export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
@@ -86,6 +144,11 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       return {};
     }
   });
+
+  // Mock appointment states
+  const [pendingAppointments, setPendingAppointments] = useState<MockAppointment[]>(mockPendingAppointments);
+  const [confirmedAppointments, setConfirmedAppointments] = useState<MockAppointment[]>(mockConfirmedAppointments);
+  const [historyAppointments, setHistoryAppointments] = useState<MockAppointment[]>(mockHistoryAppointments);
   
   // Add a new inquiry
   const addContactInquiry = (inquiry: ContactFormData) => {
@@ -165,6 +228,40 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }, 500);
     });
   };
+
+  // Mock appointment management functions
+  const updateAppointmentStatus = (id: number, fromStatus: string, toStatus: string) => {
+    if (fromStatus === 'pending' && toStatus === 'confirmed') {
+      const appointment = pendingAppointments.find(app => app.id === id);
+      if (appointment) {
+        setPendingAppointments(prev => prev.filter(app => app.id !== id));
+        setConfirmedAppointments(prev => [...prev, appointment]);
+      }
+    } else if ((fromStatus === 'pending' || fromStatus === 'confirmed') && toStatus === 'cancelled') {
+      const pendingApp = pendingAppointments.find(app => app.id === id);
+      const confirmedApp = confirmedAppointments.find(app => app.id === id);
+      const appointment = pendingApp || confirmedApp;
+      
+      if (appointment) {
+        if (pendingApp) {
+          setPendingAppointments(prev => prev.filter(app => app.id !== id));
+        } else {
+          setConfirmedAppointments(prev => prev.filter(app => app.id !== id));
+        }
+        setHistoryAppointments(prev => [...prev, { ...appointment, status: 'בוטל' }]);
+      }
+    } else if (fromStatus === 'confirmed' && toStatus === 'completed') {
+      const appointment = confirmedAppointments.find(app => app.id === id);
+      if (appointment) {
+        setConfirmedAppointments(prev => prev.filter(app => app.id !== id));
+        setHistoryAppointments(prev => [...prev, { ...appointment, status: 'הושלם' }]);
+      }
+    }
+  };
+
+  const addNewAppointment = (appointment: MockAppointment) => {
+    setPendingAppointments(prev => [...prev, appointment]);
+  };
   
   return (
     <DataContext.Provider value={{
@@ -177,7 +274,12 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       updateUserClubPoints,
       sendPasswordResetCode,
       verifyResetCode,
-      resetCodes
+      resetCodes,
+      pendingAppointments,
+      confirmedAppointments,
+      historyAppointments,
+      updateAppointmentStatus,
+      addNewAppointment
     }}>
       {children}
     </DataContext.Provider>
