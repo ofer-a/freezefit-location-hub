@@ -47,14 +47,16 @@ const LoginPage = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      let errorMessage = "אירעה שגיאה בלתי צפויה";
+      let errorMessage = "אירעה שגיאה בהתחברות";
       
-      if (error.message?.includes('Invalid login credentials')) {
+      if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
         errorMessage = "פרטי ההתחברות שגויים. אנא בדוק את האימייל והסיסמה";
       } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "יש לאמת את כתובת האימייל לפני ההתחברות. בדוק את תיבת הדואר שלך";
+        errorMessage = "החשבון עדיין לא אומת. אנא נסה שוב או צור חשבון חדש";
       } else if (error.message?.includes('Too many requests')) {
         errorMessage = "יותר מדי נסיונות התחברות. נסה שוב בעוד כמה דקות";
+      } else if (error.message?.includes('User not found')) {
+        errorMessage = "משתמש לא נמצא. אנא בדוק את פרטי ההתחברות או הירשם";
       }
       
       toast({
@@ -91,7 +93,7 @@ const LoginPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="username@example.com"
+                  placeholder="test@example.com"
                   className="w-full"
                 />
               </div>

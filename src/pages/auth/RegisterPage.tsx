@@ -48,12 +48,14 @@ const RegisterPage = () => {
       
       let errorMessage = "לא ניתן להשלים את ההרשמה, נסה שוב";
       
-      if (error.message?.includes('already registered')) {
+      if (error.message?.includes('already registered') || error.message?.includes('already_registered')) {
         errorMessage = "המשתמש כבר רשום במערכת. נסה להתחבר במקום זאת";
-      } else if (error.message?.includes('invalid email')) {
+      } else if (error.message?.includes('invalid email') || error.message?.includes('invalid_email')) {
         errorMessage = "כתובת האימייל אינה תקינה";
       } else if (error.message?.includes('Password should be at least')) {
         errorMessage = "הסיסמה חייבת להכיל לפחות 6 תווים";
+      } else if (error.message?.includes('weak_password')) {
+        errorMessage = "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר";
       }
       
       toast({
@@ -75,7 +77,7 @@ const RegisterPage = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">הרשמה</CardTitle>
             <CardDescription>
-              צור חשבון חדש ב-Freezefit
+              צור חשבון חדש ב-Freezefit (ניתן להשתמש באימייל מזויף)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -103,8 +105,11 @@ const RegisterPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="האימייל שלך"
+                  placeholder="test@example.com"
                 />
+                <p className="text-xs text-gray-500">
+                  ניתן להשתמש באימייל מזויף לצורכי בדיקה
+                </p>
               </div>
               <div className="space-y-2">
                 <label htmlFor="password" className="block text-sm font-medium">

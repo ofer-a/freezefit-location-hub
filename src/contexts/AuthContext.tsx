@@ -102,39 +102,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (createError) {
           console.error('Error creating profile:', createError);
-          throw createError;
+          // Continue with basic user data even if profile creation fails
+        } else {
+          profile = createdProfile;
         }
-
-        profile = createdProfile;
       }
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.error('Error fetching profile:', error);
+        // Continue with basic user data
       }
 
-      if (profile) {
-        const userData: User = {
-          id: authUser.id,
-          name: profile.full_name || authUser.email?.split('@')[0] || '',
-          email: authUser.email || '',
-          role: profile.role || 'customer',
-          full_name: profile.full_name,
-          age: profile.age,
-          gender: profile.gender,
-          address: profile.address,
-          image_url: profile.image_url
-        };
-
-        console.log('User profile loaded:', userData);
-        setUser(userData);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      // Don't fail auth if profile fetch fails, create a basic user object
+      // Create user data object
       const userData: User = {
         id: authUser.id,
-        name: authUser.email?.split('@')[0] || '',
+        name: profile?.full_name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+        email: authUser.email || '',
+        role: profile?.role || (authUser.user_metadata?.role as UserRole) || 'customer',
+        full_name: profile?.full_name || authUser.user_metadata?.full_name,
+        age: profile?.age,
+        gender: profile?.gender,
+        address: profile?.address,
+        image_url: profile?.image_url
+      };
+
+      console.log('User profile loaded:', userData);
+      setUser(userData);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      // Create basic user object even if profile operations fail
+      const userData: User = {
+        id: authUser.id,
+        name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         email: authUser.email || '',
         role: (authUser.user_metadata?.role as UserRole) || 'customer'
       };
@@ -144,47 +144,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function
+  // Login function - simplified to work with any email format
   const login = async (email: string, password: string): Promise<void> => {
     console.log('Attempting login for:', email);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
     
-    if (data.user) {
-      console.log('Login successful, fetching profile');
-      await fetchUserProfile(data.user);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+      
+      if (data.user) {
+        console.log('Login successful, fetching profile');
+        await fetchUserProfile(data.user);
+      }
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      throw error;
     }
   };
 
-  // Register function
+  // Register function - simplified to work with any email format
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
     console.log('Attempting registration for:', email, 'with role:', role);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
-          role: role,
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: role,
+          },
+          // Skip email confirmation for development
+          emailRedirectTo: undefined,
         },
-      },
-    });
+      });
 
-    if (error) {
-      console.error('Registration error:', error);
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+
+      if (data.user) {
+        console.log('Registration successful, fetching profile');
+        await fetchUserProfile(data.user);
+      }
+    } catch (error: any) {
+      console.error('Registration failed:', error);
       throw error;
-    }
-
-    if (data.user) {
-      console.log('Registration successful, fetching profile');
-      await fetchUserProfile(data.user);
     }
   };
   
