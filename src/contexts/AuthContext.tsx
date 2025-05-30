@@ -78,19 +78,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('Fetching profile for user:', authUser.id);
       
+      // First try to get existing profile
       let { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
 
-      // If profile doesn't exist, create it
+      // If no profile exists, create one
       if (!profile && !error) {
-        console.log('Profile not found, creating new profile');
+        console.log('Creating new profile for user');
         const newProfile = {
           id: authUser.id,
           email: authUser.email || '',
-          full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '',
+          full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
           role: (authUser.user_metadata?.role as UserRole) || 'customer'
         };
 
@@ -100,20 +101,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .select()
           .single();
 
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          // Continue with basic user data even if profile creation fails
-        } else {
+        if (!createError) {
           profile = createdProfile;
+        } else {
+          console.log('Could not create profile, continuing with auth data:', createError);
         }
       }
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        // Continue with basic user data
-      }
-
-      // Create user data object
+      // Create user data object from available information
       const userData: User = {
         id: authUser.id,
         name: profile?.full_name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
@@ -126,11 +121,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         image_url: profile?.image_url
       };
 
-      console.log('User profile loaded:', userData);
+      console.log('User authenticated successfully:', userData);
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
+      
       // Create basic user object even if profile operations fail
       const userData: User = {
         id: authUser.id,
@@ -139,66 +135,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: (authUser.user_metadata?.role as UserRole) || 'customer'
       };
       
+      console.log('Using fallback user data:', userData);
       setUser(userData);
       setIsAuthenticated(true);
     }
   };
 
-  // Login function - simplified to work with any email format
+  // Login function
   const login = async (email: string, password: string): Promise<void> => {
     console.log('Attempting login for:', email);
     
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        console.error('Login error:', error);
-        throw error;
-      }
-      
-      if (data.user) {
-        console.log('Login successful, fetching profile');
-        await fetchUserProfile(data.user);
-      }
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      throw error;
+    if (error) {
+      console.error('Login error:', error);
+      throw new Error('שגיאה בהתחברות. אנא בדוק את פרטי ההתחברות');
+    }
+    
+    if (data.user) {
+      console.log('Login successful');
+      // fetchUserProfile will be called automatically via auth state change
     }
   };
 
-  // Register function - simplified to work with any email format
+  // Register function
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
     console.log('Attempting registration for:', email, 'with role:', role);
     
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role,
-          },
-          // Skip email confirmation for development
-          emailRedirectTo: undefined,
-        },
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          role: role,
+        }
+      },
+    });
 
-      if (error) {
-        console.error('Registration error:', error);
-        throw error;
+    if (error) {
+      console.error('Registration error:', error);
+      if (error.message.includes('already_registered') || error.message.includes('already registered')) {
+        throw new Error('המשתמש כבר רשום במערכת');
       }
+      throw new Error('שגיאה בהרשמה. אנא נסה שוב');
+    }
 
-      if (data.user) {
-        console.log('Registration successful, fetching profile');
-        await fetchUserProfile(data.user);
-      }
-    } catch (error: any) {
-      console.error('Registration failed:', error);
-      throw error;
+    if (data.user) {
+      console.log('Registration successful');
+      // fetchUserProfile will be called automatically via auth state change
     }
   };
   
@@ -227,7 +215,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading
   };
 
-  // Provide context
   return (
     <AuthContext.Provider value={value}>
       {children}

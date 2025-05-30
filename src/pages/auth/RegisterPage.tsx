@@ -35,6 +35,24 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name || !email || !password) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "אנא מלא את כל השדות",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "הסיסמה חייבת להכיל לפחות 6 תווים",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -45,23 +63,10 @@ const RegisterPage = () => {
       });
     } catch (error: any) {
       console.error('Registration error:', error);
-      
-      let errorMessage = "לא ניתן להשלים את ההרשמה, נסה שוב";
-      
-      if (error.message?.includes('already registered') || error.message?.includes('already_registered')) {
-        errorMessage = "המשתמש כבר רשום במערכת. נסה להתחבר במקום זאת";
-      } else if (error.message?.includes('invalid email') || error.message?.includes('invalid_email')) {
-        errorMessage = "כתובת האימייל אינה תקינה";
-      } else if (error.message?.includes('Password should be at least')) {
-        errorMessage = "הסיסמה חייבת להכיל לפחות 6 תווים";
-      } else if (error.message?.includes('weak_password')) {
-        errorMessage = "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר";
-      }
-      
       toast({
         variant: "destructive",
         title: "שגיאה בהרשמה",
-        description: errorMessage,
+        description: error.message || "אירעה שגיאה בהרשמה",
       });
     } finally {
       setIsLoading(false);
@@ -77,7 +82,7 @@ const RegisterPage = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">הרשמה</CardTitle>
             <CardDescription>
-              צור חשבון חדש ב-Freezefit (ניתן להשתמש באימייל מזויף)
+              צור חשבון חדש ב-Freezefit
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -107,9 +112,6 @@ const RegisterPage = () => {
                   required
                   placeholder="test@example.com"
                 />
-                <p className="text-xs text-gray-500">
-                  ניתן להשתמש באימייל מזויף לצורכי בדיקה
-                </p>
               </div>
               <div className="space-y-2">
                 <label htmlFor="password" className="block text-sm font-medium">
@@ -121,7 +123,7 @@ const RegisterPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="בחר סיסמה"
+                  placeholder="בחר סיסמה (לפחות 6 תווים)"
                   minLength={6}
                 />
               </div>
@@ -131,7 +133,7 @@ const RegisterPage = () => {
                   סוג משתמש
                 </label>
                 <RadioGroup
-                  value={role || 'customer'}
+                  value={role}
                   onValueChange={(value) => setRole(value as UserRole)}
                   className="flex flex-col space-y-2"
                 >
@@ -149,7 +151,7 @@ const RegisterPage = () => {
               <div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-freezefit-300 hover:bg-freezefit-400 text-white" 
+                  className="w-full bg-freezefit-300 hover:bg-freezefit-400 text-black" 
                   disabled={isLoading}
                 >
                   {isLoading ? 'יוצר חשבון...' : 'הירשם'}

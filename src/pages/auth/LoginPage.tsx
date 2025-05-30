@@ -18,7 +18,6 @@ const LoginPage = () => {
   const location = useLocation();
   const { toast } = useToast();
   
-  // Get redirect path from state or default based on user role
   const redirectTo = location.state?.redirectTo;
 
   // Redirect authenticated users
@@ -29,13 +28,22 @@ const LoginPage = () => {
       } else if (user.role === 'provider') {
         navigate('/dashboard');
       } else {
-        navigate('/');
+        navigate('/find-institute');
       }
     }
   }, [isAuthenticated, user, navigate, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "אנא מלא את כל השדות",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -46,23 +54,10 @@ const LoginPage = () => {
       });
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      let errorMessage = "אירעה שגיאה בהתחברות";
-      
-      if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
-        errorMessage = "פרטי ההתחברות שגויים. אנא בדוק את האימייל והסיסמה";
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "החשבון עדיין לא אומת. אנא נסה שוב או צור חשבון חדש";
-      } else if (error.message?.includes('Too many requests')) {
-        errorMessage = "יותר מדי נסיונות התחברות. נסה שוב בעוד כמה דקות";
-      } else if (error.message?.includes('User not found')) {
-        errorMessage = "משתמש לא נמצא. אנא בדוק את פרטי ההתחברות או הירשם";
-      }
-      
       toast({
         variant: "destructive",
         title: "שגיאה בהתחברות",
-        description: errorMessage,
+        description: error.message || "אירעה שגיאה בהתחברות",
       });
     } finally {
       setIsLoading(false);
