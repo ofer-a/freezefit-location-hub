@@ -49,17 +49,18 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
+      console.log('Starting login process...');
       await login(email, password);
       toast({
         title: "התחברת בהצלחה",
         description: "ברוכים הבאים למערכת",
       });
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Login error in component:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בהתחברות",
-        description: error.message || "אירעה שגיאה בהתחברות",
+        description: error.message || "שגיאה בהתחברות. אנא בדוק את פרטי ההתחברות",
       });
     } finally {
       setIsLoading(false);

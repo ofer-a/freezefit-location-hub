@@ -37,7 +37,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Set up auth state listener first
+    console.log('Setting up auth state listener...');
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
@@ -57,12 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('User authenticated successfully:', userData);
           setUser(userData);
           setIsAuthenticated(true);
-          
-          // Try to create/update profile in background (don't block auth on this)
-          setTimeout(() => {
-            createOrUpdateProfile(session.user, userData.role);
-          }, 0);
         } else {
+          console.log('User logged out or session ended');
           setUser(null);
           setIsAuthenticated(false);
         }
@@ -70,43 +68,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // Then check for existing session
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        // Will trigger the auth state change listener above
-      } else {
+      console.log('Initial session check:', session?.user?.id);
+      if (!session) {
         setLoading(false);
       }
+      // If session exists, it will trigger the auth state change listener above
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('Cleaning up auth listener');
+      subscription.unsubscribe();
+    };
   }, []);
-
-  const createOrUpdateProfile = async (authUser: SupabaseUser, role: UserRole) => {
-    try {
-      console.log('Creating/updating profile for user:', authUser.id);
-      
-      const profileData = {
-        id: authUser.id,
-        email: authUser.email || '',
-        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
-        role: role
-      };
-
-      // Use upsert to handle both insert and update cases
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(profileData, { onConflict: 'id' });
-
-      if (error) {
-        console.log('Profile upsert error (non-blocking):', error);
-      } else {
-        console.log('Profile created/updated successfully');
-      }
-    } catch (error) {
-      console.log('Profile operation error (non-blocking):', error);
-    }
-  };
 
   const login = async (email: string, password: string): Promise<void> => {
     console.log('Attempting login for:', email);
