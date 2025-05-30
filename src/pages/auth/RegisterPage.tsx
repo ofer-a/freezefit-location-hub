@@ -18,23 +18,25 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('customer');
   const [isLoading, setIsLoading] = useState(false);
-  const { register, user, isAuthenticated } = useAuth();
+  const { register, user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Redirect authenticated users
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (!loading && isAuthenticated && user) {
+      console.log('User is authenticated, redirecting...', user);
       if (user.role === 'provider') {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
-        navigate('/find-institute');
+        navigate('/find-institute', { replace: true });
       }
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!name || !email || !password) {
       toast({
         variant: "destructive",
@@ -73,6 +75,22 @@ const RegisterPage = () => {
     }
   };
 
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-freezefit-300 mx-auto"></div>
+            <p className="mt-2 text-gray-600">טוען...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -98,6 +116,7 @@ const RegisterPage = () => {
                   onChange={(e) => setName(e.target.value)}
                   required
                   placeholder="השם המלא שלך"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -111,6 +130,7 @@ const RegisterPage = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="test@example.com"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -125,6 +145,7 @@ const RegisterPage = () => {
                   required
                   placeholder="בחר סיסמה (לפחות 6 תווים)"
                   minLength={6}
+                  disabled={isLoading}
                 />
               </div>
               
@@ -136,6 +157,7 @@ const RegisterPage = () => {
                   value={role}
                   onValueChange={(value) => setRole(value as UserRole)}
                   className="flex flex-col space-y-2"
+                  disabled={isLoading}
                 >
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <RadioGroupItem value="customer" id="customer" />

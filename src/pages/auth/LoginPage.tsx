@@ -13,7 +13,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user, isAuthenticated } = useAuth();
+  const { login, user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -22,19 +22,21 @@ const LoginPage = () => {
 
   // Redirect authenticated users
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (!loading && isAuthenticated && user) {
+      console.log('User is authenticated, redirecting...', user);
       if (redirectTo) {
-        navigate(redirectTo);
+        navigate(redirectTo, { replace: true });
       } else if (user.role === 'provider') {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
-        navigate('/find-institute');
+        navigate('/find-institute', { replace: true });
       }
     }
-  }, [isAuthenticated, user, navigate, redirectTo]);
+  }, [isAuthenticated, user, navigate, redirectTo, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
       toast({
         variant: "destructive",
@@ -64,6 +66,22 @@ const LoginPage = () => {
     }
   };
 
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-freezefit-300 mx-auto"></div>
+            <p className="mt-2 text-gray-600">טוען...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -90,6 +108,7 @@ const LoginPage = () => {
                   required
                   placeholder="test@example.com"
                   className="w-full"
+                  disabled={isLoading}
                 />
               </div>
               
@@ -109,6 +128,7 @@ const LoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full"
+                  disabled={isLoading}
                 />
               </div>
               
