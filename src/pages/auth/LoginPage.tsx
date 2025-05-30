@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,75 +13,35 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user, isAuthenticated, loading } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   
-  const redirectTo = location.state?.redirectTo;
-
-  // Redirect authenticated users
-  useEffect(() => {
-    if (!loading && isAuthenticated && user) {
-      console.log('User is authenticated, redirecting...', user);
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true });
-      } else if (user.role === 'provider') {
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate('/find-institute', { replace: true });
-      }
-    }
-  }, [isAuthenticated, user, navigate, redirectTo, loading]);
+  // Get redirect path from state or default to '/'
+  const redirectTo = location.state?.redirectTo || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast({
-        variant: "destructive",
-        title: "שגיאה",
-        description: "אנא מלא את כל השדות",
-      });
-      return;
-    }
-
     setIsLoading(true);
     
     try {
-      console.log('Starting login process...');
       await login(email, password);
       toast({
         title: "התחברת בהצלחה",
         description: "ברוכים הבאים למערכת",
       });
-    } catch (error: any) {
-      console.error('Login error in component:', error);
+      navigate(redirectTo);
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "שגיאה בהתחברות",
-        description: error.message || "שגיאה בהתחברות. אנא בדוק את פרטי ההתחברות",
+        description: error instanceof Error ? error.message : "אירעה שגיאה בלתי צפויה",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Show loading while checking auth state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
-        <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-freezefit-300 mx-auto"></div>
-            <p className="mt-2 text-gray-600">טוען...</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -107,9 +67,8 @@ const LoginPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="test@example.com"
+                  placeholder="username@example.com"
                   className="w-full"
-                  disabled={isLoading}
                 />
               </div>
               
@@ -129,7 +88,6 @@ const LoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full"
-                  disabled={isLoading}
                 />
               </div>
               
