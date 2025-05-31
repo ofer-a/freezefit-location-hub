@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -140,6 +139,7 @@ const FindInstitute = () => {
       date: formattedDate,
       time: selectedTime,
       service: selectedService,
+      serviceName: selectedService, // Add the missing serviceName property
       duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
       phone: '050-0000000', // Mock phone number
       therapistName: selectedTherapist,
