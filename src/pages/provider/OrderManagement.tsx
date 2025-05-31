@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -7,22 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Types for appointments
-type AppointmentStatus = 'confirmed' | 'pending' | 'completed' | 'cancelled';
-
-interface Appointment {
-  id: number;
-  customerName: string;
-  date: string;
-  time: string;
-  service: string;
-  duration: string;
-  phone?: string;
-  status?: 'הושלם' | 'בוטל';
-}
+import AppointmentChangeDialog from '@/components/provider/AppointmentChangeDialog';
 
 const OrderManagement = () => {
   const { isAuthenticated, user } = useAuth();
@@ -32,10 +20,11 @@ const OrderManagement = () => {
     pendingAppointments, 
     confirmedAppointments, 
     historyAppointments,
-    updateAppointmentStatus
+    updateAppointmentStatus,
+    approveAppointmentChange,
+    rejectAppointmentChange
   } = useData();
   
-  // State for orders/appointments
   const [searchQuery, setSearchQuery] = useState('');
 
   // Check authentication
@@ -77,17 +66,36 @@ const OrderManagement = () => {
     });
   };
 
+  const handleApproveChange = (orderId: number) => {
+    approveAppointmentChange(orderId);
+    
+    toast({
+      title: "שינוי התור אושר",
+      description: "התור עודכן לתאריך והשעה החדשים",
+    });
+  };
+
+  const handleRejectChange = (orderId: number) => {
+    rejectAppointmentChange(orderId);
+    
+    toast({
+      variant: "destructive",
+      title: "שינוי התור נדחה",
+      description: "התור נשאר במועד המקורי",
+    });
+  };
+
   // Filter orders based on search query
   const filteredConfirmedOrders = confirmedAppointments.filter(order => 
-    order.customerName.includes(searchQuery)
+    order.customerName.includes(searchQuery) || order.therapistName.includes(searchQuery)
   );
   
   const filteredPendingOrders = pendingAppointments.filter(order => 
-    order.customerName.includes(searchQuery)
+    order.customerName.includes(searchQuery) || order.therapistName.includes(searchQuery)
   );
   
   const filteredHistoryOrders = historyAppointments.filter(order => 
-    order.customerName.includes(searchQuery)
+    order.customerName.includes(searchQuery) || order.therapistName.includes(searchQuery)
   );
 
   return (
@@ -107,7 +115,7 @@ const OrderManagement = () => {
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input 
                   type="text" 
-                  placeholder="חפש לפי שם לקוח..."
+                  placeholder="חפש לפי לקוח או מטפל..."
                   className="pr-10 py-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -140,7 +148,9 @@ const OrderManagement = () => {
                             </div>
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
-                              <p className="text-gray-600">{order.service}, {order.duration}</p>
+                              <p className="text-gray-600">מטפל: {order.therapistName}</p>
+                              <p className="text-gray-600">שירות: {order.serviceName}</p>
+                              <p className="text-gray-600">{order.duration}</p>
                               <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
                             </div>
                           </div>
@@ -196,12 +206,26 @@ const OrderManagement = () => {
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-start space-x-4 rtl:space-x-reverse">
                             <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
-                              <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                              {order.changeRequested ? (
+                                <RefreshCw className="h-6 w-6 text-yellow-500" />
+                              ) : (
+                                <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                              )}
                             </div>
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
-                              <p className="text-gray-600">{order.service}, {order.duration}</p>
+                              <p className="text-gray-600">מטפל: {order.therapistName}</p>
+                              <p className="text-gray-600">שירות: {order.serviceName}</p>
+                              <p className="text-gray-600">{order.duration}</p>
                               <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
+                              {order.changeRequested && (
+                                <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
+                                  <p className="font-medium text-yellow-800">בקשת שינוי מועד</p>
+                                  <p className="text-yellow-700">
+                                    מועד קודם: {order.originalDate} בשעה {order.originalTime}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
@@ -218,20 +242,41 @@ const OrderManagement = () => {
                             </div>
                             
                             <div className="flex space-x-2 rtl:space-x-reverse">
-                              <Button 
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                                size="sm"
-                                onClick={() => handleApprove(order.id)}
-                              >
-                                אשר תור
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleReject(order.id)}
-                              >
-                                דחה תור
-                              </Button>
+                              {order.changeRequested ? (
+                                <>
+                                  <Button 
+                                    className="bg-green-500 hover:bg-green-600 text-white"
+                                    size="sm"
+                                    onClick={() => handleApproveChange(order.id)}
+                                  >
+                                    אשר שינוי
+                                  </Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm"
+                                    onClick={() => handleRejectChange(order.id)}
+                                  >
+                                    דחה שינוי
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button 
+                                    className="bg-green-500 hover:bg-green-600 text-white"
+                                    size="sm"
+                                    onClick={() => handleApprove(order.id)}
+                                  >
+                                    אשר תור
+                                  </Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm"
+                                    onClick={() => handleReject(order.id)}
+                                  >
+                                    דחה תור
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -260,7 +305,9 @@ const OrderManagement = () => {
                             </div>
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
-                              <p className="text-gray-600">{order.service}, {order.duration}</p>
+                              <p className="text-gray-600">מטפל: {order.therapistName}</p>
+                              <p className="text-gray-600">שירות: {order.serviceName}</p>
+                              <p className="text-gray-600">{order.duration}</p>
                               <p className={`text-sm ${order.status === 'הושלם' ? 'text-green-600' : 'text-red-600'}`}>
                                 סטטוס: {order.status}
                               </p>

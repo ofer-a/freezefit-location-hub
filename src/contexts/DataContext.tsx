@@ -1,17 +1,8 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { mockInstitutes } from '@/data/mockInstitutes';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
-// Types
-interface ContactFormData {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-  submittedAt: Date;
-}
-
-interface Appointment {
+// Define appointment structure with therapist and service details
+export interface Appointment {
   id: number;
   customerName: string;
   date: string;
@@ -19,304 +10,219 @@ interface Appointment {
   service: string;
   duration: string;
   phone?: string;
-  therapistName?: string;
-  institute?: string;
-  status?: 'הושלם' | 'בוטל';
+  status?: 'הושלם' | 'בוטל' | 'ממתין לאישור';
+  therapistName: string;
+  serviceName: string;
+  changeRequested?: boolean;
+  originalDate?: string;
+  originalTime?: string;
 }
 
-interface UserClub {
-  points: number;
-  level: string;
-  nextLevelPoints: number;
-  benefits: string[];
-  availableGifts: { id: number; name: string; pointsCost: number; image: string }[];
+export interface ContactInquiry {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  submittedAt: Date;
 }
-
-// Store keys for localStorage
-const STORAGE_KEYS = {
-  CONTACT_INQUIRIES: 'freezefit_contact_inquiries',
-  PENDING_APPOINTMENTS: 'freezefit_pending_appointments',
-  CONFIRMED_APPOINTMENTS: 'freezefit_confirmed_appointments',
-  HISTORY_APPOINTMENTS: 'freezefit_history_appointments',
-  USER_CLUB: 'freezefit_user_club',
-  RESET_CODES: 'freezefit_reset_codes'
-};
 
 interface DataContextType {
-  contactInquiries: ContactFormData[];
-  addContactInquiry: (inquiry: ContactFormData) => void;
   pendingAppointments: Appointment[];
   confirmedAppointments: Appointment[];
   historyAppointments: Appointment[];
-  updateAppointmentStatus: (id: number, fromStatus: 'pending' | 'confirmed', toStatus: 'confirmed' | 'cancelled' | 'completed') => void;
-  userClub: UserClub;
-  redeemGift: (giftId: number) => void;
-  selectedMapLocation: { lat: number; lng: number } | null;
-  setSelectedMapLocation: (location: { lat: number; lng: number } | null) => void;
-  addNewAppointment: (appointment: Appointment) => void;
-  updateUserClubPoints: (points: number) => void;
-  sendPasswordResetCode: (email: string) => Promise<string>;
-  verifyResetCode: (email: string, code: string) => Promise<boolean>;
-  resetCodes: Record<string, string>;
+  contactInquiries: ContactInquiry[];
+  addContactInquiry: (inquiry: ContactInquiry) => void;
+  updateAppointmentStatus: (appointmentId: number, fromStatus: string, toStatus: string) => void;
+  requestAppointmentChange: (appointmentId: number, newDate: Date, newTime: string) => void;
+  approveAppointmentChange: (appointmentId: number) => void;
+  rejectAppointmentChange: (appointmentId: number) => void;
 }
 
-// Create the context
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Initial club benefits data
-const initialClubData: UserClub = {
-  points: 450,
-  level: "כסף",
-  nextLevelPoints: 1000,
-  benefits: [
-    "10% הנחה על טיפולים",
-    "הזמנות מועדפות",
-    "ביטול תורים ללא עמלה",
-    "טיפול חינם בכל יום הולדת"
-  ],
-  availableGifts: [
-    { id: 1, name: "טיפול מתנה", pointsCost: 200, image: "/placeholder.svg" },
-    { id: 2, name: "חולצת מותג", pointsCost: 300, image: "/placeholder.svg" },
-    { id: 3, name: "סט אביזרים", pointsCost: 500, image: "/placeholder.svg" }
-  ]
-};
-
-// Helper functions to load and save from localStorage
-const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
-  try {
-    const storedValue = localStorage.getItem(key);
-    return storedValue ? JSON.parse(storedValue) : defaultValue;
-  } catch (error) {
-    console.error(`Error loading data from localStorage for key ${key}:`, error);
-    return defaultValue;
+// Initial mock data with therapist and service details
+const initialPendingAppointments: Appointment[] = [
+  {
+    id: 1,
+    customerName: 'שרה כהן',
+    date: '15/01/2025',
+    time: '14:00',
+    service: 'טיפול בקור',
+    duration: '30 דקות',
+    phone: '050-1234567',
+    therapistName: 'רפאל ימין',
+    serviceName: 'שיקום'
+  },
+  {
+    id: 2,
+    customerName: 'דוד לוי',
+    date: '16/01/2025',
+    time: '10:30',
+    service: 'אמבט קרח',
+    duration: '45 דקות',
+    phone: '052-9876543',
+    therapistName: 'מיכל דהן',
+    serviceName: 'טיפול יופי'
   }
-};
+];
 
-const saveToStorage = <T,>(key: string, value: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving data to localStorage for key ${key}:`, error);
+const initialConfirmedAppointments: Appointment[] = [
+  {
+    id: 3,
+    customerName: 'רונית גולד',
+    date: '14/01/2025',
+    time: '16:00',
+    service: 'טיפול שיקום',
+    duration: '60 דקות',
+    phone: '053-5555555',
+    therapistName: 'אבי שמעון',
+    serviceName: 'פיזיותרפיה'
   }
-};
+];
 
-// Provider component
-export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-  // Contact form inquiries
-  const [contactInquiries, setContactInquiries] = useState<ContactFormData[]>(() => 
-    loadFromStorage(STORAGE_KEYS.CONTACT_INQUIRIES, [])
-  );
-  
-  // Appointments state with localStorage persistence
-  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>(() =>
-    loadFromStorage(STORAGE_KEYS.PENDING_APPOINTMENTS, [
-      { id: 4, customerName: 'משה גולן', date: '15/05/2025', time: '15:00', service: 'טיפול ראשון', duration: '60 דקות', phone: '053-1112222' },
-      { id: 5, customerName: 'מיכל דוידוב', date: '17/05/2025', time: '11:45', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '050-3334444' }
-    ])
-  );
-  
-  const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>(() =>
-    loadFromStorage(STORAGE_KEYS.CONFIRMED_APPOINTMENTS, [
-      { id: 1, customerName: 'יוסי כהן', date: '15/05/2025', time: '10:00', service: 'טיפול סטנדרטי', duration: '45 דקות', phone: '050-1234567' },
-      { id: 2, customerName: 'רונית לוי', date: '15/05/2025', time: '12:30', service: 'טיפול ספורטאים', duration: '60 דקות', phone: '052-9876543' },
-      { id: 3, customerName: 'דוד מזרחי', date: '16/05/2025', time: '09:15', service: 'טיפול קצר', duration: '30 דקות', phone: '054-5678901' }
-    ])
-  );
-  
-  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>(() =>
-    loadFromStorage(STORAGE_KEYS.HISTORY_APPOINTMENTS, [
-      { id: 6, customerName: 'אורי גבאי', date: '10/05/2025', time: '14:00', service: 'טיפול סטנדרטי', duration: '45 דקות', status: 'הושלם' },
-      { id: 7, customerName: 'יעל פרץ', date: '11/05/2025', time: '16:30', service: 'טיפול שיקום', duration: '60 דקות', status: 'הושלם' },
-      { id: 8, customerName: 'נועם אלוני', date: '08/05/2025', time: '10:00', service: 'טיפול קצר', duration: '30 דקות', status: 'בוטל' }
-    ])
-  );
-  
-  // User club data
-  const [userClub, setUserClub] = useState<UserClub>(() =>
-    loadFromStorage(STORAGE_KEYS.USER_CLUB, initialClubData)
-  );
-  
-  // Map selection
-  const [selectedMapLocation, setSelectedMapLocation] = useState<{lat: number, lng: number} | null>(null);
-  
-  // Password reset codes
-  const [resetCodes, setResetCodes] = useState<Record<string, string>>(() =>
-    loadFromStorage(STORAGE_KEYS.RESET_CODES, {})
-  );
-  
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CONTACT_INQUIRIES, contactInquiries);
-  }, [contactInquiries]);
-  
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.PENDING_APPOINTMENTS, pendingAppointments);
-  }, [pendingAppointments]);
-  
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CONFIRMED_APPOINTMENTS, confirmedAppointments);
-  }, [confirmedAppointments]);
-  
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.HISTORY_APPOINTMENTS, historyAppointments);
-  }, [historyAppointments]);
-  
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.USER_CLUB, userClub);
-  }, [userClub]);
-  
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RESET_CODES, resetCodes);
-  }, [resetCodes]);
-  
-  // Add a new inquiry
-  const addContactInquiry = (inquiry: ContactFormData) => {
-    setContactInquiries(prev => [...prev, inquiry]);
+const initialHistoryAppointments: Appointment[] = [
+  {
+    id: 4,
+    customerName: 'אמיר חדד',
+    date: '10/01/2025',
+    time: '09:00',
+    service: 'אמבט קרח',
+    duration: '30 דקות',
+    status: 'הושלם',
+    therapistName: 'רפאל ימין',
+    serviceName: 'שיקום'
+  }
+];
+
+export const DataProvider = ({ children }: { children: ReactNode }) => {
+  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>(initialPendingAppointments);
+  const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>(initialConfirmedAppointments);
+  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>(initialHistoryAppointments);
+  const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
+
+  const addContactInquiry = (inquiry: ContactInquiry) => {
+    setContactInquiries(prev => [inquiry, ...prev]);
   };
-  
-  // Update appointment status
-  const updateAppointmentStatus = (
-    id: number, 
-    fromStatus: 'pending' | 'confirmed', 
-    toStatus: 'confirmed' | 'cancelled' | 'completed'
-  ) => {
-    let appointment;
-    
-    // Find and remove from source list
+
+  const updateAppointmentStatus = (appointmentId: number, fromStatus: string, toStatus: string) => {
+    let appointment: Appointment | undefined;
+
+    // Find and remove from source array
     if (fromStatus === 'pending') {
-      appointment = pendingAppointments.find(appt => appt.id === id);
-      setPendingAppointments(prev => prev.filter(appt => appt.id !== id));
+      const index = pendingAppointments.findIndex(apt => apt.id === appointmentId);
+      if (index !== -1) {
+        appointment = pendingAppointments[index];
+        setPendingAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+      }
     } else if (fromStatus === 'confirmed') {
-      appointment = confirmedAppointments.find(appt => appt.id === id);
-      setConfirmedAppointments(prev => prev.filter(appt => appt.id !== id));
-      
-      // If cancelling, subtract points
-      if (toStatus === 'cancelled') {
-        updateUserClubPoints(-25); // Penalty for cancellation
+      const index = confirmedAppointments.findIndex(apt => apt.id === appointmentId);
+      if (index !== -1) {
+        appointment = confirmedAppointments[index];
+        setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
       }
     }
-    
+
     if (!appointment) return;
-    
-    // Add to destination list
+
+    // Add to destination array
     if (toStatus === 'confirmed') {
       setConfirmedAppointments(prev => [...prev, appointment!]);
-      
-      // Add points for confirming an appointment
-      updateUserClubPoints(10);
-    } else {
-      // Add to history with status
-      setHistoryAppointments(prev => [
-        ...prev, 
-        { ...appointment!, status: toStatus === 'completed' ? 'הושלם' : 'בוטל' }
-      ]);
-      
-      // Add points if completed
-      if (toStatus === 'completed') {
-        updateUserClubPoints(50);
-      }
-    }
-  };
-  
-  // Add new appointment
-  const addNewAppointment = (appointment: Appointment) => {
-    setConfirmedAppointments(prev => [...prev, appointment]);
-  };
-  
-  // Update user club points
-  const updateUserClubPoints = (points: number) => {
-    setUserClub(prev => {
-      const newPoints = prev.points + points;
-      
-      // Determine level based on points
-      let level = prev.level;
-      let nextLevelPoints = prev.nextLevelPoints;
-      
-      if (newPoints >= 1000 && newPoints < 2000) {
-        level = "זהב";
-        nextLevelPoints = 2000;
-      } else if (newPoints >= 2000) {
-        level = "פלטינום";
-        nextLevelPoints = 3000;
-      }
-      
-      return {
-        ...prev,
-        points: newPoints,
-        level,
-        nextLevelPoints
+    } else if (toStatus === 'cancelled' || toStatus === 'completed') {
+      const updatedAppointment = {
+        ...appointment,
+        status: toStatus === 'cancelled' ? 'בוטל' as const : 'הושלם' as const
       };
-    });
-  };
-  
-  // Redeem gift functionality
-  const redeemGift = (giftId: number) => {
-    const gift = userClub.availableGifts.find(g => g.id === giftId);
-    if (!gift) return;
-    
-    if (userClub.points >= gift.pointsCost) {
-      setUserClub(prev => ({
-        ...prev,
-        points: prev.points - gift.pointsCost
-      }));
+      setHistoryAppointments(prev => [...prev, updatedAppointment]);
     }
   };
-  
-  // Send password reset code (mock implementation)
-  const sendPasswordResetCode = async (email: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Generate a 6-digit code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Store the code
-        setResetCodes(prev => ({ ...prev, [email.toLowerCase()]: code }));
-        
-        console.log(`Reset code for ${email}: ${code}`);
-        
-        // In a real implementation, we would send an email here
-        // with the reset code to the user's email address
-        
-        resolve(code);
-      }, 1000);
-    });
+
+  const requestAppointmentChange = (appointmentId: number, newDate: Date, newTime: string) => {
+    const formatDate = (date: Date) => {
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    };
+
+    // Find appointment in confirmed list
+    const appointmentIndex = confirmedAppointments.findIndex(apt => apt.id === appointmentId);
+    if (appointmentIndex === -1) return;
+
+    const appointment = confirmedAppointments[appointmentIndex];
+    
+    // Create change request - move to pending with change flag
+    const changeRequest: Appointment = {
+      ...appointment,
+      originalDate: appointment.date,
+      originalTime: appointment.time,
+      date: formatDate(newDate),
+      time: newTime,
+      changeRequested: true,
+      status: 'ממתין לאישור'
+    };
+
+    // Remove from confirmed and add to pending
+    setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+    setPendingAppointments(prev => [...prev, changeRequest]);
   };
-  
-  // Verify reset code
-  const verifyResetCode = async (email: string, code: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const storedCode = resetCodes[email.toLowerCase()];
-        resolve(storedCode === code);
-      }, 500);
-    });
+
+  const approveAppointmentChange = (appointmentId: number) => {
+    const appointmentIndex = pendingAppointments.findIndex(apt => apt.id === appointmentId && apt.changeRequested);
+    if (appointmentIndex === -1) return;
+
+    const appointment = pendingAppointments[appointmentIndex];
+    
+    // Remove change flags and move to confirmed
+    const approvedAppointment: Appointment = {
+      ...appointment,
+      changeRequested: false,
+      originalDate: undefined,
+      originalTime: undefined,
+      status: undefined
+    };
+
+    setPendingAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+    setConfirmedAppointments(prev => [...prev, approvedAppointment]);
   };
-  
+
+  const rejectAppointmentChange = (appointmentId: number) => {
+    const appointmentIndex = pendingAppointments.findIndex(apt => apt.id === appointmentId && apt.changeRequested);
+    if (appointmentIndex === -1) return;
+
+    const appointment = pendingAppointments[appointmentIndex];
+    
+    // Restore original date/time and move back to confirmed
+    const restoredAppointment: Appointment = {
+      ...appointment,
+      date: appointment.originalDate || appointment.date,
+      time: appointment.originalTime || appointment.time,
+      changeRequested: false,
+      originalDate: undefined,
+      originalTime: undefined,
+      status: undefined
+    };
+
+    setPendingAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+    setConfirmedAppointments(prev => [...prev, restoredAppointment]);
+  };
+
+  const value = {
+    pendingAppointments,
+    confirmedAppointments,
+    historyAppointments,
+    contactInquiries,
+    addContactInquiry,
+    updateAppointmentStatus,
+    requestAppointmentChange,
+    approveAppointmentChange,
+    rejectAppointmentChange
+  };
+
   return (
-    <DataContext.Provider value={{
-      contactInquiries,
-      addContactInquiry,
-      pendingAppointments,
-      confirmedAppointments,
-      historyAppointments,
-      updateAppointmentStatus,
-      userClub,
-      redeemGift,
-      selectedMapLocation,
-      setSelectedMapLocation,
-      addNewAppointment,
-      updateUserClubPoints,
-      sendPasswordResetCode,
-      verifyResetCode,
-      resetCodes
-    }}>
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
 };
 
-// Custom hook for using the context
-export const useData = () => {
+export const useData = (): DataContextType => {
   const context = useContext(DataContext);
   if (context === undefined) {
     throw new Error('useData must be used within a DataProvider');

@@ -1,5 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Define user roles
 export type UserRole = 'customer' | 'provider';
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Login function
+  // Login function with provider redirect
   const login = async (email: string, password: string): Promise<void> => {
     // Simulate API call
     return new Promise((resolve, reject) => {
