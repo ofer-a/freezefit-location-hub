@@ -16,6 +16,7 @@ export interface Appointment {
   changeRequested?: boolean;
   originalDate?: string;
   originalTime?: string;
+  institute?: string;
 }
 
 export interface ContactInquiry {
@@ -26,16 +27,34 @@ export interface ContactInquiry {
   submittedAt: Date;
 }
 
+export interface UserClub {
+  points: number;
+  level: string;
+  nextLevelPoints: number;
+}
+
+export interface MapLocation {
+  lat: number;
+  lng: number;
+}
+
 interface DataContextType {
   pendingAppointments: Appointment[];
   confirmedAppointments: Appointment[];
   historyAppointments: Appointment[];
   contactInquiries: ContactInquiry[];
+  userClub: UserClub;
+  selectedMapLocation: MapLocation | null;
+  setSelectedMapLocation: (location: MapLocation | null) => void;
   addContactInquiry: (inquiry: ContactInquiry) => void;
   updateAppointmentStatus: (appointmentId: number, fromStatus: string, toStatus: string) => void;
   requestAppointmentChange: (appointmentId: number, newDate: Date, newTime: string) => void;
   approveAppointmentChange: (appointmentId: number) => void;
   rejectAppointmentChange: (appointmentId: number) => void;
+  updateUserClubPoints: (points: number) => void;
+  addNewAppointment: (appointment: Appointment) => void;
+  sendPasswordResetCode: (email: string) => Promise<string>;
+  verifyResetCode: (email: string, code: string) => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -94,11 +113,19 @@ const initialHistoryAppointments: Appointment[] = [
   }
 ];
 
+const initialUserClub: UserClub = {
+  points: 0,
+  level: 'ברונזה',
+  nextLevelPoints: 100
+};
+
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>(initialPendingAppointments);
   const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>(initialConfirmedAppointments);
   const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>(initialHistoryAppointments);
   const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
+  const [userClub, setUserClub] = useState<UserClub>(initialUserClub);
+  const [selectedMapLocation, setSelectedMapLocation] = useState<MapLocation | null>(null);
 
   const addContactInquiry = (inquiry: ContactInquiry) => {
     setContactInquiries(prev => [inquiry, ...prev]);
@@ -203,16 +230,76 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setConfirmedAppointments(prev => [...prev, restoredAppointment]);
   };
 
+  const updateUserClubPoints = (points: number) => {
+    setUserClub(prev => {
+      const newPoints = prev.points + points;
+      let newLevel = prev.level;
+      let nextLevelPoints = prev.nextLevelPoints;
+
+      // Update level based on points
+      if (newPoints >= 500) {
+        newLevel = 'יהלום';
+        nextLevelPoints = 1000;
+      } else if (newPoints >= 200) {
+        newLevel = 'זהב';
+        nextLevelPoints = 500;
+      } else if (newPoints >= 100) {
+        newLevel = 'כסף';
+        nextLevelPoints = 200;
+      } else {
+        newLevel = 'ברונזה';
+        nextLevelPoints = 100;
+      }
+
+      return {
+        points: newPoints,
+        level: newLevel,
+        nextLevelPoints
+      };
+    });
+  };
+
+  const addNewAppointment = (appointment: Appointment) => {
+    setPendingAppointments(prev => [...prev, appointment]);
+  };
+
+  const sendPasswordResetCode = async (email: string): Promise<string> => {
+    // Mock implementation - in real app this would send email
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        resolve(code);
+      }, 1000);
+    });
+  };
+
+  const verifyResetCode = async (email: string, code: string): Promise<boolean> => {
+    // Mock implementation - in real app this would verify against database
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // For demo purposes, accept any 6-digit code
+        resolve(code.length === 6 && /^\d+$/.test(code));
+      }, 500);
+    });
+  };
+
   const value = {
     pendingAppointments,
     confirmedAppointments,
     historyAppointments,
     contactInquiries,
+    userClub,
+    selectedMapLocation,
+    setSelectedMapLocation,
     addContactInquiry,
     updateAppointmentStatus,
     requestAppointmentChange,
     approveAppointmentChange,
-    rejectAppointmentChange
+    rejectAppointmentChange,
+    updateUserClubPoints,
+    addNewAppointment,
+    sendPasswordResetCode,
+    verifyResetCode
   };
 
   return (
