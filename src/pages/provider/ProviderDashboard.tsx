@@ -17,8 +17,7 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertTriangle,
-  Loader2
+  AlertTriangle
 } from 'lucide-react';
 
 // Feature cards for the provider dashboard
@@ -54,7 +53,7 @@ const featureCards = [
 ];
 
 const ProviderDashboard = () => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { 
     pendingAppointments, 
@@ -63,48 +62,16 @@ const ProviderDashboard = () => {
     contactInquiries
   } = useData();
 
-  // Check authentication and role
+  // Check authentication
   useEffect(() => {
-    console.log('ProviderDashboard - Auth state:', { isAuthenticated, user, loading });
-    
-    if (!loading) {
-      if (!isAuthenticated) {
-        console.log('Not authenticated, redirecting to login');
-        navigate('/login');
-        return;
-      }
-      
-      if (user?.role !== 'provider') {
-        console.log('Not a provider, redirecting to find-institute');
-        navigate('/find-institute');
-        return;
-      }
+    if (!isAuthenticated || user?.role !== 'provider') {
+      navigate('/login');
     }
-  }, [isAuthenticated, user, loading, navigate]);
-
-  // Show loading spinner while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p>טוען...</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated or not a provider
-  if (!isAuthenticated || user?.role !== 'provider') {
-    return null;
-  }
+  }, [isAuthenticated, user, navigate]);
 
   // Calculate real-time metrics from context data
   const todaysAppointments = confirmedAppointments.filter(appointment => {
+    // Check if appointment is for today
     const today = new Date();
     const [day, month, year] = appointment.date.split('/');
     const appointmentDate = new Date(`${year}-${month}-${day}`);
@@ -227,6 +194,7 @@ const ProviderDashboard = () => {
                 <div className="space-y-4">
                   {confirmedAppointments
                     .filter(appointment => {
+                      // Check if appointment is for today
                       const today = new Date();
                       const [day, month, year] = appointment.date.split('/');
                       const appointmentDate = new Date(`${year}-${month}-${day}`);
