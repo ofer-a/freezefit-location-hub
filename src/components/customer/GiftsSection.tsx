@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { upload, gift } from 'lucide-react';
+import { Upload, Gift } from 'lucide-react';
 
 interface Gift {
   id: string;
@@ -67,7 +67,7 @@ const GiftsSection = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <gift className="h-5 w-5" />
+          <Gift className="h-5 w-5" />
           מתנות והטבות זמינות
         </CardTitle>
       </CardHeader>
@@ -84,7 +84,7 @@ const GiftsSection = () => {
                   />
                 ) : (
                   <div className="text-center">
-                    <gift className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                    <Gift className="h-12 w-12 mx-auto text-gray-400 mb-2" />
                     <p className="text-sm text-gray-500">לא הועלתה תמונה</p>
                   </div>
                 )}
@@ -113,7 +113,7 @@ const GiftsSection = () => {
                     asChild
                   >
                     <span>
-                      <upload className="h-4 w-4 ml-1" />
+                      <Upload className="h-4 w-4 ml-1" />
                       העלה תמונה
                     </span>
                   </Button>

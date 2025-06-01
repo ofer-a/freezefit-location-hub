@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useData } from '@/contexts/DataContext';
-import { gift } from 'lucide-react';
+import { Gift } from 'lucide-react';
 
 const CustomerClubSection = () => {
   const { userClub } = useData();
@@ -21,7 +21,7 @@ const CustomerClubSection = () => {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <gift className="h-5 w-5" />
+          <Gift className="h-5 w-5" />
           מועדון לקוחות
         </CardTitle>
       </CardHeader>
