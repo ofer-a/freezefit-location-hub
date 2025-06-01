@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -13,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import AppointmentChangeDialog from '@/components/provider/AppointmentChangeDialog';
 import EditProfileDialog from '@/components/customer/EditProfileDialog';
 import ChangePasswordDialog from '@/components/customer/ChangePasswordDialog';
+import CustomerClubSection from '@/components/customer/CustomerClubSection';
+import GiftsSection from '@/components/customer/GiftsSection';
 
 const UserProfile = () => {
   const { isAuthenticated, user } = useAuth();
@@ -80,7 +81,7 @@ const UserProfile = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* User Info */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>פרטים אישיים</CardTitle>
@@ -120,10 +121,13 @@ const UserProfile = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Customer Club Section */}
+              <CustomerClubSection />
             </div>
             
             {/* Appointments */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>התורים שלי</CardTitle>
@@ -212,6 +216,9 @@ const UserProfile = () => {
                   </Tabs>
                 </CardContent>
               </Card>
+
+              {/* Gifts Section */}
+              <GiftsSection />
             </div>
           </div>
         </div>
