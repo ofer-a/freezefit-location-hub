@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { Calendar, Clock, Edit, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, Edit, RefreshCw, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AppointmentChangeDialog from '@/components/provider/AppointmentChangeDialog';
+import EditProfileDialog from '@/components/customer/EditProfileDialog';
+import ChangePasswordDialog from '@/components/customer/ChangePasswordDialog';
 
 const UserProfile = () => {
   const { isAuthenticated, user } = useAuth();
@@ -24,6 +26,8 @@ const UserProfile = () => {
   
   const [isChangeDialogOpen, setIsChangeDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -95,10 +99,24 @@ const UserProfile = () => {
                       <label className="text-sm font-medium text-gray-500">סוג משתמש</label>
                       <p className="font-medium">{user.role === 'customer' ? 'לקוח' : 'ספק שירות'}</p>
                     </div>
-                    <Button variant="outline" className="w-full">
-                      <Edit className="h-4 w-4 ml-1" />
-                      ערוך פרטים
-                    </Button>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setIsEditProfileOpen(true)}
+                      >
+                        <Edit className="h-4 w-4 ml-1" />
+                        עדכן פרטים
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setIsChangePasswordOpen(true)}
+                      >
+                        <Lock className="h-4 w-4 ml-1" />
+                        שנה סיסמה
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -206,6 +224,18 @@ const UserProfile = () => {
         onConfirm={handleConfirmChange}
         currentDate={selectedAppointment?.date || ''}
         currentTime={selectedAppointment?.time || ''}
+      />
+
+      {/* Edit Profile Dialog */}
+      <EditProfileDialog
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
       
       <Footer />
