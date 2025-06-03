@@ -214,25 +214,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         id: 3,
         name: 'סט אביזרים',
         pointsCost: 500,
-        image: '/placeholder.svg'
-      },
-      {
-        id: 4,
-        name: 'גיפט קארד 100₪',
-        pointsCost: 600,
-        image: '/placeholder.svg'
-      },
-      {
-        id: 5,
-        name: 'טיפול ספא זוגי',
-        pointsCost: 800,
-        image: '/placeholder.svg'
-      },
-      {
-        id: 6,
-        name: 'חופשה סוף שבוע',
-        pointsCost: 1200,
-        image: '/placeholder.svg'
+        image: '/lovable-uploads/bde00d1e-667f-47df-98d8-9c7c4fb4dbda.png'
       }
     ]
   });
