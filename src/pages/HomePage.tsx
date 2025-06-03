@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { useProviderRedirect } from '@/hooks/useProviderRedirect';
 
 interface ContactFormData {
   name: string;
@@ -32,9 +31,6 @@ const HomePage = () => {
     message: '',
     submittedAt: new Date()
   });
-
-  // Use the provider redirect hook
-  useProviderRedirect();
 
   const handleFindInstitute = () => {
     if (isAuthenticated) {

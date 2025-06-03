@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -16,8 +17,7 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertTriangle,
-  RefreshCw
+  AlertTriangle
 } from 'lucide-react';
 
 // Feature cards for the provider dashboard
@@ -81,7 +81,6 @@ const ProviderDashboard = () => {
   }).length;
 
   const pendingAppointmentsCount = pendingAppointments.length;
-  const changeRequestsCount = pendingAppointments.filter(apt => apt.changeRequested).length;
   const totalCustomers = [...new Set([
     ...confirmedAppointments.map(a => a.customerName),
     ...pendingAppointments.map(a => a.customerName),
@@ -127,9 +126,6 @@ const ProviderDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">תורים בהמתנה</p>
                     <p className="text-2xl font-bold">{pendingAppointmentsCount}</p>
-                    {changeRequestsCount > 0 && (
-                      <p className="text-xs text-yellow-600">כולל {changeRequestsCount} בקשות שינוי</p>
-                    )}
                   </div>
                   <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
                     <Clock className="h-6 w-6 text-yellow-500" />
@@ -211,8 +207,7 @@ const ProviderDashboard = () => {
                       <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
                         <div>
                           <p className="font-medium">{appointment.customerName}</p>
-                          <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
-                          <p className="text-sm text-gray-600">שירות: {appointment.serviceName}, {appointment.duration}</p>
+                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
                         </div>
                         <div className="text-sm text-right">
                           <p className="font-medium">{appointment.time}</p>
@@ -229,24 +224,12 @@ const ProviderDashboard = () => {
                       <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
                         <div>
                           <p className="font-medium">{appointment.customerName}</p>
-                          <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
-                          <p className="text-sm text-gray-600">שירות: {appointment.serviceName}, {appointment.duration}</p>
-                          {appointment.changeRequested && (
-                            <p className="text-xs text-yellow-600">בקשת שינוי מועד</p>
-                          )}
+                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
                         </div>
                         <div className="text-sm text-right">
                           <p className="font-medium">{appointment.time}</p>
                           <p className="text-yellow-600 flex items-center">
-                            {appointment.changeRequested ? (
-                              <>
-                                <RefreshCw className="h-3 w-3 ml-1" /> בקשת שינוי
-                              </>
-                            ) : (
-                              <>
-                                <AlertTriangle className="h-3 w-3 ml-1" /> בהמתנה
-                              </>
-                            )}
+                            <AlertTriangle className="h-3 w-3 ml-1" /> בהמתנה
                           </p>
                         </div>
                       </div>

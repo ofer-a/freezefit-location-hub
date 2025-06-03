@@ -133,33 +133,31 @@ const FindInstitute = () => {
     // Format date for appointment
     const formattedDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
     
-    // Create new appointment with proper structure
+    // Create new appointment
     const newAppointment = {
       id: Date.now(),
       customerName: user.name,
       date: formattedDate,
       time: selectedTime,
       service: selectedService,
-      serviceName: selectedService,
       duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
-      phone: user.email || '050-0000000',
+      phone: '050-0000000', // Mock phone number
       therapistName: selectedTherapist,
-      institute: bookingInstitute.name,
-      status: 'ממתין לאישור' as const
+      institute: bookingInstitute.name
     };
     
-    // Add the appointment to pending appointments
+    // Add the appointment
     addNewAppointment(newAppointment);
     
-    // Add points to user club (50 points per appointment booking)
+    // Add points to user club (50 points per appointment)
     updateUserClubPoints(50);
     
-    // Close dialog and show success toast
+    // Close dialog and show toast
     setIsBookingDialogOpen(false);
     
     toast({
       title: "התור נקבע בהצלחה",
-      description: `נקבע תור ב${bookingInstitute.name} לתאריך ${formattedDate}, שעה ${selectedTime}. קיבלת 50 נקודות!`,
+      description: `נקבע תור ב${bookingInstitute.name} לתאריך ${formattedDate}, שעה ${selectedTime}`,
     });
     
     // Reset form
