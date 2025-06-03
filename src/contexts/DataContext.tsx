@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from 'react';
 
 // Define the data types
@@ -187,7 +186,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
-  // User club data with updated gift image
+  // User club data with updated gift images
   const [userClub, setUserClub] = useState({
     level: 'זהב',
     points: 850,
@@ -209,7 +208,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         id: 2,
         name: 'חולצת מותג',
         pointsCost: 350,
-        image: '/placeholder.svg'
+        image: '/lovable-uploads/e8aa38a8-789a-4462-813f-069777b952bb.png'
       },
       {
         id: 3,
