@@ -13,10 +13,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { User, Calendar, Clock, MessageSquare, Award, Gift, Check } from 'lucide-react';
+import RescheduleDialog from '@/components/appointments/RescheduleDialog';
 
 const UserProfile = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  const { userClub, redeemGift } = useData();
+  const { userClub, redeemGift, requestReschedule } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -31,7 +32,9 @@ const UserProfile = () => {
   const [showUpdateDetailsDialog, setShowUpdateDetailsDialog] = useState(false);
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [showRedeemGiftDialog, setShowRedeemGiftDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedGift, setSelectedGift] = useState<{id: number; name: string; pointsCost: number} | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   
   // Form states
   const [userDetails, setUserDetails] = useState({
@@ -66,10 +69,20 @@ const UserProfile = () => {
 
   // Handle reschedule appointment
   const handleRescheduleAppointment = (appointmentId: number) => {
-    toast({
-      title: "שינוי תור",
-      description: "פונקציונליות זו תהיה זמינה בקרוב",
-    });
+    setSelectedAppointmentId(appointmentId);
+    setShowRescheduleDialog(true);
+  };
+
+  // Handle reschedule confirmation
+  const handleRescheduleConfirm = (newDate: string, newTime: string) => {
+    if (selectedAppointmentId) {
+      requestReschedule(selectedAppointmentId, newDate, newTime);
+      
+      toast({
+        title: "בקשת שינוי נשלחה",
+        description: "הבקשה לשינוי התור נשלחה לאישור הספק",
+      });
+    }
   };
 
   // Handle user details update
@@ -547,6 +560,14 @@ const UserProfile = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Reschedule appointment dialog */}
+      <RescheduleDialog
+        isOpen={showRescheduleDialog}
+        onClose={() => setShowRescheduleDialog(false)}
+        onConfirm={handleRescheduleConfirm}
+        appointmentId={selectedAppointmentId || 0}
+      />
       
       <Footer />
     </div>

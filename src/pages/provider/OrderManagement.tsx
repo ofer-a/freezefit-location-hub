@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Types for appointments
@@ -32,7 +32,10 @@ const OrderManagement = () => {
     pendingAppointments, 
     confirmedAppointments, 
     historyAppointments,
-    updateAppointmentStatus
+    rescheduleRequests,
+    updateAppointmentStatus,
+    approveReschedule,
+    declineReschedule
   } = useData();
   
   // State for orders/appointments
@@ -77,6 +80,25 @@ const OrderManagement = () => {
     });
   };
 
+  const handleApproveReschedule = (orderId: number) => {
+    approveReschedule(orderId);
+    
+    toast({
+      title: "שינוי התור אושר",
+      description: "התור הועבר לרשימת התורים המאושרים עם המועד החדש",
+    });
+  };
+
+  const handleDeclineReschedule = (orderId: number) => {
+    declineReschedule(orderId);
+    
+    toast({
+      variant: "destructive",
+      title: "שינוי התור נדחה",
+      description: "התור חזר לרשימת התורים המאושרים עם המועד המקורי",
+    });
+  };
+
   // Filter orders based on search query
   const filteredConfirmedOrders = confirmedAppointments.filter(order => 
     order.customerName.includes(searchQuery)
@@ -87,6 +109,10 @@ const OrderManagement = () => {
   );
   
   const filteredHistoryOrders = historyAppointments.filter(order => 
+    order.customerName.includes(searchQuery)
+  );
+
+  const filteredRescheduleRequests = rescheduleRequests.filter(order => 
     order.customerName.includes(searchQuery)
   );
 
@@ -122,9 +148,10 @@ const OrderManagement = () => {
           <Card>
             <CardContent className="p-0">
               <Tabs defaultValue="confirmed" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="confirmed">תורים מאושרים</TabsTrigger>
                   <TabsTrigger value="pending">תורים בהמתנה</TabsTrigger>
+                  <TabsTrigger value="reschedule">בקשות שינוי</TabsTrigger>
                   <TabsTrigger value="history">היסטוריית תורים</TabsTrigger>
                 </TabsList>
                 
@@ -243,6 +270,72 @@ const OrderManagement = () => {
                         <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                         <h3 className="text-lg font-medium mb-1">אין תורים בהמתנה</h3>
                         <p className="text-gray-600">תורים חדשים שטרם אושרו יופיעו כאן</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                {/* Reschedule Requests Tab */}
+                <TabsContent value="reschedule" className="p-6">
+                  <div className="space-y-6">
+                    {filteredRescheduleRequests.map(order => (
+                      <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex flex-col md:flex-row justify-between">
+                          <div className="flex items-start space-x-4 rtl:space-x-reverse">
+                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                              <RefreshCw className="h-6 w-6 text-blue-500" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg">{order.customerName}</h3>
+                              <p className="text-gray-600">{order.service}, {order.duration}</p>
+                              <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
+                              
+                              <div className="mt-3 space-y-1">
+                                <div className="flex items-center text-sm">
+                                  <span className="font-medium text-red-600">מועד נוכחי:</span>
+                                  <Calendar className="h-3 w-3 mx-1" />
+                                  <span>{order.originalDate}</span>
+                                  <Clock className="h-3 w-3 mx-1" />
+                                  <span>{order.originalTime}</span>
+                                </div>
+                                <div className="flex items-center text-sm">
+                                  <span className="font-medium text-green-600">מועד מבוקש:</span>
+                                  <Calendar className="h-3 w-3 mx-1" />
+                                  <span>{order.requestedDate}</span>
+                                  <Clock className="h-3 w-3 mx-1" />
+                                  <span>{order.requestedTime}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 md:mt-0 flex items-center">
+                            <div className="flex space-x-2 rtl:space-x-reverse">
+                              <Button 
+                                className="bg-green-500 hover:bg-green-600 text-white"
+                                size="sm"
+                                onClick={() => handleApproveReschedule(order.id)}
+                              >
+                                אשר שינוי
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeclineReschedule(order.id)}
+                              >
+                                דחה שינוי
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {filteredRescheduleRequests.length === 0 && (
+                      <div className="text-center py-12">
+                        <RefreshCw className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium mb-1">אין בקשות שינוי</h3>
+                        <p className="text-gray-600">בקשות לשינוי תורים יופיעו כאן</p>
                       </div>
                     )}
                   </div>

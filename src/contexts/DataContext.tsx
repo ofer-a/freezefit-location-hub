@@ -7,11 +7,15 @@ interface Appointment {
   service: string;
   date: string;
   time: string;
-  status: 'נקבע' | 'הושלם' | 'בוטל';
+  status: 'נקבע' | 'הושלם' | 'בוטל' | 'ממתין לאישור שינוי';
   duration?: string;
   phone?: string;
   therapistName?: string;
   institute?: string;
+  originalDate?: string;
+  originalTime?: string;
+  requestedDate?: string;
+  requestedTime?: string;
 }
 
 interface Gift {
@@ -46,7 +50,11 @@ interface DataContextType {
   confirmedAppointments: Appointment[];
   historyAppointments: Appointment[];
   pendingAppointments: Appointment[];
+  rescheduleRequests: Appointment[];
   updateAppointmentStatus: (appointmentId: number, currentStatus: string, newStatus: string) => void;
+  requestReschedule: (appointmentId: number, newDate: string, newTime: string) => void;
+  approveReschedule: (appointmentId: number) => void;
+  declineReschedule: (appointmentId: number) => void;
   userClub: UserClub;
   redeemGift: (giftId: number) => void;
   updateUserClubPoints: (points: number) => void;
@@ -152,8 +160,68 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   ]);
 
+  const [rescheduleRequests, setRescheduleRequests] = useState<Appointment[]>([]);
+
   const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
   const [selectedMapLocation, setSelectedMapLocation] = useState<MapLocation | null>(null);
+
+  // Function to request appointment rescheduling
+  const requestReschedule = (appointmentId: number, newDate: string, newTime: string) => {
+    const appointment = confirmedAppointments.find(apt => apt.id === appointmentId);
+    if (appointment) {
+      const rescheduleRequest = {
+        ...appointment,
+        originalDate: appointment.date,
+        originalTime: appointment.time,
+        requestedDate: newDate,
+        requestedTime: newTime,
+        status: 'ממתין לאישור שינוי' as const
+      };
+      
+      setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+      setRescheduleRequests(prev => [...prev, rescheduleRequest]);
+    }
+  };
+
+  // Function to approve reschedule request
+  const approveReschedule = (appointmentId: number) => {
+    const rescheduleRequest = rescheduleRequests.find(apt => apt.id === appointmentId);
+    if (rescheduleRequest && rescheduleRequest.requestedDate && rescheduleRequest.requestedTime) {
+      const approvedAppointment = {
+        ...rescheduleRequest,
+        date: rescheduleRequest.requestedDate,
+        time: rescheduleRequest.requestedTime,
+        status: 'נקבע' as const,
+        originalDate: undefined,
+        originalTime: undefined,
+        requestedDate: undefined,
+        requestedTime: undefined
+      };
+      
+      setRescheduleRequests(prev => prev.filter(apt => apt.id !== appointmentId));
+      setConfirmedAppointments(prev => [...prev, approvedAppointment]);
+    }
+  };
+
+  // Function to decline reschedule request
+  const declineReschedule = (appointmentId: number) => {
+    const rescheduleRequest = rescheduleRequests.find(apt => apt.id === appointmentId);
+    if (rescheduleRequest && rescheduleRequest.originalDate && rescheduleRequest.originalTime) {
+      const declinedAppointment = {
+        ...rescheduleRequest,
+        date: rescheduleRequest.originalDate,
+        time: rescheduleRequest.originalTime,
+        status: 'נקבע' as const,
+        originalDate: undefined,
+        originalTime: undefined,
+        requestedDate: undefined,
+        requestedTime: undefined
+      };
+      
+      setRescheduleRequests(prev => prev.filter(apt => apt.id !== appointmentId));
+      setConfirmedAppointments(prev => [...prev, declinedAppointment]);
+    }
+  };
 
   // Function to update appointment status
   const updateAppointmentStatus = (appointmentId: number, currentStatus: string, newStatus: string) => {
@@ -295,7 +363,11 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       confirmedAppointments,
       historyAppointments,
       pendingAppointments,
+      rescheduleRequests,
       updateAppointmentStatus,
+      requestReschedule,
+      approveReschedule,
+      declineReschedule,
       userClub,
       redeemGift,
       updateUserClubPoints,
