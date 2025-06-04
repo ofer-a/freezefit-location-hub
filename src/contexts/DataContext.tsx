@@ -173,6 +173,13 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         
         if (newStatus === 'confirmed') {
           setConfirmedAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
+        } else if (newStatus === 'cancelled') {
+          // Deduct points when appointment is cancelled (50 points that were added during booking)
+          setUserClub(prevClub => ({
+            ...prevClub,
+            points: Math.max(0, prevClub.points - 50) // Ensure points don't go below 0
+          }));
+          setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
         } else {
           setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
         }
@@ -181,6 +188,15 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       const appointment = confirmedAppointments.find(apt => apt.id === appointmentId);
       if (appointment) {
         setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+        
+        if (newStatus === 'cancelled') {
+          // Deduct points when confirmed appointment is cancelled
+          setUserClub(prevClub => ({
+            ...prevClub,
+            points: Math.max(0, prevClub.points - 50) // Ensure points don't go below 0
+          }));
+        }
+        
         setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
       }
     }
