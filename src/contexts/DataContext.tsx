@@ -80,83 +80,90 @@ const useData = () => {
 };
 
 const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Mock appointments data (in a real app, this would come from an API)
+  // Updated mock appointments data with therapist names and proper service types
   const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>([
     {
       id: 1,
-      customerName: 'אבי כהן',
-      service: 'טיפול פנים',
+      customerName: 'אבי כהן', // This will now represent therapist name in the display
+      service: 'טיפול שיקום',
       date: '2024-07-10',
       time: '10:00',
       status: 'נקבע',
       duration: '60 דקות',
-      phone: '050-1234567'
+      phone: '050-1234567',
+      therapistName: 'אבי כהן'
     },
     {
       id: 2,
-      customerName: 'שרה לוי',
-      service: 'עיסוי רפואי',
+      customerName: 'שרה לוי', // This will now represent therapist name in the display
+      service: 'טיפול ספורטאים',
       date: '2024-07-15',
       time: '14:00',
       status: 'נקבע',
       duration: '45 דקות',
-      phone: '050-2345678'
+      phone: '050-2345678',
+      therapistName: 'שרה לוי'
     }
   ]);
 
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([
     {
       id: 10,
-      customerName: 'דן גולן',
-      service: 'טיפול ספורטאים',
+      customerName: 'דן גולן', // This will now represent therapist name in the display
+      service: 'טיפול סטנדרטי',
       date: '2024-07-12',
       time: '16:00',
       status: 'נקבע',
       duration: '30 דקות',
-      phone: '050-3456789'
+      phone: '050-3456789',
+      therapistName: 'דן גולן'
     }
   ]);
 
   const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([
     {
       id: 3,
-      customerName: 'אבי כהן',
-      service: 'טיפול פנים',
+      customerName: 'אבי כהן', // This will now represent therapist name in the display
+      service: 'טיפול קצר',
       date: '2024-06-10',
       time: '10:00',
       status: 'הושלם',
       duration: '60 דקות',
-      phone: '050-1234567'
+      phone: '050-1234567',
+      therapistName: 'אבי כהן'
     },
     {
       id: 4,
-      customerName: 'שרה לוי',
-      service: 'עיסוי רפואי',
+      customerName: 'שרה לוי', // This will now represent therapist name in the display
+      service: 'טיפול ספורטאים',
       date: '2024-06-15',
       time: '14:00',
       status: 'הושלם',
       duration: '45 דקות',
-      phone: '050-2345678'
+      phone: '050-2345678',
+      therapistName: 'שרה לוי'
     },
     {
       id: 5,
-      customerName: 'אבי כהן',
-      service: 'טיפול פנים',
+      customerName: 'אבי כהן', // This will now represent therapist name in the display
+      service: 'טיפול שיקום',
       date: '2024-05-10',
       time: '10:00',
       status: 'בוטל',
       duration: '60 דקות',
-      phone: '050-1234567'
+      phone: '050-1234567',
+      therapistName: 'אבי כהן'
     },
     {
       id: 6,
-      customerName: 'שרה לוי',
-      service: 'עיסוי רפואי',
+      customerName: 'שרה לוי', // This will now represent therapist name in the display
+      service: 'טיפול סטנדרטי',
       date: '2024-05-15',
       time: '14:00',
       status: 'בוטל',
       duration: '45 דקות',
-      phone: '050-2345678'
+      phone: '050-2345678',
+      therapistName: 'שרה לוי'
     }
   ]);
 
@@ -328,11 +335,14 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }));
   };
 
-  // Function to add new appointment
+  // Updated function to add new appointment with therapist name instead of customer name
   const addNewAppointment = (appointment: any) => {
     const newAppointment: Appointment = {
       ...appointment,
-      status: 'נקבע' as const
+      status: 'נקבע' as const,
+      // Store therapist name in customerName field for display purposes
+      customerName: appointment.therapistName,
+      therapistName: appointment.therapistName
     };
     setPendingAppointments(prev => [...prev, newAppointment]);
   };

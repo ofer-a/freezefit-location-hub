@@ -133,10 +133,10 @@ const FindInstitute = () => {
     // Format date for appointment
     const formattedDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
     
-    // Create new appointment
+    // Create new appointment with therapist name as the primary display name
     const newAppointment = {
       id: Date.now(),
-      customerName: user.name,
+      customerName: selectedTherapist, // Store therapist name for display
       date: formattedDate,
       time: selectedTime,
       service: selectedService,
@@ -157,7 +157,7 @@ const FindInstitute = () => {
     
     toast({
       title: "התור נקבע בהצלחה",
-      description: `נקבע תור ב${bookingInstitute.name} לתאריך ${formattedDate}, שעה ${selectedTime}`,
+      description: `נקבע תור ב${bookingInstitute.name} עם ${selectedTherapist} לתאריך ${formattedDate}, שעה ${selectedTime}`,
     });
     
     // Reset form
@@ -209,7 +209,7 @@ const FindInstitute = () => {
     '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
   ];
   
-  // Services for booking
+  // Updated services for booking with the new treatment types
   const services = [
     'טיפול סטנדרטי',
     'טיפול ספורטאים',
