@@ -1,6 +1,5 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -189,28 +188,6 @@ const GoogleMapComponent: React.FC<{
   return <div ref={ref} style={{ width: '100%', height: '100%' }} />;
 };
 
-const render = (status: Status) => {
-  if (status === Status.LOADING) return (
-    <div className="flex items-center justify-center h-[500px]">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>טוען מפה...</p>
-      </div>
-    </div>
-  );
-  if (status === Status.FAILURE) return (
-    <div className="flex items-center justify-center h-[500px]">
-      <Card className="p-6 text-center">
-        <h3 className="text-xl font-medium mb-4 text-red-600">שגיאה בטעינת המפה</h3>
-        <p className="text-gray-600">
-          לא ניתן לטען את המפה כעת. אנא בדוק את החיבור לאינטרנט ונסה שוב.
-        </p>
-      </Card>
-    </div>
-  );
-  return null;
-};
-
 const MapComponent: React.FC<MapComponentProps> = ({
   userLocation,
   markers = [],
@@ -218,14 +195,47 @@ const MapComponent: React.FC<MapComponentProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState<string>('');
   const [showKeyInput, setShowKeyInput] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const { toast } = useToast();
 
   // Israel centered coordinates
   const israelCenter = { lat: 31.4117, lng: 35.0818 };
 
-  const handleKeySubmit = (e: React.FormEvent) => {
+  // Load Google Maps script
+  const loadGoogleMapsScript = useCallback((key: string) => {
+    return new Promise<void>((resolve, reject) => {
+      // Check if Google Maps is already loaded
+      if (window.google && window.google.maps) {
+        resolve();
+        return;
+      }
+
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve());
+        existingScript.addEventListener('error', () => reject());
+        return;
+      }
+
+      // Create and load the script
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => resolve();
+      script.onerror = () => reject();
+      
+      document.head.appendChild(script);
+    });
+  }, []);
+
+  const handleKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const input = (e.target as HTMLFormElement).apiKey.value;
+    
     if (!input) {
       toast({
         variant: "destructive",
@@ -234,13 +244,30 @@ const MapComponent: React.FC<MapComponentProps> = ({
       });
       return;
     }
-    setApiKey(input);
-    setShowKeyInput(false);
+
+    setIsLoading(true);
+    setLoadError(false);
     
-    toast({
-      title: "מפה נטענה בהצלחה",
-      description: "כעת ניתן לראות את המכונים הקרובים אליך",
-    });
+    try {
+      await loadGoogleMapsScript(input);
+      setApiKey(input);
+      setShowKeyInput(false);
+      
+      toast({
+        title: "מפה נטענה בהצלחה",
+        description: "כעת ניתן לראות את המכונים הקרובים אליך",
+      });
+    } catch (error) {
+      console.error('Failed to load Google Maps:', error);
+      setLoadError(true);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בטעינת המפה",
+        description: "אנא בדוק את מפתח ה-API ונסה שוב",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (showKeyInput) {
@@ -266,24 +293,41 @@ const MapComponent: React.FC<MapComponentProps> = ({
             name="apiKey"
             placeholder="הכנס מפתח Google Maps API"
             className="w-full p-3 border border-gray-300 rounded-md"
+            disabled={isLoading}
           />
-          <Button type="submit">הצג מפה</Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'טוען...' : 'הצג מפה'}
+          </Button>
         </form>
+        {loadError && (
+          <p className="text-red-600 mt-4">
+            שגיאה בטעינת המפה. אנא בדוק את מפתח ה-API ונסה שוב.
+          </p>
+        )}
       </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[500px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>טוען מפה...</p>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="relative rounded-lg overflow-hidden h-[500px] shadow-lg">
-      <Wrapper apiKey={apiKey} render={render} libraries={['marker']}>
-        <GoogleMapComponent 
-          center={israelCenter}
-          zoom={7}
-          markers={markers}
-          userLocation={userLocation}
-          onMarkerClick={onMarkerClick}
-        />
-      </Wrapper>
+      <GoogleMapComponent 
+        center={israelCenter}
+        zoom={7}
+        markers={markers}
+        userLocation={userLocation}
+        onMarkerClick={onMarkerClick}
+      />
     </div>
   );
 };
