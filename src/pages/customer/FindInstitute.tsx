@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -133,18 +132,19 @@ const FindInstitute = () => {
     // Format date for appointment
     const formattedDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
     
-    // Create new appointment with therapist name as the primary display name
+    // Create new appointment with proper structure
     const newAppointment = {
-      id: Date.now(),
-      customerName: selectedTherapist, // Store therapist name for display
+      id: Date.now(), // Generate unique ID
+      therapistName: selectedTherapist,
+      service: selectedService,
       date: formattedDate,
       time: selectedTime,
-      service: selectedService,
       duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
       phone: '050-0000000', // Mock phone number
-      therapistName: selectedTherapist,
       institute: bookingInstitute.name
     };
+    
+    console.log('Creating appointment:', newAppointment); // Debug log
     
     // Add the appointment
     addNewAppointment(newAppointment);

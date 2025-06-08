@@ -335,16 +335,29 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }));
   };
 
-  // Updated function to add new appointment with therapist name instead of customer name
+  // Updated function to add new appointment with proper structure
   const addNewAppointment = (appointment: any) => {
+    console.log('Adding new appointment:', appointment); // Debug log
+    
     const newAppointment: Appointment = {
-      ...appointment,
-      status: 'נקבע' as const,
-      // Store therapist name in customerName field for display purposes
-      customerName: appointment.therapistName,
-      therapistName: appointment.therapistName
+      id: appointment.id,
+      customerName: appointment.therapistName, // Use therapist name for display
+      service: appointment.service,
+      date: appointment.date,
+      time: appointment.time,
+      status: 'נקבע',
+      duration: appointment.duration,
+      phone: appointment.phone,
+      therapistName: appointment.therapistName,
+      institute: appointment.institute
     };
-    setPendingAppointments(prev => [...prev, newAppointment]);
+    
+    console.log('Formatted appointment:', newAppointment); // Debug log
+    setPendingAppointments(prev => {
+      const updated = [...prev, newAppointment];
+      console.log('Updated pending appointments:', updated); // Debug log
+      return updated;
+    });
   };
 
   // Function to add contact inquiry
