@@ -21,12 +21,16 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Mock appointments from our context (in a real app, we would filter these by user)
+  // Get both confirmed and pending appointments for upcoming appointments
   const { 
-    confirmedAppointments: upcomingAppointments, 
+    confirmedAppointments,
+    pendingAppointments,
     historyAppointments: pastAppointments,
     updateAppointmentStatus
   } = useData();
+  
+  // Combine confirmed and pending appointments for the upcoming list
+  const upcomingAppointments = [...confirmedAppointments, ...pendingAppointments];
   
   // Dialog states
   const [showUpdateDetailsDialog, setShowUpdateDetailsDialog] = useState(false);
@@ -57,9 +61,12 @@ const UserProfile = () => {
     }
   });
 
-  // Handle appointment cancellation
+  // Handle appointment cancellation - check if it's pending or confirmed
   const handleCancelAppointment = (appointmentId: number) => {
-    updateAppointmentStatus(appointmentId, 'confirmed', 'cancelled');
+    const isPending = pendingAppointments.some(apt => apt.id === appointmentId);
+    const currentStatus = isPending ? 'pending' : 'confirmed';
+    
+    updateAppointmentStatus(appointmentId, currentStatus, 'cancelled');
     
     toast({
       title: "התור בוטל",
@@ -256,42 +263,50 @@ const UserProfile = () => {
                       <TabsTrigger value="history">היסטוריית תורים</TabsTrigger>
                     </TabsList>
                     
-                    {/* Upcoming appointments */}
+                    {/* Upcoming appointments - now shows both confirmed and pending */}
                     <TabsContent value="upcoming" className="mt-4">
                       {upcomingAppointments.length > 0 ? (
                         <div className="space-y-4">
-                          {upcomingAppointments.map(appointment => (
-                            <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
-                                  <p className="text-gray-700">{appointment.service}</p>
-                                  <div className="flex items-center mt-2">
-                                    <Calendar className="h-4 w-4 ml-1" />
-                                    <span className="text-sm">{appointment.date}</span>
-                                    <Clock className="h-4 w-4 mx-1 mr-3" />
-                                    <span className="text-sm">{appointment.time}</span>
+                          {upcomingAppointments.map(appointment => {
+                            const isPending = pendingAppointments.some(apt => apt.id === appointment.id);
+                            return (
+                              <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
+                                    <p className="text-gray-700">{appointment.service}</p>
+                                    <div className="flex items-center mt-2">
+                                      <Calendar className="h-4 w-4 ml-1" />
+                                      <span className="text-sm">{appointment.date}</span>
+                                      <Clock className="h-4 w-4 mx-1 mr-3" />
+                                      <span className="text-sm">{appointment.time}</span>
+                                    </div>
+                                    {isPending && (
+                                      <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                                        ממתין לאישור
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRescheduleAppointment(appointment.id)}
+                                    >
+                                      שינוי תור
+                                    </Button>
+                                    <Button 
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleCancelAppointment(appointment.id)}
+                                    >
+                                      ביטול תור
+                                    </Button>
                                   </div>
                                 </div>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleRescheduleAppointment(appointment.id)}
-                                  >
-                                    שינוי תור
-                                  </Button>
-                                  <Button 
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => handleCancelAppointment(appointment.id)}
-                                  >
-                                    ביטול תור
-                                  </Button>
-                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-8">
