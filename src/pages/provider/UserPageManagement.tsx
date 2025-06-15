@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -143,6 +142,24 @@ const UserPageManagement = () => {
     toast({
       title: "תמונה עודכנה",
       description: "תמונת המטפל עודכנה בהצלחה",
+    });
+  };
+
+  // Handle gallery image upload for existing images
+  const handleGalleryImageUpload = (imageId: number, file: File) => {
+    const imageUrl = URL.createObjectURL(file);
+    
+    setGallery(prevGallery => 
+      prevGallery.map(image => 
+        image.id === imageId 
+          ? { ...image, url: imageUrl }
+          : image
+      )
+    );
+    
+    toast({
+      title: "תמונה עודכנה",
+      description: "תמונת הגלריה עודכנה בהצלחה",
     });
   };
 
@@ -372,12 +389,27 @@ const UserPageManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {gallery.map(image => (
                       <div key={image.id} className="relative group">
-                        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
                           <img 
                             src={image.url} 
                             alt={image.title} 
                             className="w-full h-full object-cover"
                           />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer mr-2">
+                              <Upload className="h-6 w-6 text-white" />
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleGalleryImageUpload(image.id, e.target.files[0]);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
                         </div>
                         <Button
                           variant="destructive"
