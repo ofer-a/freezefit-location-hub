@@ -128,6 +128,24 @@ const UserPageManagement = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
 
+  // Handle therapist image upload for existing therapists
+  const handleTherapistImageUpload = (therapistId: number, file: File) => {
+    const imageUrl = URL.createObjectURL(file);
+    
+    setTherapists(prevTherapists => 
+      prevTherapists.map(therapist => 
+        therapist.id === therapistId 
+          ? { ...therapist, image: imageUrl }
+          : therapist
+      )
+    );
+    
+    toast({
+      title: "תמונה עודכנה",
+      description: "תמונת המטפל עודכנה בהצלחה",
+    });
+  };
+
   // Handle therapist image selection
   const handleTherapistImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -275,7 +293,7 @@ const UserPageManagement = () => {
                     {therapists.map(therapist => (
                       <Card key={therapist.id} className="overflow-hidden">
                         <div className="flex flex-col md:flex-row">
-                          <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center">
+                          <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center relative group">
                             <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                               {therapist.image === '/placeholder.svg' ? (
                                 <User className="h-12 w-12 text-gray-500" />
@@ -286,6 +304,21 @@ const UserPageManagement = () => {
                                   className="w-full h-full object-cover" 
                                 />
                               )}
+                            </div>
+                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <label className="cursor-pointer">
+                                <Upload className="h-6 w-6 text-white" />
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      handleTherapistImageUpload(therapist.id, e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                              </label>
                             </div>
                           </div>
                           <div className="md:w-2/3 p-4">
