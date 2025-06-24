@@ -9,7 +9,6 @@ import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-
 interface ContactFormData {
   name: string;
   email: string;
@@ -17,12 +16,17 @@ interface ContactFormData {
   message: string;
   submittedAt: Date;
 }
-
 const HomePage = () => {
-  const { isAuthenticated } = useAuth();
-  const { addContactInquiry } = useData();
+  const {
+    isAuthenticated
+  } = useAuth();
+  const {
+    addContactInquiry
+  } = useData();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [email, setEmail] = useState('');
   const [contactFormData, setContactFormData] = useState<ContactFormData>({
     name: '',
@@ -31,46 +35,48 @@ const HomePage = () => {
     message: '',
     submittedAt: new Date()
   });
-
   const handleFindInstitute = () => {
     if (isAuthenticated) {
       navigate('/find-institute');
     } else {
-      navigate('/login', { state: { redirectTo: '/find-institute' } });
+      navigate('/login', {
+        state: {
+          redirectTo: '/find-institute'
+        }
+      });
     }
   };
-
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
       title: "נרשמת בהצלחה!",
-      description: "תודה על הרשמתך לעדכונים",
+      description: "תודה על הרשמתך לעדכונים"
     });
     setEmail('');
   };
-
   const handleContactFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const {
+      name,
+      value
+    } = e.target;
     setContactFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
-
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Add to our shared context
     addContactInquiry({
       ...contactFormData,
       submittedAt: new Date()
     });
-    
     toast({
       title: "ההודעה נשלחה בהצלחה",
-      description: "ניצור איתך קשר בהקדם",
+      description: "ניצור איתך קשר בהקדם"
     });
-    
+
     // Reset form
     setContactFormData({
       name: '',
@@ -85,12 +91,12 @@ const HomePage = () => {
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId);
     if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+      section.scrollIntoView({
+        behavior: 'smooth'
+      });
     }
   };
-
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+  return <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
       {/* Hero Section */}
@@ -103,10 +109,7 @@ const HomePage = () => {
             <p className="text-xl md:text-2xl mb-8 opacity-90 animate-fade-in">
               הפלטפורמה המובילה לניהול וחיפוש מרכזי טיפול באמבטיות קרח
             </p>
-            <Button 
-              onClick={handleFindInstitute}
-              className="bg-freezefit-300 hover:bg-freezefit-400 text-black text-lg py-6 px-8 rounded-md animate-fade-in flex items-center mx-auto"
-            >
+            <Button onClick={handleFindInstitute} className="bg-freezefit-300 hover:bg-freezefit-400 text-black text-lg py-6 px-8 rounded-md animate-fade-in flex items-center mx-auto">
               מצא מכון
               <ArrowLeft className="mr-2 h-5 w-5" />
             </Button>
@@ -125,7 +128,7 @@ const HomePage = () => {
                 <MapPin className="h-8 w-8 text-freezefit-300" />
               </div>
               <h3 className="text-xl font-semibold mb-3">מציאת מכון קרוב</h3>
-              <p className="text-gray-600">איתור מרכזי טיפול ברדיוס של 7 ק"מ מהמיקום שלך</p>
+              <p className="text-gray-600">איתור מרכזי טיפול ברדיוס הקרוב למיקום שלך</p>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
@@ -163,14 +166,7 @@ const HomePage = () => {
             <p className="text-gray-600 mb-8">הירשמו לקבלת עדכונים שוטפים, מבצעים מיוחדים ותכנים בלעדיים</p>
             
             <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-4">
-              <Input
-                type="email"
-                placeholder="הכנס את כתובת האימייל שלך"
-                className="flex-grow"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <Input type="email" placeholder="הכנס את כתובת האימייל שלך" className="flex-grow" value={email} onChange={e => setEmail(e.target.value)} required />
               <Button type="submit" className="bg-freezefit-300 hover:bg-freezefit-400 text-white">
                 הירשם
               </Button>
@@ -218,8 +214,6 @@ const HomePage = () => {
       </section>
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default HomePage;
