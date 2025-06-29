@@ -26,7 +26,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
   const { toast } = useToast();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
-  const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
+  const [reportFormat, setReportFormat] = useState<'pdf' | 'excel'>('pdf');
   const [isGenerating, setIsGenerating] = useState(false);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
@@ -180,7 +180,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
       const filters: ReportFilters = {
         startDate,
         endDate,
-        format
+        format: reportFormat
       };
 
       const reportData = await fetchReportData(filters);
@@ -195,7 +195,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
       }
 
       // Generate the report
-      if (format === 'pdf') {
+      if (reportFormat === 'pdf') {
         ReportGenerator.generatePDF(reportData);
       } else {
         ReportGenerator.generateExcel(reportData);
@@ -292,7 +292,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
 
             <div>
               <Label htmlFor="format">פורמט הדוח</Label>
-              <Select value={format} onValueChange={(value: 'pdf' | 'excel') => setFormat(value)}>
+              <Select value={reportFormat} onValueChange={(value: 'pdf' | 'excel') => setReportFormat(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="בחר פורמט" />
                 </SelectTrigger>

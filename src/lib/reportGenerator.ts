@@ -16,22 +16,28 @@ declare module 'jspdf' {
 export class ReportGenerator {
   static generatePDF(data: ReportData): void {
     const doc = new jsPDF();
+    let currentY = 20;
     
     // Add Hebrew font support (basic)
     doc.setFont('helvetica');
     
     // Header
     doc.setFontSize(20);
-    doc.text('דוח הזמנות', 105, 20, { align: 'center' });
+    doc.text('דוח הזמנות', 105, currentY, { align: 'center' });
+    currentY += 20;
     
     doc.setFontSize(12);
-    doc.text(`${data.businessName}`, 20, 35);
-    doc.text(`תקופה: ${format(data.dateRange.start, 'dd/MM/yyyy')} - ${format(data.dateRange.end, 'dd/MM/yyyy')}`, 20, 45);
-    doc.text(`נוצר בתאריך: ${format(data.generatedAt, 'dd/MM/yyyy HH:mm')}`, 20, 55);
+    doc.text(`${data.businessName}`, 20, currentY);
+    currentY += 10;
+    doc.text(`תקופה: ${format(data.dateRange.start, 'dd/MM/yyyy')} - ${format(data.dateRange.end, 'dd/MM/yyyy')}`, 20, currentY);
+    currentY += 10;
+    doc.text(`נוצר בתאריך: ${format(data.generatedAt, 'dd/MM/yyyy HH:mm')}`, 20, currentY);
+    currentY += 20;
     
     // Summary section
     doc.setFontSize(14);
-    doc.text('סיכום כללי', 20, 75);
+    doc.text('סיכום כללי', 20, currentY);
+    currentY += 10;
     
     const summaryData = [
       ['סה"כ תורים', data.summary.totalAppointments.toString()],
@@ -44,15 +50,22 @@ export class ReportGenerator {
     doc.autoTable({
       head: [['פרמטר', 'ערך']],
       body: summaryData,
-      startY: 85,
+      startY: currentY,
       styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185] }
+      headStyles: { fillColor: [41, 128, 185] },
+      didDrawPage: function (data: any) {
+        currentY = data.cursor.y + 10;
+      }
     });
+    
+    // Update currentY after summary table
+    currentY += summaryData.length * 8 + 30;
     
     // Services section
     if (data.services.length > 0) {
       doc.setFontSize(14);
-      doc.text('פירוט שירותים', 20, doc.lastAutoTable.finalY + 20);
+      doc.text('פירוט שירותים', 20, currentY);
+      currentY += 10;
       
       const servicesData = data.services.map(service => [
         service.name,
@@ -63,7 +76,7 @@ export class ReportGenerator {
       doc.autoTable({
         head: [['שירות', 'כמות', 'הכנסות']],
         body: servicesData,
-        startY: doc.lastAutoTable.finalY + 30,
+        startY: currentY,
         styles: { fontSize: 10, cellPadding: 3 },
         headStyles: { fillColor: [46, 125, 50] }
       });
