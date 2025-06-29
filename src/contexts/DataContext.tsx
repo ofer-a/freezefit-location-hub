@@ -46,6 +46,20 @@ interface MapLocation {
   lng: number;
 }
 
+interface Review {
+  id: string;
+  customerName: string;
+  customerId: string;
+  instituteName: string;
+  instituteId: number;
+  therapistName: string;
+  therapistId: number;
+  rating: number;
+  reviewText: string;
+  isAnonymous: boolean;
+  submittedAt: Date;
+}
+
 interface DataContextType {
   confirmedAppointments: Appointment[];
   historyAppointments: Appointment[];
@@ -65,6 +79,8 @@ interface DataContextType {
   setSelectedMapLocation: (location: MapLocation | null) => void;
   sendPasswordResetCode: (email: string) => Promise<string>;
   verifyResetCode: (email: string, code: string) => Promise<boolean>;
+  reviews: Review[];
+  addReview: (review: Review) => void;
 }
 
 // Create the context
@@ -171,6 +187,41 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
   const [selectedMapLocation, setSelectedMapLocation] = useState<MapLocation | null>(null);
+
+  // Add reviews state
+  const [reviews, setReviews] = useState<Review[]>([
+    {
+      id: '1',
+      customerName: 'יוסי כהן',
+      customerId: '1',
+      instituteName: 'מרכז קריוסטיים',
+      instituteId: 1,
+      therapistName: 'דני כהן',
+      therapistId: 1,
+      rating: 5,
+      reviewText: 'חוויה מדהימה! הטיפול היה מקצועי והמטפל מאוד נחמד וסבלני.',
+      isAnonymous: false,
+      submittedAt: new Date('2024-06-15')
+    },
+    {
+      id: '2',
+      customerName: 'אנונימי',
+      customerId: '2',
+      instituteName: 'קריו פלוס',
+      instituteId: 2,
+      therapistName: 'רונית דוד',
+      therapistId: 3,
+      rating: 4,
+      reviewText: 'טיפול טוב, המקום נקי ומסודר. ממליץ בחום.',
+      isAnonymous: true,
+      submittedAt: new Date('2024-06-20')
+    }
+  ]);
+
+  // Add review function
+  const addReview = (review: Review) => {
+    setReviews(prev => [...prev, review]);
+  };
 
   // Function to request appointment rescheduling
   const requestReschedule = (appointmentId: number, newDate: string, newTime: string) => {
@@ -400,7 +451,9 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       selectedMapLocation,
       setSelectedMapLocation,
       sendPasswordResetCode,
-      verifyResetCode
+      verifyResetCode,
+      reviews,
+      addReview
     }}>
       {children}
     </DataContext.Provider>
