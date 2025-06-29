@@ -1,127 +1,44 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import ReportDialog from '@/components/reports/ReportDialog';
 import { 
   Calendar, 
-  UserCog, 
+  Users, 
   Store, 
-  ClipboardList, 
-  MessageSquare,
-  Users,
+  User, 
+  MessageSquare, 
+  FileText,
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertTriangle,
-  FileText,
-  Star
+  XCircle
 } from 'lucide-react';
-
-// Feature cards for the provider dashboard
-const featureCards = [
-  {
-    title: 'ניהול הזמנות',
-    description: 'צפייה וניהול בהזמנות, תורים ממתינים והיסטוריה',
-    icon: ClipboardList,
-    link: '/order-management',
-    color: 'bg-blue-50',
-    action: 'navigate'
-  },
-  {
-    title: 'ניהול חנות',
-    description: 'ניהול שעות פתיחה, סדנאות ומחירון',
-    icon: Store,
-    link: '/store-management',
-    color: 'bg-green-50',
-    action: 'navigate'
-  },
-  {
-    title: 'עיצוב דף למשתמש',
-    description: 'פרטי מטפלים, גלריה וחוויות לקוחות',
-    icon: UserCog,
-    link: '/user-page-management',
-    color: 'bg-purple-50',
-    action: 'navigate'
-  },
-  {
-    title: 'פניות לקוחות',
-    description: 'צפייה וטיפול בפניות חדשות מלקוחות',
-    icon: MessageSquare,
-    link: '/customer-inquiries',
-    color: 'bg-yellow-50',
-    action: 'navigate'
-  },
-  {
-    title: 'ביקורות לקוחות',
-    description: 'צפייה בביקורות ודירוגים שהתקבלו',
-    icon: Star,
-    link: '/reviews',
-    color: 'bg-pink-50',
-    action: 'navigate'
-  },
-  {
-    title: 'יצירת דוח',
-    description: 'יצירת דוחות מפורטים על הזמנות והכנסות',
-    icon: FileText,
-    link: '',
-    color: 'bg-orange-50',
-    action: 'dialog'
-  }
-];
 
 const ProviderDashboard = () => {
   const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
   const { 
-    pendingAppointments, 
     confirmedAppointments, 
-    historyAppointments,
-    contactInquiries,
-    reviews
+    historyAppointments, 
+    pendingAppointments, 
+    rescheduleRequests 
   } = useData();
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
-  // Check authentication
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'provider') {
-      navigate('/login');
-    }
-  }, [isAuthenticated, user, navigate]);
+  if (!isAuthenticated) {
+    navigate('/login');
+    return null;
+  }
 
-  // Calculate real-time metrics from context data
-  const todaysAppointments = confirmedAppointments.filter(appointment => {
-    // Check if appointment is for today
-    const today = new Date();
-    const [day, month, year] = appointment.date.split('/');
-    const appointmentDate = new Date(`${year}-${month}-${day}`);
-    return appointmentDate.getDate() === today.getDate() && 
-           appointmentDate.getMonth() === today.getMonth() && 
-           appointmentDate.getFullYear() === today.getFullYear();
-  }).length;
-
-  const pendingAppointmentsCount = pendingAppointments.length;
-  const totalCustomers = [...new Set([
-    ...confirmedAppointments.map(a => a.customerName),
-    ...pendingAppointments.map(a => a.customerName),
-    ...historyAppointments.map(a => a.customerName)
-  ])].length;
-
-  // Calculate weekly revenue (mock data - in a real app, this would come from actual payment data)
-  const weeklyRevenue = '₪4,850';
-
-  const handleFeatureCardClick = (card: typeof featureCards[0]) => {
-    if (card.action === 'navigate') {
-      navigate(card.link);
-    } else if (card.action === 'dialog' && card.title === 'יצירת דוח') {
-      setReportDialogOpen(true);
-    }
-  };
+  // Calculate statistics
+  const totalAppointments = confirmedAppointments.length + historyAppointments.length + pendingAppointments.length;
+  const completedAppointments = historyAppointments.filter(apt => apt.status === 'הושלם').length;
+  const cancelledAppointments = historyAppointments.filter(apt => apt.status === 'בוטל').length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -129,254 +46,141 @@ const ProviderDashboard = () => {
       
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto">
-          {/* Welcome section */}
-          <div className="mb-10">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2">שלום, {user?.name}</h1>
-              <p className="text-gray-600">ברוך הבא ללוח הבקרה שלך</p>
-            </div>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">לוח בקרה של ספק שירות</h1>
+            <p className="text-gray-600 mt-1">ברוך הבא, {user?.name}</p>
           </div>
           
-          {/* Stats overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <Card className="border-l-4 border-l-green-500">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">תורים להיום</p>
-                    <p className="text-2xl font-bold">{todaysAppointments}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
-                    <Calendar className="h-6 w-6 text-green-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-l-4 border-l-yellow-500">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">תורים בהמתנה</p>
-                    <p className="text-2xl font-bold">{pendingAppointmentsCount}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-yellow-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-l-4 border-l-blue-500">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">סה"כ לקוחות</p>
-                    <p className="text-2xl font-bold">{totalCustomers}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-blue-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-l-4 border-l-purple-500">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">הכנסות שבועיות</p>
-                    <p className="text-2xl font-bold">{weeklyRevenue}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-purple-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Feature cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-10">
-            {featureCards.map((card, index) => {
-              const Icon = card.icon;
-              return (
-                <div key={index}>
-                  {card.action === 'navigate' ? (
-                    <Link to={card.link} className="block">
-                      <Card className="h-full transition-all hover:shadow-md hover:border-freezefit-300">
-                        <CardContent className="pt-6">
-                          <div className={`w-12 h-12 ${card.color} rounded-full flex items-center justify-center mb-4`}>
-                            <Icon className="h-6 w-6 text-freezefit-300" />
-                          </div>
-                          <h3 className="text-lg font-bold mb-2">{card.title}</h3>
-                          <p className="text-sm text-gray-600">{card.description}</p>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    <Card 
-                      className="h-full transition-all hover:shadow-md hover:border-freezefit-300 cursor-pointer"
-                      onClick={() => handleFeatureCardClick(card)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className={`w-12 h-12 ${card.color} rounded-full flex items-center justify-center mb-4`}>
-                          <Icon className="h-6 w-6 text-freezefit-300" />
-                        </div>
-                        <h3 className="text-lg font-bold mb-2">{card.title}</h3>
-                        <p className="text-sm text-gray-600">{card.description}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          
-          {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
-              <CardHeader>
-                <CardTitle>תורים להיום</CardTitle>
-                <CardDescription>צפייה בתורים המתוכננים להיום</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">סה״כ תורים</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {confirmedAppointments
-                    .filter(appointment => {
-                      // Check if appointment is for today
-                      const today = new Date();
-                      const [day, month, year] = appointment.date.split('/');
-                      const appointmentDate = new Date(`${year}-${month}-${day}`);
-                      return appointmentDate.getDate() === today.getDate() && 
-                             appointmentDate.getMonth() === today.getMonth() && 
-                             appointmentDate.getFullYear() === today.getFullYear();
-                    })
-                    .slice(0, 3)
-                    .map(appointment => (
-                      <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">{appointment.customerName}</p>
-                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
-                        </div>
-                        <div className="text-sm text-right">
-                          <p className="font-medium">{appointment.time}</p>
-                          <p className="text-green-600 flex items-center">
-                            <CheckCircle className="h-3 w-3 ml-1" /> מאושר
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  
-                  {pendingAppointments
-                    .slice(0, 1)
-                    .map(appointment => (
-                      <div key={appointment.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">{appointment.customerName}</p>
-                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration}</p>
-                        </div>
-                        <div className="text-sm text-right">
-                          <p className="font-medium">{appointment.time}</p>
-                          <p className="text-yellow-600 flex items-center">
-                            <AlertTriangle className="h-3 w-3 ml-1" /> בהמתנה
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  
-                  {confirmedAppointments.length === 0 && pendingAppointments.length === 0 && (
-                    <div className="text-center py-6">
-                      <p className="text-gray-500">אין תורים להיום</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-6 text-center">
-                  <Button variant="outline" onClick={() => navigate('/order-management')}>
-                    צפייה בכל התורים
-                  </Button>
-                </div>
+                <div className="text-2xl font-bold">{totalAppointments}</div>
+                <p className="text-xs text-muted-foreground">
+                  כל התורים במערכת
+                </p>
               </CardContent>
             </Card>
             
             <Card>
-              <CardHeader>
-                <CardTitle>פעילות אחרונה</CardTitle>
-                <CardDescription>עדכונים אחרונים במערכת</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">תורים פעילים</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {reviews.length > 0 && (
-                    <div className="border-r-2 border-pink-500 pr-4">
-                      <p className="text-sm text-gray-500">
-                        {reviews[0].submittedAt.toLocaleDateString('he-IL')}
-                      </p>
-                      <p className="font-medium">ביקורת חדשה התקבלה</p>
-                      <p className="text-sm text-gray-600">
-                        {reviews[0].customerName} דירג {reviews[0].rating}/5 כוכבים
-                      </p>
-                    </div>
-                  )}
-                  
-                  {pendingAppointments.length > 0 && (
-                    <div className="border-r-2 border-green-500 pr-4">
-                      <p className="text-sm text-gray-500">לפני {Math.floor(Math.random() * 60)} דקות</p>
-                      <p className="font-medium">הזמנה חדשה מ{pendingAppointments[0].customerName}</p>
-                      <p className="text-sm text-gray-600">הזמנת תור לתאריך {pendingAppointments[0].date}</p>
-                    </div>
-                  )}
-                  
-                  <div className="border-r-2 border-blue-500 pr-4">
-                    <p className="text-sm text-gray-500">לפני שעתיים</p>
-                    <p className="font-medium">עדכון מחירון</p>
-                    <p className="text-sm text-gray-600">עדכנת את מחירי הטיפולים</p>
-                  </div>
-                  
-                  <div className="border-r-2 border-purple-500 pr-4">
-                    <p className="text-sm text-gray-500">לפני 5 שעות</p>
-                    <p className="font-medium">לקוח חדש נרשם</p>
-                    <p className="text-sm text-gray-600">רונית לוי נרשמה לאתר</p>
-                  </div>
-                  
-                  {contactInquiries.length > 0 && (
-                    <div className="border-r-2 border-yellow-500 pr-4">
-                      <p className="text-sm text-gray-500">
-                        {contactInquiries[0].submittedAt.toLocaleDateString('he-IL')}
-                      </p>
-                      <p className="font-medium">פנייה חדשה</p>
-                      <p className="text-sm text-gray-600">
-                        פנייה חדשה מ{contactInquiries[0].name}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {pendingAppointments.length === 0 && contactInquiries.length === 0 && reviews.length === 0 && (
-                    <div className="border-r-2 border-yellow-500 pr-4">
-                      <p className="text-sm text-gray-500">אתמול, 14:20</p>
-                      <p className="font-medium">ביקורת חדשה</p>
-                      <p className="text-sm text-gray-600">ביקורת חדשה נתקבלה (4.5 כוכבים)</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-6 text-center">
-                  <Button variant="outline">
-                    צפייה בכל הפעולות
-                  </Button>
-                </div>
+                <div className="text-2xl font-bold">{confirmedAppointments.length + pendingAppointments.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  תורים מאושרים וממתינים
+                </p>
               </CardContent>
             </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">תורים שהושלמו</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{completedAppointments}</div>
+                <p className="text-xs text-muted-foreground">
+                  תורים שבוצעו בהצלחה
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">תורים שבוטלו</CardTitle>
+                <XCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{cancelledAppointments}</div>
+                <p className="text-xs text-muted-foreground">
+                  תורים שבוטלו
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link to="/order-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    ניהול הזמנות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600">
+                    נהל תורים, אשר או בטל הזמנות, וצפה בלוח הזמנים שלך
+                  </p>
+                  {rescheduleRequests.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600 font-medium">
+                      {rescheduleRequests.length} בקשות לשינוי זמן ממתינות
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/store-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Store className="mr-2 h-5 w-5" />
+                    ניהול חנות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600">
+                    נהל את השירותים, המחירים והמלאי שלך
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/user-page-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <User className="mr-2 h-5 w-5" />
+                    ניהול דף המכון
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600">
+                    נהל את פרטי המטפלים, גלריה וביקורות הלקוחות
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/customer-inquiries">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    פניות לקוחות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600">
+                    צפה וענה על פניות ושאלות מלקוחות
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
       </div>
       
       <Footer />
-      
-      <ReportDialog 
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-      />
     </div>
   );
 };

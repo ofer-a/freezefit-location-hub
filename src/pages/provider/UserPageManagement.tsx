@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
@@ -29,20 +30,13 @@ interface GalleryImage {
   title: string;
 }
 
-interface Review {
-  id: number;
-  customerName: string;
-  rating: number;
-  text: string;
-  date: string;
-}
-
 const UserPageManagement = () => {
   const { isAuthenticated, user } = useAuth();
+  const { reviews } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // State for therapists, reviews and gallery
+  // State for therapists and gallery
   const [therapists, setTherapists] = useState<Therapist[]>([
     {
       id: 1,
@@ -80,30 +74,6 @@ const UserPageManagement = () => {
     }
   ]);
 
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: 1,
-      customerName: 'יוסי ישראלי',
-      rating: 5,
-      text: 'שירות מעולה ומקצועי מאוד. התאוששתי מהר מאימון מפרך!',
-      date: '10/05/2025'
-    },
-    {
-      id: 2,
-      customerName: 'רונית כהן',
-      rating: 4,
-      text: 'צוות נחמד מאוד, נהניתי מהטיפול. ממליצה!',
-      date: '05/05/2025'
-    },
-    {
-      id: 3,
-      customerName: 'משתמש אנונימי',
-      rating: 5,
-      text: 'מתקנים ברמה גבוהה ויחס אישי. אחזור שוב בהחלט.',
-      date: '01/05/2025'
-    }
-  ]);
-  
   // Dialog states
   const [showNewTherapistDialog, setShowNewTherapistDialog] = useState(false);
   const [showNewImageDialog, setShowNewImageDialog] = useState(false);
@@ -435,7 +405,7 @@ const UserPageManagement = () => {
               </Card>
             </TabsContent>
             
-            {/* Reviews Tab */}
+            {/* Reviews Tab - Updated to show actual reviews from DataContext */}
             <TabsContent value="reviews" className="mt-6">
               <Card>
                 <CardHeader>
@@ -460,9 +430,10 @@ const UserPageManagement = () => {
                                 ))}
                               </div>
                             </div>
-                            <p className="text-gray-600 mt-2">{review.text}</p>
+                            <p className="text-sm text-gray-500 mt-1">מטפל: {review.therapistName}</p>
+                            <p className="text-gray-600 mt-2">{review.reviewText}</p>
                           </div>
-                          <span className="text-sm text-gray-500">{review.date}</span>
+                          <span className="text-sm text-gray-500">{review.submittedAt.toLocaleDateString('he-IL')}</span>
                         </div>
                       </div>
                     ))}
