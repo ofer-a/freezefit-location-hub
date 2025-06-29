@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import ReportDialog from '@/components/reports/ReportDialog';
 import { 
   Calendar, 
   UserCog, 
@@ -17,7 +17,8 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 
 // Feature cards for the provider dashboard
@@ -27,28 +28,40 @@ const featureCards = [
     description: 'צפייה וניהול בהזמנות, תורים ממתינים והיסטוריה',
     icon: ClipboardList,
     link: '/order-management',
-    color: 'bg-blue-50'
+    color: 'bg-blue-50',
+    action: 'navigate'
   },
   {
     title: 'ניהול חנות',
     description: 'ניהול שעות פתיחה, סדנאות ומחירון',
     icon: Store,
     link: '/store-management',
-    color: 'bg-green-50'
+    color: 'bg-green-50',
+    action: 'navigate'
   },
   {
     title: 'עיצוב דף למשתמש',
     description: 'פרטי מטפלים, גלריה וחוויות לקוחות',
     icon: UserCog,
     link: '/user-page-management',
-    color: 'bg-purple-50'
+    color: 'bg-purple-50',
+    action: 'navigate'
   },
   {
     title: 'פניות לקוחות',
     description: 'צפייה וטיפול בפניות חדשות מלקוחות',
     icon: MessageSquare,
     link: '/customer-inquiries',
-    color: 'bg-yellow-50'
+    color: 'bg-yellow-50',
+    action: 'navigate'
+  },
+  {
+    title: 'יצירת דוח',
+    description: 'יצירת דוחות מפורטים על הזמנות והכנסות',
+    icon: FileText,
+    link: '',
+    color: 'bg-orange-50',
+    action: 'dialog'
   }
 ];
 
@@ -61,6 +74,7 @@ const ProviderDashboard = () => {
     historyAppointments,
     contactInquiries
   } = useData();
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -89,6 +103,14 @@ const ProviderDashboard = () => {
 
   // Calculate weekly revenue (mock data - in a real app, this would come from actual payment data)
   const weeklyRevenue = '₪4,850';
+
+  const handleFeatureCardClick = (card: typeof featureCards[0]) => {
+    if (card.action === 'navigate') {
+      navigate(card.link);
+    } else if (card.action === 'dialog' && card.title === 'יצירת דוח') {
+      setReportDialogOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -164,21 +186,38 @@ const ProviderDashboard = () => {
           </div>
           
           {/* Feature cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
             {featureCards.map((card, index) => {
               const Icon = card.icon;
               return (
-                <Link key={index} to={card.link} className="block">
-                  <Card className="h-full transition-all hover:shadow-md hover:border-freezefit-300">
-                    <CardContent className="pt-6">
-                      <div className={`w-12 h-12 ${card.color} rounded-full flex items-center justify-center mb-4`}>
-                        <Icon className="h-6 w-6 text-freezefit-300" />
-                      </div>
-                      <h3 className="text-lg font-bold mb-2">{card.title}</h3>
-                      <p className="text-sm text-gray-600">{card.description}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <div key={index}>
+                  {card.action === 'navigate' ? (
+                    <Link to={card.link} className="block">
+                      <Card className="h-full transition-all hover:shadow-md hover:border-freezefit-300">
+                        <CardContent className="pt-6">
+                          <div className={`w-12 h-12 ${card.color} rounded-full flex items-center justify-center mb-4`}>
+                            <Icon className="h-6 w-6 text-freezefit-300" />
+                          </div>
+                          <h3 className="text-lg font-bold mb-2">{card.title}</h3>
+                          <p className="text-sm text-gray-600">{card.description}</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ) : (
+                    <Card 
+                      className="h-full transition-all hover:shadow-md hover:border-freezefit-300 cursor-pointer"
+                      onClick={() => handleFeatureCardClick(card)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className={`w-12 h-12 ${card.color} rounded-full flex items-center justify-center mb-4`}>
+                          <Icon className="h-6 w-6 text-freezefit-300" />
+                        </div>
+                        <h3 className="text-lg font-bold mb-2">{card.title}</h3>
+                        <p className="text-sm text-gray-600">{card.description}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -310,6 +349,11 @@ const ProviderDashboard = () => {
       </div>
       
       <Footer />
+      
+      <ReportDialog 
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
     </div>
   );
 };
