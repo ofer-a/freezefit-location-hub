@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -18,7 +19,8 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  FileText
+  FileText,
+  Star
 } from 'lucide-react';
 
 // Feature cards for the provider dashboard
@@ -56,6 +58,14 @@ const featureCards = [
     action: 'navigate'
   },
   {
+    title: 'ביקורות לקוחות',
+    description: 'צפייה בביקורות ודירוגים שהתקבלו',
+    icon: Star,
+    link: '/reviews',
+    color: 'bg-pink-50',
+    action: 'navigate'
+  },
+  {
     title: 'יצירת דוח',
     description: 'יצירת דוחות מפורטים על הזמנות והכנסות',
     icon: FileText,
@@ -72,7 +82,8 @@ const ProviderDashboard = () => {
     pendingAppointments, 
     confirmedAppointments, 
     historyAppointments,
-    contactInquiries
+    contactInquiries,
+    reviews
   } = useData();
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
@@ -186,7 +197,7 @@ const ProviderDashboard = () => {
           </div>
           
           {/* Feature cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-10">
             {featureCards.map((card, index) => {
               const Icon = card.icon;
               return (
@@ -296,6 +307,18 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {reviews.length > 0 && (
+                    <div className="border-r-2 border-pink-500 pr-4">
+                      <p className="text-sm text-gray-500">
+                        {reviews[0].submittedAt.toLocaleDateString('he-IL')}
+                      </p>
+                      <p className="font-medium">ביקורת חדשה התקבלה</p>
+                      <p className="text-sm text-gray-600">
+                        {reviews[0].customerName} דירג {reviews[0].rating}/5 כוכבים
+                      </p>
+                    </div>
+                  )}
+                  
                   {pendingAppointments.length > 0 && (
                     <div className="border-r-2 border-green-500 pr-4">
                       <p className="text-sm text-gray-500">לפני {Math.floor(Math.random() * 60)} דקות</p>
@@ -328,7 +351,7 @@ const ProviderDashboard = () => {
                     </div>
                   )}
                   
-                  {pendingAppointments.length === 0 && contactInquiries.length === 0 && (
+                  {pendingAppointments.length === 0 && contactInquiries.length === 0 && reviews.length === 0 && (
                     <div className="border-r-2 border-yellow-500 pr-4">
                       <p className="text-sm text-gray-500">אתמול, 14:20</p>
                       <p className="font-medium">ביקורת חדשה</p>

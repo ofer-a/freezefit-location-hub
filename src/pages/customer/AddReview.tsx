@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Star, ArrowLeft } from 'lucide-react';
 
@@ -46,6 +47,7 @@ const mockInstitutes = [
 const AddReview = () => {
   const { instituteId, therapistId } = useParams<{ instituteId: string; therapistId: string }>();
   const { isAuthenticated, user } = useAuth();
+  const { addReview } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,13 +93,39 @@ const AddReview = () => {
       return;
     }
     
-    // In a real app, this would call an API to save the review
+    if (!user || !institute || !therapist) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "שגיאה במערכת, אנא נסה שוב",
+      });
+      return;
+    }
+    
+    // Create review object
+    const newReview = {
+      id: Date.now().toString(),
+      customerName: isAnonymous ? 'אנונימי' : user.name,
+      customerId: user.id,
+      instituteName: institute.name,
+      instituteId: Number(instituteId),
+      therapistName: therapist.name,
+      therapistId: Number(therapistId),
+      rating,
+      reviewText,
+      isAnonymous,
+      submittedAt: new Date()
+    };
+    
+    // Add review to context
+    addReview(newReview);
+    
     toast({
       title: "תודה על הביקורת!",
-      description: "הביקורת שלך נשלחה בהצלחה",
+      description: "הביקורת שלך נשלחה בהצלחה ותוצג בעמוד המכון",
     });
     
-    // Redirect back to institute page or user profile
+    // Redirect back to user profile
     navigate('/profile');
   };
 

@@ -18,20 +18,21 @@ const LoginPage = () => {
   const location = useLocation();
   const { toast } = useToast();
   
-  // Get redirect path from state or default to '/'
-  const redirectTo = location.state?.redirectTo || '/';
+  // Get redirect path from state or use role-based redirect
+  const fallbackRedirectTo = location.state?.redirectTo;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      await login(email, password);
+      const { redirectTo } = await login(email, password);
       toast({
         title: "התחברת בהצלחה",
         description: "ברוכים הבאים למערכת",
       });
-      navigate(redirectTo);
+      // Use the redirect from login response, or fallback to the original redirect
+      navigate(fallbackRedirectTo || redirectTo);
     } catch (error) {
       toast({
         variant: "destructive",

@@ -20,6 +20,7 @@ import UserPageManagement from "./pages/provider/UserPageManagement";
 import UserProfile from "./pages/customer/UserProfile";
 import AddReview from "./pages/customer/AddReview";
 import CustomerInquiries from "./pages/provider/CustomerInquiries";
+import ReviewsPage from "./pages/provider/ReviewsPage";
 
 // Providers
 import { AuthProvider } from "./contexts/AuthContext";
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/store-management" element={<StoreManagement />} />
               <Route path="/user-page-management" element={<UserPageManagement />} />
               <Route path="/customer-inquiries" element={<CustomerInquiries />} />
+              <Route path="/reviews" element={<ReviewsPage />} />
               
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />

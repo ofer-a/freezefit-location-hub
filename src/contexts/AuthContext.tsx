@@ -16,8 +16,8 @@ export interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ redirectTo: string }>;
+  register: (name: string, email: string, password: string, role: UserRole) => Promise<{ redirectTo: string }>;
   logout: () => void;
   resetPassword: (email: string, newPassword: string) => Promise<void>;
 }
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Login function
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string): Promise<{ redirectTo: string }> => {
     // Simulate API call
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -62,7 +62,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(foundUser);
           setIsAuthenticated(true);
           localStorage.setItem('freezefit_user', JSON.stringify(foundUser));
-          resolve();
+          
+          // Determine redirect based on user role
+          const redirectTo = foundUser.role === 'provider' ? '/dashboard' : '/profile';
+          resolve({ redirectTo });
         } else {
           reject(new Error('אימייל או סיסמה לא נכונים'));
         }
@@ -71,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Register function
-  const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
+  const register = async (name: string, email: string, password: string, role: UserRole): Promise<{ redirectTo: string }> => {
     // Simulate API call
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -97,7 +100,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(newUser);
         setIsAuthenticated(true);
         localStorage.setItem('freezefit_user', JSON.stringify(newUser));
-        resolve();
+        
+        // Determine redirect based on user role
+        const redirectTo = newUser.role === 'provider' ? '/dashboard' : '/profile';
+        resolve({ redirectTo });
       }, 500);
     });
   };
