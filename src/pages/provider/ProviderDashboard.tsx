@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -7,29 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { 
-  Calendar, 
-  Users, 
-  Store, 
-  User, 
-  MessageSquare, 
-  FileText,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
-
+import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
 const ProviderDashboard = () => {
-  const { isAuthenticated, user } = useAuth();
-  const { 
-    confirmedAppointments, 
-    historyAppointments, 
-    pendingAppointments, 
-    rescheduleRequests 
+  const {
+    isAuthenticated,
+    user
+  } = useAuth();
+  const {
+    confirmedAppointments,
+    historyAppointments,
+    pendingAppointments,
+    rescheduleRequests
   } = useData();
   const navigate = useNavigate();
-
   if (!isAuthenticated) {
     navigate('/login');
     return null;
@@ -42,55 +31,46 @@ const ProviderDashboard = () => {
 
   // Get today's appointments
   const today = new Date().toISOString().split('T')[0];
-  const todaysAppointments = confirmedAppointments.filter(apt => 
-    apt.date === today
-  ).slice(0, 3);
+  const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today).slice(0, 3);
 
   // Get recent activities
-  const recentActivities = [
-    {
-      id: 1,
-      type: 'appointment',
-      message: 'חמדה חדשה מיוסי כהן',
-      time: 'לפני 30 דקות',
-      date: '15/05/25',
-      color: 'green'
-    },
-    {
-      id: 2,
-      type: 'update',
-      message: 'עדכון מחירון',
-      time: 'לפני שעתיים',
-      description: 'עדכנת את מחירי הטיפולים',
-      color: 'blue'
-    },
-    {
-      id: 3,
-      type: 'review',
-      message: 'לקוח חדש נרשם',
-      time: 'לפני 5 שעות',
-      description: 'רנית לוי נרשמה לאתר',
-      color: 'purple'
-    },
-    {
-      id: 4,
-      type: 'review',
-      message: 'ביקורת חדשה',
-      time: 'אתמול, 14:20',
-      description: 'ביקורת חדשה נקבלה (4.5 כוכבים)',
-      color: 'yellow'
-    }
-  ];
-
-  return (
-    <div className="min-h-screen flex flex-col">
+  const recentActivities = [{
+    id: 1,
+    type: 'appointment',
+    message: 'חמדה חדשה מיוסי כהן',
+    time: 'לפני 30 דקות',
+    date: '15/05/25',
+    color: 'green'
+  }, {
+    id: 2,
+    type: 'update',
+    message: 'עדכון מחירון',
+    time: 'לפני שעתיים',
+    description: 'עדכנת את מחירי הטיפולים',
+    color: 'blue'
+  }, {
+    id: 3,
+    type: 'review',
+    message: 'לקוח חדש נרשם',
+    time: 'לפני 5 שעות',
+    description: 'רנית לוי נרשמה לאתר',
+    color: 'purple'
+  }, {
+    id: 4,
+    type: 'review',
+    message: 'ביקורת חדשה',
+    time: 'אתמול, 14:20',
+    description: 'ביקורת חדשה נקבלה (4.5 כוכבים)',
+    color: 'yellow'
+  }];
+  return <div className="min-h-screen flex flex-col">
       <Header />
       
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold">שלום, ספק שירות לדוגמה</h1>
-            <p className="text-gray-600 mt-1">ברוך הבא للוח הבקרה שלך</p>
+            <p className="text-gray-600 mt-1">ברוך הבא ללוח הבקרה שלך</p>
           </div>
           
           {/* Statistics Cards - Reversed order */}
@@ -201,17 +181,13 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivities.map((activity) => (
-                    <div key={activity.id} className={`flex items-start space-x-3 p-3 border-r-4 border-r-${activity.color}-500 bg-gray-50 rounded`}>
+                  {recentActivities.map(activity => <div key={activity.id} className={`flex items-start space-x-3 p-3 border-r-4 border-r-${activity.color}-500 bg-gray-50 rounded`}>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{activity.message}</p>
-                        {activity.description && (
-                          <p className="text-xs text-gray-600 mt-1">{activity.description}</p>
-                        )}
+                        {activity.description && <p className="text-xs text-gray-600 mt-1">{activity.description}</p>}
                         <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
                 
                 <div className="mt-4 text-center">
@@ -294,8 +270,6 @@ const ProviderDashboard = () => {
       </div>
       
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default ProviderDashboard;
