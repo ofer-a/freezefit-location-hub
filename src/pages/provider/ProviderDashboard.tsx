@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -67,7 +68,9 @@ const ProviderDashboard = () => {
     description: 'ביקורת חדשה נקבלה (4.5 כוכבים)',
     color: 'yellow'
   }];
-  return <div className="min-h-screen flex flex-col">
+
+  return (
+    <div className="min-h-screen flex flex-col">
       <Header />
       
       <div className="flex-grow py-8 px-4 bg-gray-50">
@@ -116,6 +119,90 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">₪4,850</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <Link to="/order-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex flex-col items-center text-base space-y-2">
+                    <FileText className="h-8 w-8 text-blue-600" />
+                    ניהול הזמנות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
+                  <p className="text-gray-600 text-sm">
+                    צפייה וניהול בהזמנות, תורים ממתינים והיסטוריה
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/store-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex flex-col items-center text-base space-y-2">
+                    <Store className="h-8 w-8 text-green-600" />
+                    ניהול חנות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
+                  <p className="text-gray-600 text-sm">
+                    ניהול שעות פתיחה, סגירות ומחירון
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/user-page-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex flex-col items-center text-base space-y-2">
+                    <Users className="h-8 w-8 text-purple-600" />
+                    עיצוב דף למטפלים
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
+                  <p className="text-gray-600 text-sm">
+                    פרטי מטפלים, גלריה והתייחסות לקוחות
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/order-management">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex flex-col items-center text-base space-y-2">
+                    <MessageSquare className="h-8 w-8 text-orange-600" />
+                    פניות לקוחות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
+                  <p className="text-gray-600 text-sm">
+                    צפייה וטיפול בפניות חדשות מלקוחות
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+              onClick={() => setReportDialogOpen(true)}
+            >
+              <CardHeader className="text-center">
+                <CardTitle className="flex flex-col items-center text-base space-y-2">
+                  <FileText className="h-8 w-8 text-red-600" />
+                  יצירת דוח
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center pt-0">
+                <p className="text-gray-600 text-sm">
+                  יצירת דוחות מפורטים על הכנסות ותורים
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -185,13 +272,17 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivities.map(activity => <div key={activity.id} className={`flex items-start space-x-3 p-3 border-r-4 border-r-${activity.color}-500 bg-gray-50 rounded`}>
+                  {recentActivities.map(activity => (
+                    <div key={activity.id} className={`flex items-start space-x-3 p-3 border-r-4 border-r-${activity.color}-500 bg-gray-50 rounded`}>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{activity.message}</p>
-                        {activity.description && <p className="text-xs text-gray-600 mt-1">{activity.description}</p>}
+                        {activity.description && (
+                          <p className="text-xs text-gray-600 mt-1">{activity.description}</p>
+                        )}
                         <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
                       </div>
-                    </div>)}
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="mt-4 text-center">
@@ -202,85 +293,6 @@ const ProviderDashboard = () => {
               </CardContent>
             </Card>
           </div>
-          
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Link to="/order-management">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    פניות לקוחות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 text-sm">
-                    צפייה וטיפול בפניות חדשות מלקוחות
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/user-page-management">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <Users className="mr-2 h-5 w-5" />
-                    ייצוב דף למטפלים
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 text-sm">
-                    פרטי מטפלים, גלריה התייחסות לקוחות
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/store-management">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <Store className="mr-2 h-5 w-5" />
-                    ניהול חנות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 text-sm">
-                    ניהול שעות פתיחה, סגירות ומחירון
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/order-management">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <FileText className="mr-2 h-5 w-5" />
-                    ניהול הזמנות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 text-sm">
-                    צפייה וניהול בהזמנות, תורים ממתינים
-                    והיסטוריה
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-
-          {/* Create Report Button */}
-          <div className="flex justify-center">
-            <Button 
-              onClick={() => setReportDialogOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-            >
-              <FileText className="mr-2 h-5 w-5" />
-              יצירת דוח
-            </Button>
-          </div>
         </div>
       </div>
       
@@ -290,7 +302,8 @@ const ProviderDashboard = () => {
         open={reportDialogOpen} 
         onOpenChange={setReportDialogOpen} 
       />
-    </div>;
+    </div>
+  );
 };
 
 export default ProviderDashboard;
