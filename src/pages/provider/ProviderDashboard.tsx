@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
+import ReportDialog from '@/components/reports/ReportDialog';
+
 const ProviderDashboard = () => {
   const {
     isAuthenticated,
@@ -19,6 +21,8 @@ const ProviderDashboard = () => {
     rescheduleRequests
   } = useData();
   const navigate = useNavigate();
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+
   if (!isAuthenticated) {
     navigate('/login');
     return null;
@@ -73,7 +77,7 @@ const ProviderDashboard = () => {
             <p className="text-gray-600 mt-1">ברוך הבא ללוח הבקרה שלך</p>
           </div>
           
-          {/* Statistics Cards - Reversed order */}
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card className="border-l-4 border-l-green-500">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -200,7 +204,7 @@ const ProviderDashboard = () => {
           </div>
           
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <Link to="/order-management">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader>
@@ -266,10 +270,27 @@ const ProviderDashboard = () => {
               </Card>
             </Link>
           </div>
+
+          {/* Create Report Button */}
+          <div className="flex justify-center">
+            <Button 
+              onClick={() => setReportDialogOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              יצירת דוח
+            </Button>
+          </div>
         </div>
       </div>
       
       <Footer />
+      
+      <ReportDialog 
+        open={reportDialogOpen} 
+        onOpenChange={setReportDialogOpen} 
+      />
     </div>;
 };
+
 export default ProviderDashboard;

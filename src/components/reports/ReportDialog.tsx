@@ -255,6 +255,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
                     }}
                     initialFocus
                     disabled={(date) => isFuture(date)}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -285,6 +286,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
                     }}
                     initialFocus
                     disabled={(date) => isFuture(date)}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
