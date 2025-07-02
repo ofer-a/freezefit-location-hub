@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -7,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
-import ReportDialog from '@/components/reports/ReportDialog';
 
 const ProviderDashboard = () => {
   const {
@@ -21,7 +21,6 @@ const ProviderDashboard = () => {
     rescheduleRequests
   } = useData();
   const navigate = useNavigate();
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   if (!isAuthenticated) {
     navigate('/login');
@@ -62,7 +61,7 @@ const ProviderDashboard = () => {
   }, {
     id: 4,
     type: 'review',
-    message: 'ביקורת חדשה',
+    message: 'ביקורת גדשה',
     time: 'אתמול, 14:20',
     description: 'ביקורת חדשה נקבלה (4.5 כוכבים)',
     color: 'yellow'
@@ -75,7 +74,7 @@ const ProviderDashboard = () => {
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">שלום, ספק שירות לדוגמה</h1>
+            <h1 className="text-3xl font-bold">שלום, ספק שירות לגמא</h1>
             <p className="text-gray-600 mt-1">ברוך הבא ללוח הבקרה שלך</p>
           </div>
           
@@ -172,7 +171,7 @@ const ProviderDashboard = () => {
               </Card>
             </Link>
             
-            <Link to="/order-management">
+            <Link to="/customer-inquiries">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader className="text-center">
                   <CardTitle className="flex flex-col items-center text-base space-y-2">
@@ -188,22 +187,21 @@ const ProviderDashboard = () => {
               </Card>
             </Link>
 
-            <Card 
-              className="hover:shadow-lg transition-shadow cursor-pointer h-full"
-              onClick={() => setReportDialogOpen(true)}
-            >
-              <CardHeader className="text-center">
-                <CardTitle className="flex flex-col items-center text-base space-y-2">
-                  <FileText className="h-8 w-8 text-red-600" />
-                  יצירת דוח
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center pt-0">
-                <p className="text-gray-600 text-sm">
-                  יצירת דוחות מפורטים על הכנסות ותורים
-                </p>
-              </CardContent>
-            </Card>
+            <Link to="/analytics">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex flex-col items-center text-base space-y-2">
+                    <BarChart3 className="h-8 w-8 text-red-600" />
+                    ניתוח נתונים
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
+                  <p className="text-gray-600 text-sm">
+                    צפייה בניתוח נתונים מתקדם וגרפים
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
           
           {/* Main Content Grid */}
@@ -253,11 +251,13 @@ const ProviderDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="text-center" onClick={() => navigate('/analytics')}>
-                  <Button variant="outline" className="w-full hover:bg-blue-50 transition-colors cursor-pointer">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    צפייה בניתוח נתונים מתקדם
-                  </Button>
+                <div className="text-center mt-4">
+                  <Link to="/analytics">
+                    <Button variant="outline" className="w-full hover:bg-blue-50 transition-colors">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      צפייה בניתוח נתונים מתקדם
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -295,11 +295,6 @@ const ProviderDashboard = () => {
       </div>
       
       <Footer />
-      
-      <ReportDialog 
-        open={reportDialogOpen} 
-        onOpenChange={setReportDialogOpen} 
-      />
     </div>
   );
 };
