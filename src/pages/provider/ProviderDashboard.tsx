@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
 import ReportDialog from '@/components/reports/ReportDialog';
 
 const ProviderDashboard = () => {
@@ -254,12 +253,11 @@ const ProviderDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="mt-4 text-center">
-                  <Link to="/order-management">
-                    <Button variant="outline" className="w-full">
-                      צפייה בכל התורים
-                    </Button>
-                  </Link>
+                <div className="text-center" onClick={() => navigate('/analytics')}>
+                  <Button variant="outline" className="w-full hover:bg-blue-50 transition-colors cursor-pointer">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    צפייה בניתוח נתונים מתקדם
+                  </Button>
                 </div>
               </CardContent>
             </Card>
