@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState } from 'react';
 
 // Define the data types
@@ -342,7 +343,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     availableGifts: [
       {
         id: 1,
-        name: 'טיפוח מתנה',
+        name: 'טיפול מתנה',
         pointsCost: 200,
         image: '/lovable-uploads/a1b8497e-3684-42ea-9ad8-69ff9ff062d1.png'
       },
