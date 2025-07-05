@@ -12,9 +12,10 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { User, Calendar, Clock, MessageSquare, Award, Gift, Check } from 'lucide-react';
+import { User, Calendar, Clock, MessageSquare, Award, Gift, Check, Mail } from 'lucide-react';
 import RescheduleDialog from '@/components/appointments/RescheduleDialog';
 import DeleteAccountDialog from '@/components/ui/dialog-delete-account';
+import MessageBox from '@/components/messages/MessageBox';
 
 const UserProfile = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -38,6 +39,7 @@ const UserProfile = () => {
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [showRedeemGiftDialog, setShowRedeemGiftDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showMessageBox, setShowMessageBox] = useState(false);
   const [selectedGift, setSelectedGift] = useState<{id: number; name: string; pointsCost: number} | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   
@@ -220,6 +222,14 @@ const UserProfile = () => {
                       onClick={() => setShowChangePasswordDialog(true)}
                     >
                       שנה סיסמה
+                    </Button>
+                    <Button 
+                      className="w-full flex items-center gap-2" 
+                      variant="outline"
+                      onClick={() => setShowMessageBox(true)}
+                    >
+                      <Mail className="h-4 w-4" />
+                      תיבת הודעות
                     </Button>
                     <Button 
                       className="w-full" 
@@ -613,6 +623,11 @@ const UserProfile = () => {
         onClose={() => setShowRescheduleDialog(false)}
         onConfirm={handleRescheduleConfirm}
         appointmentId={selectedAppointmentId || 0}
+      />
+
+      <MessageBox 
+        isOpen={showMessageBox}
+        onClose={() => setShowMessageBox(false)}
       />
       
       <Footer />

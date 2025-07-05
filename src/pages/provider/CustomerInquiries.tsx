@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Calendar, ArrowLeft, Search, CheckCircle } from 'lucide-react';
+import ReplyDialog from '@/components/messages/ReplyDialog';
 
 const CustomerInquiries = () => {
   const { isAuthenticated, user } = useAuth();
@@ -16,6 +17,12 @@ const CustomerInquiries = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showReplyDialog, setShowReplyDialog] = useState(false);
+  const [selectedInquiry, setSelectedInquiry] = useState<{
+    name: string;
+    email: string;
+    subject: string;
+  } | null>(null);
 
   // Filter inquiries based on search
   const filteredInquiries = contactInquiries.filter(inquiry => 
@@ -29,11 +36,14 @@ const CustomerInquiries = () => {
     return null;
   }
 
-  const handleReply = (inquiryEmail: string) => {
-    toast({
-      title: "נשלחה תשובה",
-      description: `הדוא"ל נשלח אל ${inquiryEmail}`,
-    });
+  const handleReply = (inquiry: { name: string; email: string; subject: string }) => {
+    setSelectedInquiry(inquiry);
+    setShowReplyDialog(true);
+  };
+
+  const handleReplyClose = () => {
+    setShowReplyDialog(false);
+    setSelectedInquiry(null);
   };
 
   return (
@@ -98,7 +108,7 @@ const CustomerInquiries = () => {
                         
                         <div className="mt-4 md:mt-0">
                           <Button
-                            onClick={() => handleReply(inquiry.email)}
+                            onClick={() => handleReply(inquiry)}
                             className="flex items-center gap-2"
                           >
                             <CheckCircle size={16} />
@@ -126,6 +136,16 @@ const CustomerInquiries = () => {
           </Card>
         </div>
       </div>
+      
+      {selectedInquiry && (
+        <ReplyDialog
+          isOpen={showReplyDialog}
+          onClose={handleReplyClose}
+          customerEmail={selectedInquiry.email}
+          customerName={selectedInquiry.name}
+          originalSubject={selectedInquiry.subject}
+        />
+      )}
       
       <Footer />
     </div>
