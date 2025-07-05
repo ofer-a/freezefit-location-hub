@@ -3,38 +3,48 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, MapPin, Calendar, Star, Users } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+
 interface ContactFormData {
   name: string;
   email: string;
   subject: string;
   message: string;
+  selectedInstitute: string;
   submittedAt: Date;
 }
+
 const HomePage = () => {
-  const {
-    isAuthenticated
-  } = useAuth();
-  const {
-    addContactInquiry
-  } = useData();
+  const { isAuthenticated } = useAuth();
+  const { addContactInquiry } = useData();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [contactFormData, setContactFormData] = useState<ContactFormData>({
     name: '',
     email: '',
     subject: '',
     message: '',
+    selectedInstitute: '',
     submittedAt: new Date()
   });
+
+  // Available institutes list
+  const availableInstitutes = [
+    'מרכז קריוסטיים',
+    'קריו פלוס', 
+    'אייס פיט',
+    'קריו ירושלים',
+    'חיפה קריותרפי',
+    'צפון קריו'
+  ];
+
   const handleFindInstitute = () => {
     if (isAuthenticated) {
       navigate('/find-institute');
@@ -46,6 +56,7 @@ const HomePage = () => {
       });
     }
   };
+
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
@@ -54,27 +65,43 @@ const HomePage = () => {
     });
     setEmail('');
   };
+
   const handleContactFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const {
-      name,
-      value
-    } = e.target;
+    const { name, value } = e.target;
     setContactFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
+
+  const handleInstituteChange = (value: string) => {
+    setContactFormData(prev => ({
+      ...prev,
+      selectedInstitute: value
+    }));
+  };
+
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!contactFormData.selectedInstitute) {
+      toast({
+        title: "שגיאה",
+        description: "אנא בחר מכון לפנייה",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Add to our shared context
     addContactInquiry({
       ...contactFormData,
       submittedAt: new Date()
     });
+    
     toast({
       title: "ההודעה נשלחה בהצלחה",
-      description: "ניצור איתך קשר בהקדם"
+      description: `הפנייה נשלחה למכון ${contactFormData.selectedInstitute} - ניצור איתך קשר בהקדם`
     });
 
     // Reset form
@@ -83,6 +110,7 @@ const HomePage = () => {
       email: '',
       subject: '',
       message: '',
+      selectedInstitute: '',
       submittedAt: new Date()
     });
   };
@@ -96,7 +124,9 @@ const HomePage = () => {
       });
     }
   };
-  return <div className="min-h-screen flex flex-col bg-gray-50">
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
       {/* Hero Section */}
@@ -179,33 +209,78 @@ const HomePage = () => {
       <section className="py-16" id="contact">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-10">צור קשר</h2>
+            <h2 className="text-3xl font-bold text-center mb-10">צור קשר עם מכון</h2>
             
             <form onSubmit={handleContactSubmit} className="space-y-6">
+              {/* Institute Selection */}
+              <div>
+                <label htmlFor="institute" className="block text-sm font-medium text-gray-700 mb-1">בחר מכון לפנייה</label>
+                <Select value={contactFormData.selectedInstitute} onValueChange={handleInstituteChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר מכון..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableInstitutes.map((institute) => (
+                      <SelectItem key={institute} value={institute}>
+                        {institute}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">שם מלא</label>
-                  <Input id="name" name="name" type="text" required value={contactFormData.name} onChange={handleContactFormChange} />
+                  <Input 
+                    id="name" 
+                    name="name" 
+                    type="text" 
+                    required 
+                    value={contactFormData.name} 
+                    onChange={handleContactFormChange} 
+                  />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">אימייל</label>
-                  <Input id="email" name="email" type="email" required value={contactFormData.email} onChange={handleContactFormChange} />
+                  <Input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    required 
+                    value={contactFormData.email} 
+                    onChange={handleContactFormChange} 
+                  />
                 </div>
               </div>
               
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">נושא</label>
-                <Input id="subject" name="subject" type="text" required value={contactFormData.subject} onChange={handleContactFormChange} />
+                <Input 
+                  id="subject" 
+                  name="subject" 
+                  type="text" 
+                  required 
+                  value={contactFormData.subject} 
+                  onChange={handleContactFormChange} 
+                />
               </div>
               
               <div>
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">הודעה</label>
-                <Textarea id="message" name="message" rows={5} required value={contactFormData.message} onChange={handleContactFormChange} />
+                <Textarea 
+                  id="message" 
+                  name="message" 
+                  rows={5} 
+                  required 
+                  value={contactFormData.message} 
+                  onChange={handleContactFormChange} 
+                />
               </div>
               
               <div className="text-center">
                 <Button type="submit" className="bg-freezefit-300 hover:bg-freezefit-400 text-black px-8">
-                  שלח הודעה
+                  שלח הודעה למכון
                 </Button>
               </div>
             </form>
@@ -214,6 +289,8 @@ const HomePage = () => {
       </section>
 
       <Footer />
-    </div>;
+    </div>
+  );
 };
+
 export default HomePage;
