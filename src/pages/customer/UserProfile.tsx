@@ -14,6 +14,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { User, Calendar, Clock, MessageSquare, Award, Gift, Check } from 'lucide-react';
 import RescheduleDialog from '@/components/appointments/RescheduleDialog';
+import DeleteAccountDialog from '@/components/ui/dialog-delete-account';
 
 const UserProfile = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -158,6 +159,31 @@ const UserProfile = () => {
     }
   };
 
+  // Handle user account deletion
+  const handleDeleteAccount = async () => {
+    try {
+      // In a real app, you would call an API to delete the user account
+      // For now, we'll simulate the deletion process
+      
+      toast({
+        title: "חשבון נמחק",
+        description: "החשבון נמחק בהצלחה",
+        variant: "destructive",
+      });
+      
+      // Log out the user and redirect to home page
+      logout();
+      navigate('/');
+      
+    } catch (error) {
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה במחיקת החשבון",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -168,7 +194,12 @@ const UserProfile = () => {
             {/* Profile sidebar */}
             <div className="w-full md:w-1/3">
               <Card>
-                <CardHeader className="text-center">
+                <CardHeader className="text-center relative">
+                  {/* Delete account button in top-right corner */}
+                  <div className="absolute top-4 right-4">
+                    <DeleteAccountDialog onConfirmDelete={handleDeleteAccount} />
+                  </div>
+                  
                   <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                     <User className="h-12 w-12 text-primary" />
                   </div>
