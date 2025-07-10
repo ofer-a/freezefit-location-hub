@@ -1,8 +1,9 @@
 
-import React from 'react';
-import { MapPin, Star, Clock, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Star, Clock, User, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { InstitutePreviewModal } from './InstitutePreviewModal';
 
 interface Therapist {
   id: number;
@@ -31,6 +32,19 @@ interface InstituteListProps {
 }
 
 const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: InstituteListProps) => {
+  const [previewInstitute, setPreviewInstitute] = useState<Institute | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const handlePreview = (institute: Institute) => {
+    setPreviewInstitute(institute);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewInstitute(null);
+  };
+
   if (institutes.length === 0) {
     return (
       <div className="text-center py-12">
@@ -88,7 +102,15 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
                 <span>{institute.hours}</span>
               </div>
               
-              <div className="mt-6 flex justify-end">
+              <div className="mt-6 flex justify-end gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => handlePreview(institute)}
+                  className="gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  תצוגה מקדימה
+                </Button>
                 <Button 
                   onClick={() => onBookAppointment(institute.id)}
                   className="bg-primary hover:bg-primary/90 text-white"
@@ -100,6 +122,12 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
           </CardContent>
         </Card>
       ))}
+      
+      <InstitutePreviewModal
+        institute={previewInstitute}
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+      />
     </div>
   );
 };
