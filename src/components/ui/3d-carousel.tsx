@@ -22,7 +22,7 @@ const defaultImages: CarouselImage[] = [
     title: "אזור המתנה"
   },
   {
-    src: "/ice-bath.jpg",
+    src: "/lovable-uploads/2ee05146-b5e3-4e48-9d89-58222b5e8541.png",
     alt: "אזור אמבט הקרח",
     title: "אזור אמבט הקרח"
   }
