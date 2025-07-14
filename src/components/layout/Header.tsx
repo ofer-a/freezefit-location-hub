@@ -1,5 +1,5 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
@@ -13,6 +13,7 @@ import {
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const isHome = location.pathname === '/';
 
@@ -38,6 +39,11 @@ const Header = () => {
     if (section) {
       section.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   const headerClass = isHome
@@ -105,7 +111,7 @@ const Header = () => {
                     <Button
                       variant="outline"
                       className="border-1 border-freezefit-300 text-black hover:bg-freezefit-50"
-                      onClick={() => logout()}
+                      onClick={handleLogout}
                     >
                       התנתק
                     </Button>
