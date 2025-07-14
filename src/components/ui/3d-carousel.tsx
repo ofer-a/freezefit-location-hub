@@ -22,7 +22,7 @@ const defaultImages: CarouselImage[] = [
     title: "אזור המתנה"
   },
   {
-    src: "/lovable-uploads/2ee05146-b5e3-4e48-9d89-58222b5e8541.png",
+    src: "https://preview.reve.art/api/project/e3bb1c42-38cc-446e-aefe-02fa529ea994/image/bed4c9d4-4db5-4de7-8d83-b6179680ef0e/url/filename/bed4c9d4-4db5-4de7-8d83-b6179680ef0e?fit=contain&height=1152",
     alt: "אזור אמבט הקרח",
     title: "אזור אמבט הקרח"
   }
