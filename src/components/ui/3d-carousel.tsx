@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect, useState } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -23,8 +24,8 @@ const defaultImages: CarouselImage[] = [
   },
   {
     src: "https://preview.reve.art/api/project/e3bb1c42-38cc-446e-aefe-02fa529ea994/image/bed4c9d4-4db5-4de7-8d83-b6179680ef0e/url/filename/bed4c9d4-4db5-4de7-8d83-b6179680ef0e?fit=contain&height=1152",
-    alt: "אזור אמבט הקרח",
-    title: "אזור אמבט הקרח"
+    alt: "אמבט קרח",
+    title: "אמבט קרח"
   }
 ]
 
@@ -85,12 +86,12 @@ export function ThreeDPhotoCarousel({ images = defaultImages, className }: Three
                   className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                {image.title && (
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-lg font-semibold">{image.title}</h3>
-                  </div>
-                )}
               </div>
+              {image.title && (
+                <div className="text-center mt-4">
+                  <h3 className="text-lg font-semibold text-gray-800">{image.title}</h3>
+                </div>
+              )}
             </div>
           ))}
         </div>
