@@ -1,3 +1,4 @@
+
 import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -106,10 +107,10 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
         </DialogHeader>
 
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* 3D Image Carousel */}
+          {/* 3D Image Carousel with Upload Functionality */}
           <div className="p-6">
             <h3 className="text-lg font-semibold mb-4">גלריית תמונות</h3>
-            <ThreeDPhotoCarousel />
+            <ThreeDPhotoCarousel allowUpload={true} />
           </div>
 
           {/* Reviews Section */}
