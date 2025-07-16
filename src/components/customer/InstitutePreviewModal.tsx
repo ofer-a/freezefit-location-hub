@@ -3,7 +3,7 @@ import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Star, X } from 'lucide-react'
-import { ThreeDPhotoCarousel } from '@/components/ui/3d-carousel'
+import { CircularGallery } from '@/components/ui/circular-gallery'
 import { cn } from '@/lib/utils'
 
 interface Review {
@@ -60,6 +60,18 @@ const mockReviews: Review[] = [
   }
 ]
 
+// Gallery items for the circular gallery
+const galleryItems = [
+  {
+    image: "/lovable-uploads/918389a8-c085-45d9-8c7d-bd4e48161b6a.png",
+    text: "אזור המתנה"
+  },
+  {
+    image: "/lovable-uploads/57f85245-4c6c-453a-b3fb-3f11875417e8.png",
+    text: "אמבט קרח"
+  }
+]
+
 const StarRating = ({ rating }: { rating: number }) => {
   return (
     <div className="flex items-center space-x-1">
@@ -88,38 +100,42 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 bg-black">
+        <DialogHeader className="p-6 pb-0 bg-black">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-2xl font-bold text-white">
               תצוגה מקדימה - {institute.name}
             </DialogTitle>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-6 w-6"
+              className="h-6 w-6 text-white hover:bg-white/20"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-muted-foreground">{institute.address}</p>
+          <p className="text-gray-300">{institute.address}</p>
         </DialogHeader>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* 3D Image Carousel with Upload Functionality */}
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">גלריית תמונות</h3>
-            <ThreeDPhotoCarousel allowUpload={true} />
+        <div className="overflow-y-auto max-h-[calc(95vh-120px)] bg-black">
+          {/* Circular Gallery Section */}
+          <div className="h-[60vh] w-full bg-black">
+            <CircularGallery 
+              items={galleryItems}
+              bend={3}
+              textColor="#ffffff"
+              borderRadius={0.05}
+            />
           </div>
 
           {/* Reviews Section */}
-          <div className="p-6 pt-0">
+          <div className="p-6 bg-gray-900">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">ביקורות של משתמשים</h3>
+              <h3 className="text-lg font-semibold text-white">ביקורות של משתמשים</h3>
               <div className="flex items-center space-x-2">
                 <StarRating rating={institute.rating} />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-gray-300">
                   ({institute.reviewCount} ביקורות)
                 </span>
               </div>
@@ -129,27 +145,27 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
               {mockReviews.slice(0, 3).map((review) => (
                 <div
                   key={review.id}
-                  className="border rounded-lg p-4 bg-gray-50/50"
+                  className="border border-gray-700 rounded-lg p-4 bg-gray-800/50"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-primary">
                           {review.username ? review.username.charAt(0) : 'א'}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-sm">
+                        <p className="font-medium text-sm text-white">
                           {review.username || 'משתמש אנונימי'}
                         </p>
                         <StarRating rating={review.rating} />
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-gray-400">
                       {formatDate(review.date)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                  <p className="text-sm text-gray-300 leading-relaxed">
                     {review.content}
                   </p>
                 </div>
@@ -157,7 +173,7 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
             </div>
 
             <div className="mt-6 text-center">
-              <Button variant="outline" className="text-sm">
+              <Button variant="outline" className="text-sm bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
                 צפה בכל הביקורות ({institute.reviewCount})
               </Button>
             </div>
