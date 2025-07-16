@@ -153,11 +153,11 @@ export function ThreeDPhotoCarousel({ images = defaultImages, className, allowUp
                 )}
               </div>
               
-              {image.title && (
-                <div className="text-center mt-4">
-                  <h3 className="text-lg font-semibold text-gray-800">{image.title}</h3>
-                </div>
-              )}
+              <div className="text-center mt-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {image.title || 'אמבט קרח'}
+                </h3>
+              </div>
             </div>
           ))}
         </div>
