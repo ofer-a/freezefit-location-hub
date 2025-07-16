@@ -60,10 +60,10 @@ const mockReviews: Review[] = [
   }
 ]
 
-// Gallery items for the circular gallery - updated with new images
+// Gallery items for the circular gallery - updated with new default image
 const galleryItems = [
   {
-    image: "/lovable-uploads/811d2004-2481-45ef-bc4b-c35b8c9136ac.png",
+    image: "/lovable-uploads/5eb33892-d2af-4b1d-b7a9-92708867a204.png",
     text: "אזור המתנה"
   },
   {
