@@ -60,14 +60,14 @@ const mockReviews: Review[] = [
   }
 ]
 
-// Gallery items for the circular gallery
+// Gallery items for the circular gallery - updated with new images
 const galleryItems = [
   {
-    image: "/lovable-uploads/918389a8-c085-45d9-8c7d-bd4e48161b6a.png",
+    image: "/lovable-uploads/811d2004-2481-45ef-bc4b-c35b8c9136ac.png",
     text: "אזור המתנה"
   },
   {
-    image: "/lovable-uploads/57f85245-4c6c-453a-b3fb-3f11875417e8.png",
+    image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
     text: "אמבט קרח"
   }
 ]
