@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight, Upload, X } from 'lucide-react'
@@ -26,7 +25,7 @@ const defaultImages: CarouselImage[] = [
     isCustom: false
   },
   {
-    src: "https://preview.reve.art/api/project/e3bb1c42-38cc-446e-aefe-02fa529ea994/image/bed4c9d4-4db5-4de7-8d83-b6179680ef0e/url/filename/bed4c9d4-4db5-4de7-8d83-b6179680ef0e?fit=contain&height=1152",
+    src: "/lovable-uploads/8ed6c560-6a77-47a7-b71f-6835dcd5d45e.png",
     alt: "אמבט קרח",
     title: "אמבט קרח",
     isCustom: false
