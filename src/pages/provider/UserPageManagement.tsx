@@ -12,19 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { useTherapists } from '@/hooks/use-therapists';
+import { useTherapists, type Therapist } from '@/hooks/use-therapists';
 import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
-// Types for therapists and gallery
-interface Therapist {
-  id: number;
-  name: string;
-  specialty: string;
-  experience: number;
-  bio: string;
-  image: string;
-}
-
+// Types for gallery
 interface GalleryImage {
   id: number;
   url: string;
@@ -63,14 +54,13 @@ const UserPageManagement = () => {
   const [showNewImageDialog, setShowNewImageDialog] = useState(false);
   
   // Selected therapist for removal
-  const [selectedTherapist, setSelectedTherapist] = useState<number | null>(null);
+  const [selectedTherapist, setSelectedTherapist] = useState<string | null>(null);
   const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
   
   // Form states
-  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id' | 'image'>>({
+  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id' | 'institute_id'>>({
     name: '',
-    specialty: '',
-    experience: 0,
+    experience: '',
     bio: ''
   });
   
@@ -126,50 +116,44 @@ const UserPageManagement = () => {
   };
 
   // Add new therapist
-  const handleAddTherapist = (e: React.FormEvent) => {
+  const handleAddTherapist = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In a real app, we would upload the image to a server
-    // and get a URL back. Here we'll use a placeholder.
-    const imageUrl = therapistImageFile 
-      ? URL.createObjectURL(therapistImageFile) 
-      : '/placeholder.svg';
-    
-    const therapistToAdd: Therapist = {
-      id: therapists.length + 1,
-      ...newTherapist,
-      image: imageUrl
-    };
-    
-    setTherapists([...therapists, therapistToAdd]);
-    setShowNewTherapistDialog(false);
-    
-    // Reset form
-    setNewTherapist({
-      name: '',
-      specialty: '',
-      experience: 0,
-      bio: ''
-    });
-    setTherapistImageFile(null);
-    
-    toast({
-      title: "מטפל נוסף",
-      description: "המטפל נוסף בהצלחה לרשימת המטפלים",
-    });
+    try {
+      const imageUrl = therapistImageFile 
+        ? URL.createObjectURL(therapistImageFile) 
+        : undefined;
+      
+      await addTherapist({
+        ...newTherapist,
+        institute_id: 'temp-institute-id', // Replace with actual institute ID
+        image_url: imageUrl
+      });
+      
+      setShowNewTherapistDialog(false);
+      
+      // Reset form
+      setNewTherapist({
+        name: '',
+        experience: '',
+        bio: ''
+      });
+      setTherapistImageFile(null);
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
   // Handle therapist removal
-  const handleRemoveTherapist = () => {
+  const handleRemoveTherapist = async () => {
     if (selectedTherapist !== null) {
-      setTherapists(therapists.filter(t => t.id !== selectedTherapist));
-      setSelectedTherapist(null);
-      setShowRemoveTherapistDialog(false);
-      
-      toast({
-        title: "מטפל הוסר",
-        description: "המטפל הוסר בהצלחה מרשימת המטפלים",
-      });
+      try {
+        await removeTherapist(selectedTherapist);
+        setSelectedTherapist(null);
+        setShowRemoveTherapistDialog(false);
+      } catch (error) {
+        // Error handled in hook
+      }
     }
   };
 
@@ -259,17 +243,17 @@ const UserPageManagement = () => {
                       <Card key={therapist.id} className="overflow-hidden">
                         <div className="flex flex-col md:flex-row">
                           <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center relative group">
-                            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                              {therapist.image === '/placeholder.svg' ? (
-                                <User className="h-12 w-12 text-gray-500" />
-                              ) : (
-                                <img 
-                                  src={therapist.image} 
-                                  alt={therapist.name} 
-                                  className="w-full h-full object-cover" 
-                                />
-                              )}
-                            </div>
+                             <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                               {!therapist.image_url || therapist.image_url === '/placeholder.svg' ? (
+                                 <User className="h-12 w-12 text-gray-500" />
+                               ) : (
+                                 <img 
+                                   src={therapist.image_url} 
+                                   alt={therapist.name} 
+                                   className="w-full h-full object-cover" 
+                                 />
+                               )}
+                             </div>
                             <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               <label className="cursor-pointer">
                                 <Upload className="h-6 w-6 text-white" />
@@ -289,10 +273,10 @@ const UserPageManagement = () => {
                           <div className="md:w-2/3 p-4">
                             <div className="flex justify-between items-start">
                               <div>
-                                <h3 className="font-bold text-lg">{therapist.name}</h3>
-                                <p className="text-gray-700">
-                                  {therapist.specialty}, {therapist.experience} שנות ניסיון
-                                </p>
+                                 <h3 className="font-bold text-lg">{therapist.name}</h3>
+                                 <p className="text-gray-700">
+                                   {therapist.experience} שנות ניסיון
+                                 </p>
                               </div>
                               <Button 
                                 variant="ghost" 
@@ -454,22 +438,11 @@ const UserPageManagement = () => {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="specialty">התמחות</Label>
-                <Input 
-                  id="specialty" 
-                  value={newTherapist.specialty}
-                  onChange={(e) => setNewTherapist({...newTherapist, specialty: e.target.value})}
-                  required
-                />
-              </div>
-              
-              <div className="grid gap-2">
                 <Label htmlFor="experience">שנות ניסיון</Label>
                 <Input 
                   id="experience" 
-                  type="number"
-                  value={newTherapist.experience.toString()}
-                  onChange={(e) => setNewTherapist({...newTherapist, experience: Number(e.target.value)})}
+                  value={newTherapist.experience}
+                  onChange={(e) => setNewTherapist({...newTherapist, experience: e.target.value})}
                   required
                 />
               </div>
