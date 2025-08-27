@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+import { useTherapists } from '@/hooks/use-therapists';
 import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
 // Types for therapists and gallery
@@ -36,25 +37,8 @@ const UserPageManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // State for therapists and gallery
-  const [therapists, setTherapists] = useState<Therapist[]>([
-    {
-      id: 1,
-      name: 'דני כהן',
-      specialty: 'ספורטאים',
-      experience: 5,
-      bio: 'מומחה בטיפול בספורטאים מקצועיים. בעל תואר ראשון בפיזיותרפיה ותעודת התמחות בשיקום ספורטיבי.',
-      image: '/placeholder.svg'
-    },
-    {
-      id: 2,
-      name: 'מיכל לוי',
-      specialty: 'שיקום',
-      experience: 8,
-      bio: 'מתמחה בשיקום לאחר פציעות ספורט. בעלת 8 שנות ניסיון בעבודה עם ספורטאי עילית.',
-      image: '/placeholder.svg'
-    }
-  ]);
+  // Import therapists hook
+  const { therapists, loading: loadingTherapists, addTherapist, updateTherapist, removeTherapist } = useTherapists();
   
   const [gallery, setGallery] = useState<GalleryImage[]>([
     {
@@ -98,16 +82,10 @@ const UserPageManagement = () => {
   const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
 
   // Handle therapist image upload for existing therapists
-  const handleTherapistImageUpload = (therapistId: number, file: File) => {
+  const handleTherapistImageUpload = async (therapistId: string, file: File) => {
     const imageUrl = URL.createObjectURL(file);
     
-    setTherapists(prevTherapists => 
-      prevTherapists.map(therapist => 
-        therapist.id === therapistId 
-          ? { ...therapist, image: imageUrl }
-          : therapist
-      )
-    );
+    await updateTherapist(therapistId, { image_url: imageUrl });
     
     toast({
       title: "תמונה עודכנה",

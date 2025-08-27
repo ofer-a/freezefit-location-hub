@@ -29,8 +29,8 @@ export const mockInstitutes: Institute[] = [
     rating: 4.8,
     reviewCount: 124,
     therapists: [
-      { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5, image: '/placeholder.svg' },
-      { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8, image: '/placeholder.svg' }
+      { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5, image: '/therapists/dani-cohen.png' },
+      { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8, image: '/therapists/michal-levy.png' }
     ],
     hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00',
     coordinates: { lat: 32.0853, lng: 34.7818 }
@@ -43,7 +43,7 @@ export const mockInstitutes: Institute[] = [
     rating: 4.6,
     reviewCount: 89,
     therapists: [
-      { id: 3, name: 'רונית דוד', specialty: 'קריותרפיה', experience: 10, image: '/placeholder.svg' },
+      { id: 3, name: 'רונית דוד', specialty: 'קריותרפיה', experience: 10, image: '/therapists/ronit-david.png' },
     ],
     hours: 'א-ה: 7:00-21:00, ו: 8:00-13:00, ש: 10:00-14:00',
     coordinates: { lat: 32.0733, lng: 34.7913 }
@@ -56,8 +56,8 @@ export const mockInstitutes: Institute[] = [
     rating: 4.7,
     reviewCount: 56,
     therapists: [
-      { id: 4, name: 'אלון ברק', specialty: 'ספורטאי עילית', experience: 7, image: '/placeholder.svg' },
-      { id: 5, name: 'נועה פרץ', specialty: 'שחזור שריר', experience: 6, image: '/placeholder.svg' }
+      { id: 4, name: 'אלון ברק', specialty: 'ספורטאי עילית', experience: 7, image: '/therapists/alon-barak.png' },
+      { id: 5, name: 'נועה פרץ', specialty: 'שחזור שריר', experience: 6, image: '/therapists/noa-peretz.png' }
     ],
     hours: 'א-ה: 9:00-22:00, ו-ש: 10:00-15:00',
     coordinates: { lat: 32.0873, lng: 34.7733 }

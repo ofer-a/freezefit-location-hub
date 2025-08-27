@@ -85,8 +85,20 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
                 <div className="flex flex-wrap gap-4">
                   {institute.therapists.map(therapist => (
                     <div key={therapist.id} className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                        <User className="h-6 w-6 text-gray-500" />
+                      <div className="w-10 h-10 rounded-full overflow-hidden mr-2 bg-gray-200">
+                        <img 
+                          src={therapist.image} 
+                          alt={therapist.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="w-full h-full flex items-center justify-center hidden">
+                          <User className="h-6 w-6 text-gray-500" />
+                        </div>
                       </div>
                       <div>
                         <p className="font-medium">{therapist.name}</p>
