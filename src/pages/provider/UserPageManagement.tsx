@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { useTherapists, type Therapist } from '@/hooks/use-therapists';
 import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
 // Types for gallery
@@ -22,14 +21,38 @@ interface GalleryImage {
   title: string;
 }
 
+// Types for therapist
+interface Therapist {
+  id: number;
+  name: string;
+  experience: string;
+  bio: string;
+  image?: string;
+}
+
 const UserPageManagement = () => {
   const { isAuthenticated, user } = useAuth();
   const { reviews } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Import therapists hook
-  const { therapists, loading: loadingTherapists, addTherapist, updateTherapist, removeTherapist } = useTherapists();
+  // Mock therapists data with actual images
+  const [therapists, setTherapists] = useState<Therapist[]>([
+    {
+      id: 1,
+      name: 'דני כהן',
+      experience: '5',
+      bio: 'מתמחה בטיפול בספורטאים מקצועיים. בעל תואר ראשון בפיזיותרפיה ותעודת התמחות בשיקום ספורטיבי.',
+      image: '/therapists/dani-cohen.png'
+    },
+    {
+      id: 2,
+      name: 'מיכל לוי',
+      experience: '8',
+      bio: 'מתמחה בשיקום לאחר פציעות ספורט. בעלת 8 שנות ניסיון עם ספורטאי עלית.',
+      image: '/therapists/michal-levy.png'
+    }
+  ]);
   
   const [gallery, setGallery] = useState<GalleryImage[]>([
     {
@@ -54,11 +77,11 @@ const UserPageManagement = () => {
   const [showNewImageDialog, setShowNewImageDialog] = useState(false);
   
   // Selected therapist for removal
-  const [selectedTherapist, setSelectedTherapist] = useState<string | null>(null);
+  const [selectedTherapist, setSelectedTherapist] = useState<number | null>(null);
   const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
   
   // Form states
-  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id' | 'institute_id'>>({
+  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id'>>({
     name: '',
     experience: '',
     bio: ''
@@ -72,10 +95,16 @@ const UserPageManagement = () => {
   const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
 
   // Handle therapist image upload for existing therapists
-  const handleTherapistImageUpload = async (therapistId: string, file: File) => {
+  const handleTherapistImageUpload = (therapistId: number, file: File) => {
     const imageUrl = URL.createObjectURL(file);
     
-    await updateTherapist(therapistId, { image_url: imageUrl });
+    setTherapists(prevTherapists => 
+      prevTherapists.map(therapist => 
+        therapist.id === therapistId 
+          ? { ...therapist, image: imageUrl }
+          : therapist
+      )
+    );
     
     toast({
       title: "תמונה עודכנה",
@@ -116,44 +145,47 @@ const UserPageManagement = () => {
   };
 
   // Add new therapist
-  const handleAddTherapist = async (e: React.FormEvent) => {
+  const handleAddTherapist = (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      const imageUrl = therapistImageFile 
-        ? URL.createObjectURL(therapistImageFile) 
-        : undefined;
-      
-      await addTherapist({
-        ...newTherapist,
-        institute_id: 'temp-institute-id', // Replace with actual institute ID
-        image_url: imageUrl
-      });
-      
-      setShowNewTherapistDialog(false);
-      
-      // Reset form
-      setNewTherapist({
-        name: '',
-        experience: '',
-        bio: ''
-      });
-      setTherapistImageFile(null);
-    } catch (error) {
-      // Error handled in hook
-    }
+    const imageUrl = therapistImageFile 
+      ? URL.createObjectURL(therapistImageFile) 
+      : undefined;
+    
+    const therapistToAdd: Therapist = {
+      ...newTherapist,
+      id: therapists.length + 1,
+      image: imageUrl
+    };
+    
+    setTherapists([...therapists, therapistToAdd]);
+    setShowNewTherapistDialog(false);
+    
+    // Reset form
+    setNewTherapist({
+      name: '',
+      experience: '',
+      bio: ''
+    });
+    setTherapistImageFile(null);
+    
+    toast({
+      title: "מטפל נוסף",
+      description: "המטפל נוסף בהצלחה",
+    });
   };
 
   // Handle therapist removal
-  const handleRemoveTherapist = async () => {
+  const handleRemoveTherapist = () => {
     if (selectedTherapist !== null) {
-      try {
-        await removeTherapist(selectedTherapist);
-        setSelectedTherapist(null);
-        setShowRemoveTherapistDialog(false);
-      } catch (error) {
-        // Error handled in hook
-      }
+      setTherapists(therapists.filter(therapist => therapist.id !== selectedTherapist));
+      setSelectedTherapist(null);
+      setShowRemoveTherapistDialog(false);
+      
+      toast({
+        title: "מטפל הוסר",
+        description: "המטפל הוסר בהצלחה",
+      });
     }
   };
 
@@ -244,11 +276,11 @@ const UserPageManagement = () => {
                         <div className="flex flex-col md:flex-row">
                           <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center relative group">
                              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                               {!therapist.image_url || therapist.image_url === '/placeholder.svg' ? (
+                               {!therapist.image ? (
                                  <User className="h-12 w-12 text-gray-500" />
                                ) : (
                                  <img 
-                                   src={therapist.image_url} 
+                                   src={therapist.image} 
                                    alt={therapist.name} 
                                    className="w-full h-full object-cover" 
                                  />
