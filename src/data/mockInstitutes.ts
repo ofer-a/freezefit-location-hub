@@ -30,7 +30,7 @@ export const mockInstitutes: Institute[] = [
     reviewCount: 124,
     therapists: [
       { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5, image: '/lovable-uploads/22762277-1f90-4e5b-949a-4bdb23a9bdc6.png' },
-      { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8, image: '/therapists/michal-levy.png' }
+      { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8, image: '/lovable-uploads/1d38abe5-bf70-4e8b-b20b-9bf66d1d3cf6.png' }
     ],
     hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00',
     coordinates: { lat: 32.0853, lng: 34.7818 }
