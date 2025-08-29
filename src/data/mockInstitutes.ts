@@ -56,7 +56,7 @@ export const mockInstitutes: Institute[] = [
     rating: 4.7,
     reviewCount: 56,
     therapists: [
-      { id: 4, name: 'אלון ברק', specialty: 'ספורטאי עילית', experience: 7, image: '/therapists/alon-barak.png' },
+      { id: 4, name: 'אלון ברק', specialty: 'ספורטאי עילית', experience: 7, image: '/lovable-uploads/4c3379f3-90c1-496a-a788-05d2a70327be.png' },
       { id: 5, name: 'נועה פרץ', specialty: 'שחזור שריר', experience: 6, image: '/therapists/noa-peretz.png' }
     ],
     hours: 'א-ה: 9:00-22:00, ו-ש: 10:00-15:00',
