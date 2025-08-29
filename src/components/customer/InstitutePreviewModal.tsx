@@ -69,7 +69,7 @@ const getGalleryItems = (instituteId: number) => {
         text: "אזור המתנה"
       },
       {
-        image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
+        image: "/lovable-uploads/d66169b8-116f-4d4c-9df4-e799795fb4b1.png",
         text: "אמבט קרח"
       }
     ]
