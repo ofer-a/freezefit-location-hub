@@ -29,7 +29,7 @@ export const mockInstitutes: Institute[] = [
     rating: 4.8,
     reviewCount: 124,
     therapists: [
-      { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5, image: '/therapists/dani-cohen.png' },
+      { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5, image: '/lovable-uploads/22762277-1f90-4e5b-949a-4bdb23a9bdc6.png' },
       { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8, image: '/therapists/michal-levy.png' }
     ],
     hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00',
