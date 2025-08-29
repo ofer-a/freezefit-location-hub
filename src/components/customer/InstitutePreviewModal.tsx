@@ -60,17 +60,33 @@ const mockReviews: Review[] = [
   }
 ]
 
-// Gallery items for the circular gallery - updated with new default image
-const galleryItems = [
-  {
-    image: "/lovable-uploads/5eb33892-d2af-4b1d-b7a9-92708867a204.png",
-    text: "אזור המתנה"
-  },
-  {
-    image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
-    text: "אמבט קרח"
+// Gallery items for the circular gallery - institute specific
+const getGalleryItems = (instituteId: number) => {
+  if (instituteId === 2) { // Cryo Plus
+    return [
+      {
+        image: "/lovable-uploads/9d188ea5-1475-4047-92d5-34c0e1b37fa5.png",
+        text: "אזור המתנה"
+      },
+      {
+        image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
+        text: "אמבט קרח"
+      }
+    ]
   }
-]
+  
+  // Default gallery for other institutes
+  return [
+    {
+      image: "/lovable-uploads/5eb33892-d2af-4b1d-b7a9-92708867a204.png",
+      text: "אזור המתנה"
+    },
+    {
+      image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
+      text: "אמבט קרח"
+    }
+  ]
+}
 
 const StarRating = ({ rating }: { rating: number }) => {
   return (
@@ -122,7 +138,7 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
           {/* Circular Gallery Section */}
           <div className="h-[60vh] w-full bg-black">
             <CircularGallery 
-              items={galleryItems}
+              items={getGalleryItems(institute.id)}
               bend={3}
               textColor="#ffffff"
               borderRadius={0.05}
