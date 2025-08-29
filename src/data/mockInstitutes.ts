@@ -43,7 +43,7 @@ export const mockInstitutes: Institute[] = [
     rating: 4.6,
     reviewCount: 89,
     therapists: [
-      { id: 3, name: 'רונית דוד', specialty: 'קריותרפיה', experience: 10, image: '/therapists/ronit-david.png' },
+      { id: 3, name: 'רונית דוד', specialty: 'קריותרפיה', experience: 10, image: '/lovable-uploads/d6f7ab60-772f-434d-9ac1-f607562f7b9f.png' },
     ],
     hours: 'א-ה: 7:00-21:00, ו: 8:00-13:00, ש: 10:00-14:00',
     coordinates: { lat: 32.0733, lng: 34.7913 }
