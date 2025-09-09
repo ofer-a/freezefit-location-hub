@@ -1,5 +1,6 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { dbOperations } from '@/lib/database';
 
 // Define the data types
 interface Appointment {
@@ -97,127 +98,101 @@ const useData = () => {
 };
 
 const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Updated mock appointments data with therapist names and proper service types
-  const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>([
-    {
-      id: 1,
-      customerName: 'אבי כהן', // This will now represent therapist name in the display
-      service: 'טיפול שיקום',
-      date: '2024-07-10',
-      time: '10:00',
-      status: 'נקבע',
-      duration: '60 דקות',
-      phone: '050-1234567',
-      therapistName: 'אבי כהן'
-    },
-    {
-      id: 2,
-      customerName: 'שרה לוי', // This will now represent therapist name in the display
-      service: 'טיפול ספורטאים',
-      date: '2024-07-15',
-      time: '14:00',
-      status: 'נקבע',
-      duration: '45 דקות',
-      phone: '050-2345678',
-      therapistName: 'שרה לוי'
-    }
-  ]);
-
-  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([
-    {
-      id: 10,
-      customerName: 'דן גולן', // This will now represent therapist name in the display
-      service: 'טיפול סטנדרטי',
-      date: '2024-07-12',
-      time: '16:00',
-      status: 'נקבע',
-      duration: '30 דקות',
-      phone: '050-3456789',
-      therapistName: 'דן גולן'
-    }
-  ]);
-
-  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([
-    {
-      id: 3,
-      customerName: 'אבי כהן', // This will now represent therapist name in the display
-      service: 'טיפול קצר',
-      date: '2024-06-10',
-      time: '10:00',
-      status: 'הושלם',
-      duration: '60 דקות',
-      phone: '050-1234567',
-      therapistName: 'אבי כהן'
-    },
-    {
-      id: 4,
-      customerName: 'שרה לוי', // This will now represent therapist name in the display
-      service: 'טיפול ספורטאים',
-      date: '2024-06-15',
-      time: '14:00',
-      status: 'הושלם',
-      duration: '45 דקות',
-      phone: '050-2345678',
-      therapistName: 'שרה לוי'
-    },
-    {
-      id: 5,
-      customerName: 'אבי כהן', // This will now represent therapist name in the display
-      service: 'טיפול שיקום',
-      date: '2024-05-10',
-      time: '10:00',
-      status: 'בוטל',
-      duration: '60 דקות',
-      phone: '050-1234567',
-      therapistName: 'אבי כהן'
-    },
-    {
-      id: 6,
-      customerName: 'שרה לוי', // This will now represent therapist name in the display
-      service: 'טיפול סטנדרטי',
-      date: '2024-05-15',
-      time: '14:00',
-      status: 'בוטל',
-      duration: '45 דקות',
-      phone: '050-2345678',
-      therapistName: 'שרה לוי'
-    }
-  ]);
+  // State for appointments - now loaded from real database
+  const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>([]);
+  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([]);
+  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([]);
 
   const [rescheduleRequests, setRescheduleRequests] = useState<Appointment[]>([]);
 
   const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
   const [selectedMapLocation, setSelectedMapLocation] = useState<MapLocation | null>(null);
 
-  // Add reviews state
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: '1',
-      customerName: 'יוסי כהן',
-      customerId: '1',
-      instituteName: 'מרכז קריוסטיים',
-      instituteId: 1,
-      therapistName: 'דני כהן',
-      therapistId: 1,
-      rating: 5,
-      reviewText: 'חוויה מדהימה! הטיפול היה מקצועי והמטפל מאוד נחמד וסבלני.',
-      isAnonymous: false,
-      submittedAt: new Date('2024-06-15')
-    },
-    {
-      id: '2',
-      customerName: 'אנונימי',
-      customerId: '2',
-      instituteName: 'קריו פלוס',
-      instituteId: 2,
-      therapistName: 'רונית דוד',
-      therapistId: 3,
-      rating: 4,
-      reviewText: 'טיפול טוב, המקום נקי ומסודר. ממליץ בחום.',
-      isAnonymous: true,
-      submittedAt: new Date('2024-06-20')
-    }
-  ]);
+  // Reviews state - now loaded from real database
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  // Load data from database on component mount
+  useEffect(() => {
+    const loadAppointments = async () => {
+      try {
+        // For demo purposes, we'll use some sample user IDs from our database
+        // In a real app, this would come from authentication context
+        const sampleUserIds = [
+          '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222',
+          '33333333-3333-3333-3333-333333333333'
+        ];
+
+        // Load appointments for all sample users
+        const allAppointments = [];
+        for (const userId of sampleUserIds) {
+          const userAppointments = await dbOperations.getAppointmentsByUser(userId);
+          allAppointments.push(...userAppointments);
+        }
+
+        // Transform database appointments to match our interface
+        const transformedAppointments = allAppointments.map(apt => ({
+          id: parseInt(apt.id.split('-')[0], 16), // Convert UUID to number for compatibility
+          customerName: apt.service_name, // Use service name for display
+          service: apt.service_name,
+          date: apt.appointment_date,
+          time: apt.appointment_time,
+          status: apt.status === 'confirmed' ? 'נקבע' as const :
+                  apt.status === 'completed' ? 'הושלם' as const :
+                  apt.status === 'cancelled' ? 'בוטל' as const :
+                  'ממתין לאישור שינוי' as const,
+          duration: '45 דקות', // Default duration
+          phone: '050-1234567', // Default phone
+          therapistName: apt.service_name // Use service name as therapist name for now
+        }));
+
+        // Separate appointments by status
+        const confirmed = transformedAppointments.filter(apt => apt.status === 'נקבע');
+        const pending = transformedAppointments.filter(apt => apt.status === 'ממתין לאישור שינוי');
+        const history = transformedAppointments.filter(apt => apt.status === 'הושלם' || apt.status === 'בוטל');
+
+        setConfirmedAppointments(confirmed);
+        setPendingAppointments(pending);
+        setHistoryAppointments(history);
+
+      } catch (error) {
+        console.error('Error loading appointments:', error);
+        // Keep mock data as fallback for development
+      }
+    };
+
+    const loadReviews = async () => {
+      try {
+        // Load reviews for all institutes
+        const institutes = await dbOperations.getInstitutes();
+        const allReviews = [];
+        
+        for (const institute of institutes) {
+          const instituteReviews = await dbOperations.getReviewsByInstitute(institute.id);
+          allReviews.push(...instituteReviews.map(review => ({
+            id: review.id,
+            customerName: review.user_name || 'לקוח אנונימי',
+            customerId: review.user_id,
+            instituteName: institute.institute_name,
+            instituteId: parseInt(institute.id.split('-')[0], 16),
+            therapistName: 'מטפל',
+            therapistId: 1,
+            rating: review.rating,
+            reviewText: review.content,
+            isAnonymous: !review.user_name,
+            submittedAt: new Date(review.review_date || review.created_at)
+          })));
+        }
+
+        setReviews(allReviews);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+      }
+    };
+
+    loadAppointments();
+    loadReviews();
+  }, []);
 
   // Add review function
   const addReview = (review: Review) => {

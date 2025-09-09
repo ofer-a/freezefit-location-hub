@@ -1,0 +1,33 @@
+[build]
+  # Build command and directory
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Node version for build
+  NODE_VERSION = "18"
+
+# Redirect configuration for SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Production environment variables (set these in Netlify UI)
+# DATABASE_URL = "postgresql://neondb_owner:npg_im61ZIwxsjWn@ep-rapid-night-agzgtgcn-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# NODE_ENV = "production"

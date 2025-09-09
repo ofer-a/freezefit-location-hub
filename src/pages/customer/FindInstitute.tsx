@@ -9,7 +9,8 @@ import MapComponent from '@/components/map/MapComponent';
 import SearchBar from '@/components/customer/SearchBar';
 import InstituteList from '@/components/customer/InstituteList';
 import { useLocation } from '@/hooks/use-location';
-import { mockInstitutes, mockSuggestions, Institute } from '@/data/mockInstitutes';
+import { mockSuggestions } from '@/data/mockInstitutes';
+import { dbOperations, Institute as DBInstitute } from '@/lib/database';
 import { useData } from '@/contexts/DataContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,11 +29,62 @@ const FindInstitute = () => {
   const { toast } = useToast();
   const { userLocation } = useLocation();
   
-  const [institutes, setInstitutes] = useState<Institute[]>(mockInstitutes);
+  const [institutes, setInstitutes] = useState<any[]>([]);
+  const [allInstitutes, setAllInstitutes] = useState<any[]>([]);
   const [selectedInstitute, setSelectedInstitute] = useState<number | null>(null);
   const [activeView, setActiveView] = useState('list'); // 'list' or 'map'
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Load institutes from database
+  useEffect(() => {
+    const loadInstitutes = async () => {
+      try {
+        const dbInstitutes = await dbOperations.getInstitutes();
+        
+        // Transform database institutes to match the expected interface
+        const transformedInstitutes = await Promise.all(
+          dbInstitutes.map(async (institute, index) => {
+            // Get therapists for this institute
+            const therapists = await dbOperations.getTherapistsByInstitute(institute.id);
+            
+            return {
+              id: parseInt(institute.id.split('-')[0], 16), // Convert UUID to number for compatibility
+              name: institute.institute_name,
+              address: institute.address || 'כתובת לא זמינה',
+              distance: Math.random() * 10 + 1, // Random distance for demo
+              rating: 4.5 + Math.random() * 0.5, // Random rating between 4.5-5
+              reviewCount: Math.floor(Math.random() * 100) + 20,
+              therapists: therapists.map(therapist => ({
+                id: parseInt(therapist.id.split('-')[0], 16),
+                name: therapist.name,
+                specialty: therapist.bio || 'מטפל מוסמך',
+                experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
+                image: therapist.image_url || '/placeholder.svg'
+              })),
+              hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00',
+              coordinates: {
+                lat: 32.0853 + (Math.random() - 0.5) * 0.1,
+                lng: 34.7818 + (Math.random() - 0.5) * 0.1
+              }
+            };
+          })
+        );
+
+        setAllInstitutes(transformedInstitutes);
+        setInstitutes(transformedInstitutes);
+      } catch (error) {
+        console.error('Error loading institutes:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את רשימת המכונים",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadInstitutes();
+  }, [toast]);
   
   // Appointment booking state
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
@@ -53,7 +105,7 @@ const FindInstitute = () => {
   useEffect(() => {
     if (selectedMapLocation) {
       // Find the closest institute to the selected location
-      const closest = mockInstitutes.reduce((prev, curr) => {
+      const closest = allInstitutes.reduce((prev, curr) => {
         const prevDist = Math.sqrt(
           Math.pow(prev.coordinates.lat - selectedMapLocation.lat, 2) + 
           Math.pow(prev.coordinates.lng - selectedMapLocation.lng, 2)
@@ -103,16 +155,16 @@ const FindInstitute = () => {
     setSearchQuery(suggestion);
     
     // Filter institutes based on the selected suggestion
-    const filtered = mockInstitutes.filter(institute =>
+    const filtered = allInstitutes.filter(institute =>
       institute.address.toLowerCase().includes(suggestion.toLowerCase())
     );
-    setInstitutes(filtered.length > 0 ? filtered : mockInstitutes);
+    setInstitutes(filtered.length > 0 ? filtered : allInstitutes);
   };
 
   const { confirmedAppointments, updateUserClubPoints, addNewAppointment } = useData();
 
   const handleBookAppointment = (instituteId: number) => {
-    const institute = mockInstitutes.find(inst => inst.id === instituteId);
+    const institute = allInstitutes.find(inst => inst.id === instituteId);
     if (institute) {
       setBookingInstitute(institute);
       setIsBookingDialogOpen(true);

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Star, ArrowLeft } from 'lucide-react';
+import { dbOperations } from '@/lib/database';
 
 // Mock data for institute and therapist
 const mockInstitutes = [
@@ -58,7 +59,48 @@ const AddReview = () => {
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
   
   // Find institute and therapist from params
-  const institute = mockInstitutes.find(institute => institute.id === Number(instituteId));
+  const [institute, setInstitute] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load institute data from database
+  useEffect(() => {
+    const loadInstitute = async () => {
+      try {
+        const institutes = await dbOperations.getInstitutes();
+        const foundInstitute = institutes.find(inst => 
+          parseInt(inst.id.split('-')[0], 16) === Number(instituteId)
+        );
+        
+        if (foundInstitute) {
+          const therapists = await dbOperations.getTherapistsByInstitute(foundInstitute.id);
+          setInstitute({
+            id: parseInt(foundInstitute.id.split('-')[0], 16),
+            name: foundInstitute.institute_name,
+            address: foundInstitute.address,
+            therapists: therapists.map(therapist => ({
+              id: parseInt(therapist.id.split('-')[0], 16),
+              name: therapist.name,
+              specialty: therapist.bio || 'מטפל מוסמך',
+              experience: parseInt(therapist.experience?.split(' ')[0] || '5')
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Error loading institute:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את פרטי המכון",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (instituteId) {
+      loadInstitute();
+    }
+  }, [instituteId, toast]);
   const therapist = institute?.therapists.find(therapist => therapist.id === Number(therapistId));
 
   // Check authentication
