@@ -1,10 +1,11 @@
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Star, X } from 'lucide-react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
 import { cn } from '@/lib/utils'
+import { dbOperations } from '@/lib/database'
 
 interface Review {
   id: number
@@ -28,37 +29,7 @@ interface InstitutePreviewModalProps {
   onClose: () => void
 }
 
-// Mock reviews data - in a real app, this would come from your database
-const mockReviews: Review[] = [
-  {
-    id: 1,
-    username: "יוסי כהן",
-    rating: 5,
-    content: "חוויה מדהימה! הצוות מקצועי והמתקנים במצב מעולה. האמבט קרח באמת עזר לי להתאושש אחרי האימון.",
-    date: "2024-01-15"
-  },
-  {
-    id: 2,
-    username: "מירי לוי",
-    rating: 4,
-    content: "מקום נקי ומסודר, השירות היה טוב. המחיר קצת גבוה אבל שווה את זה.",
-    date: "2024-01-10"
-  },
-  {
-    id: 3,
-    username: "דוד ישראלי",
-    rating: 5,
-    content: "ממליץ בחום! הטיפול היה מצוין והתוצאות מרגישות כבר אחרי פעם אחת.",
-    date: "2024-01-08"
-  },
-  {
-    id: 4,
-    username: "שרה אברהם",
-    rating: 4,
-    content: "מקום מעולה לטיפולי התאוששות. הצוות מקצועי והמתקנים חדשים.",
-    date: "2024-01-05"
-  }
-]
+// This function will be replaced with a custom hook that loads reviews from database
 
 // Gallery items for the circular gallery - institute specific
 const getGalleryItems = (instituteId: number) => {
@@ -107,6 +78,47 @@ const StarRating = ({ rating }: { rating: number }) => {
 }
 
 export function InstitutePreviewModal({ institute, isOpen, onClose }: InstitutePreviewModalProps) {
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Load reviews from database when institute changes
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!institute?.id) return
+      
+      try {
+        setLoading(true)
+        
+        // Convert institute ID to UUID format for database lookup
+        // This is a temporary solution - in production, we'd store the actual UUID
+        const instituteUUID = `bbbbbbbb-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(12, '0')}`
+        
+        const dbReviews = await dbOperations.getReviewsByInstitute(instituteUUID)
+        
+        // Transform database reviews to match component interface
+        const transformedReviews = dbReviews.map(review => ({
+          id: parseInt(review.id.split('-')[0], 16),
+          username: `משתמש ${review.id.slice(-4)}`, // Anonymous username based on ID
+          rating: review.rating,
+          content: review.content,
+          date: review.review_date || review.created_at || '2024-01-01'
+        }))
+        
+        setReviews(transformedReviews)
+      } catch (error) {
+        console.error('Error loading reviews:', error)
+        // Fallback to empty reviews array
+        setReviews([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (isOpen && institute) {
+      loadReviews()
+    }
+  }, [institute?.id, isOpen])
+
   if (!institute) return null
 
   const formatDate = (dateString: string) => {
@@ -158,7 +170,12 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
             </div>
 
             <div className="space-y-4">
-              {mockReviews.slice(0, 3).map((review) => (
+              {loading ? (
+                <div className="text-center text-gray-400">טוען ביקורות...</div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center text-gray-400">אין ביקורות זמינות</div>
+              ) : (
+                reviews.slice(0, 3).map((review) => (
                 <div
                   key={review.id}
                   className="border border-gray-700 rounded-lg p-4 bg-gray-800/50"
@@ -185,7 +202,8 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
                     {review.content}
                   </p>
                 </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div className="mt-6 text-center">

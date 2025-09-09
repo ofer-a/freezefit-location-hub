@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { dbOperations } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
@@ -36,23 +37,47 @@ const UserPageManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Mock therapists data with actual images
-  const [therapists, setTherapists] = useState<Therapist[]>([
-    {
-      id: 1,
-      name: 'דני כהן',
-      experience: '5',
-      bio: 'מתמחה בטיפול בספורטאים מקצועיים. בעל תואר ראשון בפיזיותרפיה ותעודת התמחות בשיקום ספורטיבי.',
-      image: '/therapists/dani-cohen.png'
-    },
-    {
-      id: 2,
-      name: 'מיכל לוי',
-      experience: '8',
-      bio: 'מתמחה בשיקום לאחר פציעות ספורט. בעלת 8 שנות ניסיון עם ספורטאי עלית.',
-      image: '/therapists/michal-levy.png'
-    }
-  ]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load therapists from database
+  useEffect(() => {
+    const loadTherapists = async () => {
+      if (!user?.id) return;
+      
+      try {
+        // Get user's institutes
+        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+        
+        if (userInstitutes.length > 0) {
+          // Get therapists for the first institute (or combine from all institutes)
+          const instituteTherapists = await dbOperations.getTherapistsByInstitute(userInstitutes[0].id);
+          
+          // Transform database therapists to match component interface
+          const transformedTherapists = instituteTherapists.map((therapist, index) => ({
+            id: index + 1, // Use sequential IDs for compatibility
+            name: therapist.name,
+            experience: therapist.experience || '0',
+            bio: therapist.bio || 'מטפל מוסמך',
+            image: therapist.image_url || '/placeholder.svg'
+          }));
+          
+          setTherapists(transformedTherapists);
+        }
+      } catch (error) {
+        console.error('Error loading therapists:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את רשימת המטפלים",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTherapists();
+  }, [user?.id, toast]);
   
   const [gallery, setGallery] = useState<GalleryImage[]>([
     {

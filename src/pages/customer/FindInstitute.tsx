@@ -9,7 +9,7 @@ import MapComponent from '@/components/map/MapComponent';
 import SearchBar from '@/components/customer/SearchBar';
 import InstituteList from '@/components/customer/InstituteList';
 import { useLocation } from '@/hooks/use-location';
-import { mockSuggestions } from '@/data/mockInstitutes';
+// Address suggestions now come from database institute addresses
 import { dbOperations, Institute as DBInstitute } from '@/lib/database';
 import { useData } from '@/contexts/DataContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -139,12 +139,13 @@ const FindInstitute = () => {
   const handleSearchInputChange = (query: string) => {
     setSearchQuery(query);
     
-    // Filter suggestions based on input
+    // Filter suggestions based on real institute addresses
     if (query.length > 0) {
-      const filtered = mockSuggestions.filter(suggestion =>
-        suggestion.toLowerCase().includes(query.toLowerCase())
-      );
-      setSuggestions(filtered);
+      const addressSuggestions = allInstitutes
+        .map(institute => institute.address)
+        .filter(address => address.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 5);
+      setSuggestions(addressSuggestions);
     } else {
       setSuggestions([]);
     }
