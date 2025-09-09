@@ -1,6 +1,12 @@
 // Shared database client for Netlify Functions
 import { Pool } from 'pg';
 
+// Check if DATABASE_URL is available
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is not set');
+  console.error('Please set DATABASE_URL in your Netlify environment variables');
+}
+
 // Create connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -13,12 +19,18 @@ const pool = new Pool({
 });
 
 export const query = async (text, params) => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not configured');
+  }
+  
   const client = await pool.connect();
   try {
     const result = await client.query(text, params);
     return result;
   } catch (error) {
     console.error('Database query error:', error);
+    console.error('Query:', text);
+    console.error('Params:', params);
     throw error;
   } finally {
     client.release();

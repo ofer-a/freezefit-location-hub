@@ -1,7 +1,8 @@
 // API client for Netlify Functions backend
 // Connects to our serverless backend API
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/.netlify/functions';
+// Use relative path for production - this will work with any deployed domain
+const API_BASE_URL = '/.netlify/functions';
 
 interface ApiResponse<T> {
   data: T | null;
