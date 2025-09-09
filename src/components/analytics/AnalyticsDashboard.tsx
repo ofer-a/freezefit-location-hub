@@ -299,8 +299,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
               <CardTitle>תורים לפי יום</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-80">
+                <ChartContainer config={chartConfig} className="w-full h-full">
                   <BarChart data={data.appointments}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -310,8 +310,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
                     <Bar dataKey="pending" stackId="a" fill={chartConfig.pending.color} />
                     <Bar dataKey="cancelled" stackId="a" fill={chartConfig.cancelled.color} />
                   </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+                </ChartContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -321,8 +321,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
               <CardTitle>הכנסות יומיות</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-80">
+                <ChartContainer config={chartConfig} className="w-full h-full">
                   <LineChart data={data.revenue}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -341,8 +341,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
                       strokeDasharray="5 5"
                     />
                   </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+                </ChartContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -355,8 +355,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
               <CardTitle>התפלגות שירותים</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-80">
+                <ChartContainer config={chartConfig} className="w-full h-full">
                   <PieChart>
                     <Pie
                       data={data.services}
@@ -374,8 +374,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
                     </Pie>
                     <ChartTooltip content={<ChartTooltipContent />} />
                   </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+                </ChartContainer>
+              </div>
             </CardContent>
           </Card>
 
