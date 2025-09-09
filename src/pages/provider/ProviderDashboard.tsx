@@ -28,14 +28,30 @@ const ProviderDashboard = () => {
     return null;
   }
 
-  // Calculate statistics
+  // Calculate statistics from real data
   const totalAppointments = confirmedAppointments.length + historyAppointments.length + pendingAppointments.length;
   const completedAppointments = historyAppointments.filter(apt => apt.status === 'הושלם').length;
   const cancelledAppointments = historyAppointments.filter(apt => apt.status === 'בוטל').length;
 
   // Get today's appointments
   const today = new Date().toISOString().split('T')[0];
-  const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today).slice(0, 3);
+  const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today);
+  const todaysAppointmentsCount = todaysAppointments.length;
+  const pendingAppointmentsCount = pendingAppointments.length;
+
+  // Calculate total unique customers from all appointments
+  const uniqueCustomers = new Set([
+    ...confirmedAppointments.map(apt => apt.customerName),
+    ...historyAppointments.map(apt => apt.customerName),
+    ...pendingAppointments.map(apt => apt.customerName)
+  ]).size;
+
+  // Calculate weekly revenue from completed appointments in last 7 days
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weeklyRevenue = historyAppointments
+    .filter(apt => apt.status === 'הושלם' && new Date(apt.date) >= weekAgo)
+    .reduce((sum, apt) => sum + (apt.price || 150), 0); // Default price 150 if not set
 
   // Recent activities state - now loaded from database
   const [recentActivities, setRecentActivities] = useState([]);
@@ -119,7 +135,7 @@ const ProviderDashboard = () => {
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">8</div>
+                <div className="text-2xl font-bold">{todaysAppointmentsCount}</div>
               </CardContent>
             </Card>
             
@@ -129,7 +145,7 @@ const ProviderDashboard = () => {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3</div>
+                <div className="text-2xl font-bold">{pendingAppointmentsCount}</div>
               </CardContent>
             </Card>
             
@@ -139,7 +155,7 @@ const ProviderDashboard = () => {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">142</div>
+                <div className="text-2xl font-bold">{uniqueCustomers}</div>
               </CardContent>
             </Card>
             
@@ -149,7 +165,7 @@ const ProviderDashboard = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₪4,850</div>
+                <div className="text-2xl font-bold">₪{weeklyRevenue.toLocaleString()}</div>
               </CardContent>
             </Card>
           </div>
@@ -250,38 +266,26 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">יוסי כהן</p>
-                      <p className="text-sm text-gray-600">טיפול קרטוגני, 45 דקות</p>
+                  {todaysAppointments.length > 0 ? (
+                    todaysAppointments.slice(0, 3).map((appointment, index) => (
+                      <div key={appointment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{appointment.customerName}</p>
+                          <p className="text-sm text-gray-600">{appointment.service}, {appointment.duration || '45 דקות'}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-medium">{appointment.time}</p>
+                          <span className={`text-xs ${appointment.status === 'נקבע' ? 'text-green-600' : 'text-yellow-600'}`}>
+                            {appointment.status === 'נקבע' ? '✓ מאושר' : '⚠ בהמתנה'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <p>אין תורים מתוכננים להיום</p>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">10:00</p>
-                      <span className="text-xs text-green-600">✓ מאושר</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">רנית לוי</p>
-                      <p className="text-sm text-gray-600">טיפול ספורטיים, 60 דקות</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">12:30</p>
-                      <span className="text-xs text-green-600">✓ מאושר</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">משה גולן</p>
-                      <p className="text-sm text-gray-600">טיפול ראשון, 60 דקות</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">15:00</p>
-                      <span className="text-xs text-yellow-600">⚠ בהמתנה</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 
                 <div className="text-center mt-4">

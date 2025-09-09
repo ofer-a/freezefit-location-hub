@@ -12,8 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { Star, ArrowLeft } from 'lucide-react';
 import { dbOperations } from '@/lib/database';
+import { Star, ArrowLeft } from 'lucide-react';
 
 // This component now loads institute data from the database via useEffect
 
@@ -95,7 +95,7 @@ const AddReview = () => {
   }, [institute, therapist, toast, navigate]);
 
   // Handle submit review
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (rating === 0) {
@@ -116,31 +116,62 @@ const AddReview = () => {
       return;
     }
     
-    // Create review object
-    const newReview = {
-      id: Date.now().toString(),
-      customerName: isAnonymous ? 'אנונימי' : user.name,
-      customerId: user.id,
-      instituteName: institute.name,
-      instituteId: Number(instituteId),
-      therapistName: therapist.name,
-      therapistId: Number(therapistId),
-      rating,
-      reviewText,
-      isAnonymous,
-      submittedAt: new Date()
-    };
-    
-    // Add review to context
-    addReview(newReview);
-    
-    toast({
-      title: "תודה על הביקורת!",
-      description: "הביקורת שלך נשלחה בהצלחה ותוצג בעמוד המכון",
-    });
-    
-    // Redirect back to user profile
-    navigate('/profile');
+    try {
+      // Create review object for database
+      const reviewData = {
+        user_id: user.id,
+        institute_id: instituteId!,
+        rating,
+        content: reviewText,
+        review_date: new Date().toISOString().split('T')[0]
+      };
+      
+      // Save review to database
+      const dbReview = await dbOperations.createReview(reviewData);
+      
+      // Create activity record
+      await dbOperations.createActivity({
+        institute_id: instituteId!,
+        user_id: user.id,
+        activity_type: 'review',
+        title: `ביקורת חדשה התקבלה - ${rating} כוכבים`,
+        description: `${isAnonymous ? 'לקוח אנונימי' : user.name} השאיר ביקורת עם דירוג ${rating} כוכבים`,
+        reference_id: dbReview.id
+      });
+      
+      // Create review object for local state
+      const newReview = {
+        id: dbReview.id,
+        customerName: isAnonymous ? 'אנונימי' : user.name,
+        customerId: user.id,
+        instituteName: institute.name,
+        instituteId: Number(instituteId),
+        therapistName: therapist.name,
+        therapistId: Number(therapistId),
+        rating,
+        reviewText,
+        isAnonymous,
+        submittedAt: new Date()
+      };
+      
+      // Add review to context
+      addReview(newReview);
+      
+      toast({
+        title: "תודה על הביקורת!",
+        description: "הביקורת שלך נשלחה בהצלחה ותוצג בעמוד המכון",
+      });
+      
+      // Redirect back to user profile
+      navigate('/profile');
+    } catch (error) {
+      console.error('Error saving review:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לשמור את הביקורת. אנא נסה שוב.",
+      });
+    }
   };
 
   return (

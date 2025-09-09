@@ -19,6 +19,7 @@ interface Appointment {
   originalTime?: string;
   requestedDate?: string;
   requestedTime?: string;
+  price?: number;
 }
 
 interface Gift {
@@ -173,9 +174,10 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                   apt.status === 'completed' ? 'הושלם' as const :
                   apt.status === 'cancelled' ? 'בוטל' as const :
                   'ממתין לאישור שינוי' as const,
-          duration: '45 דקות', // Default duration
-          phone: '050-1234567', // Default phone
-          therapistName: apt.service_name // Use service name as therapist name for now
+          duration: '45 דקות', // Default duration - could be loaded from services table
+          phone: apt.phone || '050-1234567', // Use appointment phone or default
+          therapistName: apt.service_name, // Use service name as therapist name for now
+          price: apt.price || 150 // Add price field with default value
         }));
 
         // Separate appointments by status
@@ -468,20 +470,62 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setContactInquiries(prev => [...prev, inquiry]);
   };
 
-  // Mock password reset functions
+  // Password reset functions - should be implemented with real email service
   const sendPasswordResetCode = async (email: string): Promise<string> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(`Password reset code for ${email}: ${code}`);
-    return code;
+    try {
+      // TODO: Implement real email service (Brevo, SendGrid, etc.)
+      // For now, simulate the process
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate a secure 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // In production, this would send an actual email
+      console.log(`Password reset code for ${email}: ${code}`);
+      
+      // Store the code temporarily (in production, store in database with expiry)
+      sessionStorage.setItem(`reset_code_${email}`, code);
+      sessionStorage.setItem(`reset_code_expiry_${email}`, (Date.now() + 10 * 60 * 1000).toString()); // 10 minutes
+      
+      return code;
+    } catch (error) {
+      console.error('Error sending password reset code:', error);
+      throw new Error('Failed to send password reset code');
+    }
   };
 
   const verifyResetCode = async (email: string, code: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // For demo purposes, accept any 6-digit code
-    return code.length === 6 && /^\d+$/.test(code);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const storedCode = sessionStorage.getItem(`reset_code_${email}`);
+      const expiry = sessionStorage.getItem(`reset_code_expiry_${email}`);
+      
+      if (!storedCode || !expiry) {
+        return false;
+      }
+      
+      // Check if code has expired
+      if (Date.now() > parseInt(expiry)) {
+        sessionStorage.removeItem(`reset_code_${email}`);
+        sessionStorage.removeItem(`reset_code_expiry_${email}`);
+        return false;
+      }
+      
+      // Verify the code
+      const isValid = storedCode === code;
+      
+      if (isValid) {
+        // Clean up the stored code after successful verification
+        sessionStorage.removeItem(`reset_code_${email}`);
+        sessionStorage.removeItem(`reset_code_expiry_${email}`);
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error('Error verifying reset code:', error);
+      return false;
+    }
   };
 
   return (

@@ -12,7 +12,11 @@ export const handler = async (event, context) => {
     
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        // Extract user ID from path
+        const pathParts = path.split('/');
+        const userId = pathParts[pathParts.length - 1];
+        
+        if (userId && userId !== 'user-profiles') {
           // Get extended profile for user
           const result = await query(
             `SELECT 
@@ -21,7 +25,7 @@ export const handler = async (event, context) => {
              FROM profiles p
              LEFT JOIN user_profiles_extended upe ON p.id = upe.user_id
              WHERE p.id = $1`,
-            [pathParameters.id]
+            [userId]
           );
           return createResponse(200, result.rows[0] || null);
         }
@@ -51,7 +55,11 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (pathParameters && pathParameters.id) {
+        // Extract user ID from path
+        const putPathParts = path.split('/');
+        const putUserId = putPathParts[putPathParts.length - 1];
+        
+        if (putUserId && putUserId !== 'user-profiles') {
           const body = JSON.parse(event.body);
           const fields = [];
           const values = [];
@@ -72,7 +80,7 @@ export const handler = async (event, context) => {
             return createResponse(400, null, 'No valid fields to update');
           }
 
-          values.push(pathParameters.id);
+          values.push(putUserId);
           const updateResult = await query(
             `UPDATE user_profiles_extended SET ${fields.join(', ')}, updated_at = NOW() WHERE user_id = $${paramCount} RETURNING *`,
             values
@@ -84,7 +92,7 @@ export const handler = async (event, context) => {
               `INSERT INTO user_profiles_extended (user_id, ${Object.keys(body).filter(k => allowedFields.includes(k)).join(', ')}) 
                VALUES ($1, ${Object.keys(body).filter(k => allowedFields.includes(k)).map((_, i) => `$${i + 2}`).join(', ')}) 
                RETURNING *`,
-              [pathParameters.id, ...Object.values(body).filter((_, i) => allowedFields.includes(Object.keys(body)[i]))]
+              [putUserId, ...Object.values(body).filter((_, i) => allowedFields.includes(Object.keys(body)[i]))]
             );
             return createResponse(201, createResult.rows[0]);
           }
