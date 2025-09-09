@@ -1,12 +1,14 @@
 [build]
   # Build command and directory
-  command = "npm run build:prod"
+  command = "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npx vite build --mode production"
   publish = "dist"
   functions = "netlify/functions"
 
 [build.environment]
   # Node version for build
   NODE_VERSION = "18"
+  # Skip automatic npm install since we handle it manually
+  NPM_FLAGS = "--legacy-peer-deps"
 
 # Redirect configuration for SPA
 [[redirects]]
