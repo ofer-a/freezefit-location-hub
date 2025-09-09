@@ -30,4 +30,5 @@
 
 # Production environment variables (set these in Netlify UI)
 # DATABASE_URL = "postgresql://neondb_owner:npg_im61ZIwxsjWn@ep-rapid-night-agzgtgcn-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# JWT_SECRET = "your-super-secret-jwt-key-change-in-production"
 # NODE_ENV = "production"

@@ -25,11 +25,8 @@ interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demonstration
-const mockUsers: User[] = [
-  { id: '1', name: 'לקוח לדוגמה', email: 'customer@example.com', role: 'customer' },
-  { id: '2', name: 'ספק שירות לדוגמה', email: 'provider@example.com', role: 'provider' }
-];
+// API base URL for authentication
+const API_BASE_URL = '/.netlify/functions';
 
 // Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -38,93 +35,122 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check local storage for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('freezefit_user');
-    
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        localStorage.removeItem('freezefit_user');
+    const verifyStoredToken = async () => {
+      const storedToken = localStorage.getItem('freezefit_token');
+      const storedUser = localStorage.getItem('freezefit_user');
+      
+      if (storedToken && storedUser) {
+        try {
+          // Verify token with backend
+          const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: storedToken })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success && result.data.user) {
+            setUser(result.data.user);
+            setIsAuthenticated(true);
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('freezefit_token');
+            localStorage.removeItem('freezefit_user');
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          localStorage.removeItem('freezefit_token');
+          localStorage.removeItem('freezefit_user');
+        }
       }
-    }
+    };
+
+    verifyStoredToken();
   }, []);
 
   // Login function
   const login = async (email: string, password: string): Promise<{ redirectTo: string }> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data.user && result.data.token) {
+        const { user, token, redirectTo } = result.data;
         
-        if (foundUser && password === '123456') {
-          setUser(foundUser);
-          setIsAuthenticated(true);
-          localStorage.setItem('freezefit_user', JSON.stringify(foundUser));
-          
-          // Determine redirect based on user role
-          const redirectTo = foundUser.role === 'provider' ? '/dashboard' : '/profile';
-          resolve({ redirectTo });
-        } else {
-          reject(new Error('אימייל או סיסמה לא נכונים'));
-        }
-      }, 500);
-    });
+        setUser(user);
+        setIsAuthenticated(true);
+        localStorage.setItem('freezefit_user', JSON.stringify(user));
+        localStorage.setItem('freezefit_token', token);
+        
+        return { redirectTo };
+      } else {
+        throw new Error(result.error || 'אימייל או סיסמה לא נכונים');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('שגיאה בהתחברות, נסה שוב');
+    }
   };
 
   // Register function
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<{ redirectTo: string }> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const existingUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data.user && result.data.token) {
+        const { user, token, redirectTo } = result.data;
         
-        if (existingUser) {
-          reject(new Error('משתמש עם אימייל זה כבר קיים במערכת'));
-          return;
-        }
-        
-        // Create new user
-        const newUser: User = {
-          id: `${mockUsers.length + 1}`,
-          name,
-          email,
-          role
-        };
-        
-        // In a real app we would save to database here
-        mockUsers.push(newUser);
-        
-        // Log in the new user
-        setUser(newUser);
+        setUser(user);
         setIsAuthenticated(true);
-        localStorage.setItem('freezefit_user', JSON.stringify(newUser));
+        localStorage.setItem('freezefit_user', JSON.stringify(user));
+        localStorage.setItem('freezefit_token', token);
         
-        // Determine redirect based on user role
-        const redirectTo = newUser.role === 'provider' ? '/dashboard' : '/profile';
-        resolve({ redirectTo });
-      }, 500);
-    });
+        return { redirectTo };
+      } else {
+        throw new Error(result.error || 'שגיאה בהרשמה');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('שגיאה בהרשמה, נסה שוב');
+    }
   };
   
   // Reset password function
   const resetPassword = async (email: string, newPassword: string): Promise<void> => {
-    // Simulate API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (!foundUser) {
-          reject(new Error('לא נמצא משתמש עם האימייל הזה'));
-          return;
-        }
-        
-        // In a real app, we would update the password in the database
-        // For our mock system, we'll just resolve the promise as if the password was updated
-        resolve();
-      }, 500);
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'שגיאה באיפוס סיסמה');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('שגיאה באיפוס סיסמה, נסה שוב');
+    }
   };
 
   // Logout function
@@ -132,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('freezefit_user');
+    localStorage.removeItem('freezefit_token');
   };
 
   // Create value object

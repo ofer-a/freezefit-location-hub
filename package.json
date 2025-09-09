@@ -11,7 +11,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-db": "node scripts/setup-neon-db.js",
-    "migrate-data": "node scripts/insert-data-only.js"
+    "migrate-data": "node scripts/insert-data-only.js",
+    "setup-auth": "node scripts/setup-auth-users.js",
+    "dev:netlify": "netlify dev --port=8888",
+    "generate-jwt": "node -e \"console.log('JWT_SECRET=' + require('crypto').randomBytes(64).toString('hex'))\""
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",
@@ -46,10 +49,13 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/supabase-js": "^2.49.8",
     "@tanstack/react-query": "^5.56.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/google.maps": "^3.58.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/leaflet": "^1.9.18",
     "@types/mapbox-gl": "^2.7.19",
     "@types/pg": "^8.15.5",
+    "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -57,6 +63,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.3.0",
     "input-otp": "^1.2.4",
+    "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
