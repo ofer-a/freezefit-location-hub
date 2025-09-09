@@ -256,7 +256,7 @@ const FindInstitute = () => {
         service_name: selectedService,
         appointment_date: formattedDate,
         appointment_time: selectedTime,
-        status: 'pending',
+        status: 'pending' as const,
         price: selectedService.includes('קצר') ? 150 : 250 // Example pricing
       };
       
@@ -271,7 +271,7 @@ const FindInstitute = () => {
         date: displayDate,
         time: selectedTime,
         duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
-        phone: user.phone || '050-0000000',
+        phone: '050-0000000', // Default phone number
         institute: bookingInstitute.name
       };
       
@@ -306,7 +306,7 @@ const FindInstitute = () => {
     }
   };
 
-  const handleMarkerClick = (instituteId: number) => {
+  const handleMarkerClick = (instituteId: string) => {
     setSelectedInstitute(instituteId);
     setActiveView('list');
     

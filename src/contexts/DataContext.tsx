@@ -141,11 +141,26 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           return;
         }
 
-        // Load appointments for the authenticated user only
-        const userAppointments = await dbOperations.getAppointmentsByUser(user.id);
-        console.log(`Loading appointments for user ${user.id}:`, userAppointments.length);
-        
-        const allAppointments = userAppointments;
+        let allAppointments = [];
+
+        if (user.role === 'provider') {
+          // For providers, load appointments for their institutes
+          const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+          console.log(`Provider institutes:`, userInstitutes.length);
+          
+          if (userInstitutes.length > 0) {
+            // Get appointments for all user's institutes
+            const instituteAppointments = await Promise.all(
+              userInstitutes.map(institute => dbOperations.getAppointmentsByInstitute(institute.id))
+            );
+            allAppointments = instituteAppointments.flat();
+            console.log(`Loading appointments for provider institutes:`, allAppointments.length);
+          }
+        } else {
+          // For customers, load their personal appointments
+          allAppointments = await dbOperations.getAppointmentsByUser(user.id);
+          console.log(`Loading appointments for user ${user.id}:`, allAppointments.length);
+        }
 
         // Transform database appointments to match our interface
         const transformedAppointments = allAppointments.map(apt => ({
@@ -316,7 +331,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const updateAppointmentStatus = async (appointmentId: string | number, currentStatus: string, newStatus: string) => {
     try {
       // Update appointment status in database
-      await dbOperations.updateAppointmentStatus(appointmentId.toString(), newStatus);
+      await dbOperations.updateAppointmentStatus(appointmentId.toString(), newStatus as 'pending' | 'confirmed' | 'completed' | 'cancelled');
       
       const statusMap: { [key: string]: 'נקבע' | 'הושלם' | 'בוטל' } = {
         'pending': 'נקבע',

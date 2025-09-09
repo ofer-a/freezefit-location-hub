@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 interface MapComponentProps {
   userLocation: { lat: number; lng: number } | null;
   markers?: Array<{
-    id: number;
+    id: string;
     name: string;
     coordinates: { lat: number; lng: number };
     address?: string;
@@ -14,7 +14,7 @@ interface MapComponentProps {
     hours?: string;
     therapists?: Array<{ name: string; specialty: string; experience: number }>;
   }>;
-  onMarkerClick?: (id: number) => void;
+  onMarkerClick?: (id: string) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({

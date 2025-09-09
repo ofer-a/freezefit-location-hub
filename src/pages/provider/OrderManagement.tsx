@@ -49,36 +49,60 @@ const OrderManagement = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  const handleApprove = (orderId: number) => {
-    updateAppointmentStatus(orderId, 'pending', 'confirmed');
-    
-    toast({
-      title: "התור אושר",
-      description: "התור עבר לרשימת התורים המאושרים",
-    });
+  const handleApprove = async (orderId: number) => {
+    try {
+      await updateAppointmentStatus(orderId, 'pending', 'confirmed');
+      
+      toast({
+        title: "התור אושר",
+        description: "התור עבר לרשימת התורים המאושרים",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לאשר את התור. נסה שוב מאוחר יותר.",
+      });
+    }
   };
 
-  const handleReject = (orderId: number, fromPending: boolean = true) => {
-    updateAppointmentStatus(
-      orderId, 
-      fromPending ? 'pending' : 'confirmed',
-      'cancelled'
-    );
-    
-    toast({
-      variant: "destructive",
-      title: "התור בוטל",
-      description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
-    });
+  const handleReject = async (orderId: number, fromPending: boolean = true) => {
+    try {
+      await updateAppointmentStatus(
+        orderId, 
+        fromPending ? 'pending' : 'confirmed',
+        'cancelled'
+      );
+      
+      toast({
+        variant: "destructive",
+        title: "התור בוטל",
+        description: "התור הועבר לרשימת ההיסטוריה כ'בוטל'",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לבטל את התור. נסה שוב מאוחר יותר.",
+      });
+    }
   };
 
-  const handleComplete = (orderId: number) => {
-    updateAppointmentStatus(orderId, 'confirmed', 'completed');
-    
-    toast({
-      title: "הטיפול הושלם",
-      description: "התור הועבר להיסטוריית התורים",
-    });
+  const handleComplete = async (orderId: number) => {
+    try {
+      await updateAppointmentStatus(orderId, 'confirmed', 'completed');
+      
+      toast({
+        title: "הטיפול הושלם",
+        description: "התור הועבר להיסטוריית התורים",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לסמן את הטיפול כהושלם. נסה שוב מאוחר יותר.",
+      });
+    }
   };
 
   const handleApproveReschedule = (orderId: number) => {
