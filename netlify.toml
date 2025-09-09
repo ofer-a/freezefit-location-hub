@@ -1,7 +1,8 @@
 [build]
   # Build command and directory
-  command = "npm run build"
+  command = "npm install --force && npm run build:prod"
   publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   # Node version for build
