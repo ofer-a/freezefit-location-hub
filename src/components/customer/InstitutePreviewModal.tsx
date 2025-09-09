@@ -90,8 +90,9 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
         setLoading(true)
         
         // Convert institute ID to UUID format for database lookup
-        // This is a temporary solution - in production, we'd store the actual UUID
-        const instituteUUID = `bbbbbbbb-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(4, '0')}-${institute.id.toString().padStart(12, '0')}`
+        // Map numeric IDs to actual UUIDs from database
+        const idStr = institute.id.toString().repeat(4)  // Convert 2 to "2222"
+        const instituteUUID = `bbbbbbbb-${idStr}-${idStr}-${idStr}-${idStr}${idStr}${idStr}`
         
         const dbReviews = await dbOperations.getReviewsByInstitute(instituteUUID)
         

@@ -22,6 +22,25 @@ import { he } from 'date-fns/locale';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+// Interface for institutes
+interface Institute {
+  id: number;
+  name: string;
+  address: string;
+  distance: number;
+  rating: number;
+  reviewCount: number;
+  therapists: Array<{
+    id: number;
+    name: string;
+    specialty: string;
+    experience: number;
+    image: string;
+  }>;
+  hours: string;
+  coordinates: { lat: number; lng: number };
+}
+
 const FindInstitute = () => {
   const { isAuthenticated, user } = useAuth();
   const { selectedMapLocation, setSelectedMapLocation, userClub } = useData();
@@ -164,10 +183,44 @@ const FindInstitute = () => {
 
   const { confirmedAppointments, updateUserClubPoints, addNewAppointment } = useData();
 
-  const handleBookAppointment = (instituteId: number) => {
+  const handleBookAppointment = async (instituteId: number) => {
     const institute = allInstitutes.find(inst => inst.id === instituteId);
     if (institute) {
-      setBookingInstitute(institute);
+      console.log('Booking appointment for institute:', institute.name);
+      console.log('Current therapists:', institute.therapists.map(t => t.name));
+      
+      // Fetch fresh therapists to ensure we have the correct data
+      try {
+        const dbInstitutes = await dbOperations.getInstitutes();
+        const originalInstitute = dbInstitutes.find(dbInst => 
+          parseInt(dbInst.id.split('-')[0], 16) === instituteId
+        );
+        
+        if (originalInstitute) {
+          const freshTherapists = await dbOperations.getTherapistsByInstitute(originalInstitute.id);
+          console.log('Fresh therapists fetched:', freshTherapists.map(t => t.name));
+          
+          // Create updated institute with fresh therapist data
+          const updatedInstitute = {
+            ...institute,
+            therapists: freshTherapists.map(therapist => ({
+              id: parseInt(therapist.id.split('-')[0], 16),
+              name: therapist.name,
+              specialty: therapist.bio || 'מטפל מוסמך',
+              experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
+              image: therapist.image_url || '/placeholder.svg'
+            }))
+          };
+          
+          setBookingInstitute(updatedInstitute);
+        } else {
+          setBookingInstitute(institute);
+        }
+      } catch (error) {
+        console.error('Error fetching fresh therapists:', error);
+        setBookingInstitute(institute);
+      }
+      
       setIsBookingDialogOpen(true);
     }
   };

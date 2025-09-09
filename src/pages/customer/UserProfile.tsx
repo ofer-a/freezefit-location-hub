@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+import { formatHebrewDate } from '@/lib/utils';
 import { User, Calendar, Clock, MessageSquare, Award, Gift, Check, Mail } from 'lucide-react';
 import RescheduleDialog from '@/components/appointments/RescheduleDialog';
 import DeleteAccountDialog from '@/components/ui/dialog-delete-account';
@@ -318,7 +319,7 @@ const UserProfile = () => {
                                     <p className="text-gray-700">{appointment.service}</p>
                                     <div className="flex items-center mt-2">
                                       <Calendar className="h-4 w-4 ml-1" />
-                                      <span className="text-sm">{appointment.date}</span>
+                                      <span className="text-sm">{formatHebrewDate(appointment.date)}</span>
                                       <Clock className="h-4 w-4 mx-1 mr-3" />
                                       <span className="text-sm">{appointment.time}</span>
                                     </div>
@@ -374,7 +375,7 @@ const UserProfile = () => {
                                   <p className="text-gray-700">{appointment.service}</p>
                                   <div className="flex items-center mt-2">
                                     <Calendar className="h-4 w-4 ml-1" />
-                                    <span className="text-sm">{appointment.date}</span>
+                                    <span className="text-sm">{formatHebrewDate(appointment.date)}</span>
                                     <Clock className="h-4 w-4 mx-1 mr-3" />
                                     <span className="text-sm">{appointment.time}</span>
                                   </div>

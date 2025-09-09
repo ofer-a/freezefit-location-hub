@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { dbOperations } from '@/lib/database';
+import { useAuth } from './AuthContext';
 
 // Define the data types
 interface Appointment {
@@ -98,6 +99,8 @@ const useData = () => {
 };
 
 const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  
   // State for appointments - now loaded from real database
   const [confirmedAppointments, setConfirmedAppointments] = useState<Appointment[]>([]);
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([]);
@@ -115,20 +118,20 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadAppointments = async () => {
       try {
-        // For demo purposes, we'll use some sample user IDs from our database
-        // In a real app, this would come from authentication context
-        const sampleUserIds = [
-          '11111111-1111-1111-1111-111111111111',
-          '22222222-2222-2222-2222-222222222222',
-          '33333333-3333-3333-3333-333333333333'
-        ];
-
-        // Load appointments for all sample users
-        const allAppointments = [];
-        for (const userId of sampleUserIds) {
-          const userAppointments = await dbOperations.getAppointmentsByUser(userId);
-          allAppointments.push(...userAppointments);
+        // Only load appointments if user is authenticated
+        if (!isAuthenticated || !user?.id) {
+          // Clear appointments for unauthenticated users
+          setConfirmedAppointments([]);
+          setPendingAppointments([]);
+          setHistoryAppointments([]);
+          return;
         }
+
+        // Load appointments for the authenticated user only
+        const userAppointments = await dbOperations.getAppointmentsByUser(user.id);
+        console.log(`Loading appointments for user ${user.id}:`, userAppointments.length);
+        
+        const allAppointments = userAppointments;
 
         // Transform database appointments to match our interface
         const transformedAppointments = allAppointments.map(apt => ({
@@ -171,7 +174,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           const instituteReviews = await dbOperations.getReviewsByInstitute(institute.id);
           allReviews.push(...instituteReviews.map(review => ({
             id: review.id,
-            customerName: review.user_name || 'לקוח אנונימי',
+            customerName: 'לקוח אנונימי',
             customerId: review.user_id,
             instituteName: institute.institute_name,
             instituteId: parseInt(institute.id.split('-')[0], 16),
@@ -179,7 +182,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             therapistId: 1,
             rating: review.rating,
             reviewText: review.content,
-            isAnonymous: !review.user_name,
+            isAnonymous: true,
             submittedAt: new Date(review.review_date || review.created_at)
           })));
         }
@@ -192,7 +195,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     loadAppointments();
     loadReviews();
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   // Add review function
   const addReview = (review: Review) => {

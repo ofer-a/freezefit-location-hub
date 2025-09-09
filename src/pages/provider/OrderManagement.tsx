@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { formatHebrewDate } from '@/lib/utils';
 import { Calendar, Clock, CheckCircle, AlertTriangle, Archive, Search, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -176,7 +177,7 @@ const OrderManagement = () => {
                             <div className="text-right ml-6">
                               <div className="flex items-center text-gray-700">
                                 <Calendar className="h-4 w-4 ml-1" />
-                                <span>{order.date}</span>
+                                <span>{formatHebrewDate(order.date)}</span>
                               </div>
                               <div className="flex items-center text-gray-700 mt-1">
                                 <Clock className="h-4 w-4 ml-1" />
@@ -236,7 +237,7 @@ const OrderManagement = () => {
                             <div className="text-right ml-6">
                               <div className="flex items-center text-gray-700">
                                 <Calendar className="h-4 w-4 ml-1" />
-                                <span>{order.date}</span>
+                                <span>{formatHebrewDate(order.date)}</span>
                               </div>
                               <div className="flex items-center text-gray-700 mt-1">
                                 <Clock className="h-4 w-4 ml-1" />
@@ -364,7 +365,7 @@ const OrderManagement = () => {
                             <div className="text-right">
                               <div className="flex items-center text-gray-700">
                                 <Calendar className="h-4 w-4 ml-1" />
-                                <span>{order.date}</span>
+                                <span>{formatHebrewDate(order.date)}</span>
                               </div>
                               <div className="flex items-center text-gray-700 mt-1">
                                 <Clock className="h-4 w-4 ml-1" />
