@@ -57,13 +57,56 @@ const HomePage = () => {
     }
   };
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "נרשמת בהצלחה!",
-      description: "תודה על הרשמתך לעדכונים"
-    });
-    setEmail('');
+    
+    if (!email.trim()) {
+      toast({
+        title: "שגיאה",
+        description: "אנא הכנס כתובת אימייל תקפה",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/newsletter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          source: 'homepage'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        if (result.alreadySubscribed) {
+          toast({
+            title: "כבר רשום!",
+            description: "כתובת האימייל הזו כבר רשומה לקבלת עדכונים"
+          });
+        } else {
+          toast({
+            title: "נרשמת בהצלחה!",
+            description: "תודה על הרשמתך לעדכונים. נשלח לך עדכונים שוטפים ומבצעים מיוחדים"
+          });
+        }
+        setEmail('');
+      } else {
+        throw new Error(result.error || 'Failed to subscribe');
+      }
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בהרשמה. אנא נסה שנית מאוחר יותר",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleContactFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

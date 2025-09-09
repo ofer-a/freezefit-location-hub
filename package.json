@@ -13,6 +13,8 @@
     "setup-db": "node scripts/setup-neon-db.js",
     "migrate-data": "node scripts/insert-data-only.js",
     "setup-auth": "node scripts/setup-auth-users.js",
+    "setup-newsletter": "node scripts/setup-newsletter.js",
+    "setup-netlify-env": "node scripts/setup-netlify-env.js",
     "dev:netlify": "netlify dev --port=8888",
     "generate-jwt": "node -e \"console.log('JWT_SECRET=' + require('crypto').randomBytes(64).toString('hex'))\""
   },
@@ -93,6 +95,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.2.2",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
