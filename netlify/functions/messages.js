@@ -1,95 +1,143 @@
-// Netlify Function for messages API
-import { query, createResponse, handleCORS } from './db-client.js';
+import { Pool } from 'pg';
+
+// Database connection pool
+let pool;
+
+function getPool() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    });
+  }
+  return pool;
+}
 
 export const handler = async (event, context) => {
-  // Handle CORS preflight
+  // Enable CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json',
+  };
+
+  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return handleCORS();
+    return {
+      statusCode: 200,
+      headers,
+      body: '',
+    };
   }
 
+  const pool = getPool();
+
   try {
-    const { httpMethod, path, pathParameters } = event;
-    
-    switch (httpMethod) {
-      case 'GET':
-        if (pathParameters && pathParameters.id) {
-          // Get single message
-          const result = await query('SELECT * FROM messages WHERE id = $1', [pathParameters.id]);
-          return createResponse(200, result.rows[0] || null);
-        } else if (path.includes('/user/')) {
-          // Get messages by user
-          const userId = path.split('/user/')[1];
-          const result = await query(
-            'SELECT * FROM messages WHERE user_id = $1 ORDER BY created_at DESC',
-            [userId]
-          );
-          return createResponse(200, result.rows);
-        } else {
-          // Get all messages
-          const result = await query('SELECT * FROM messages ORDER BY created_at DESC');
-          return createResponse(200, result.rows);
-        }
+    const { httpMethod, path } = event;
+    const pathParts = path.split('/').filter(Boolean);
 
-      case 'POST':
-        const { user_id, institute_id, sender_type, message_type, subject, content, is_read } = JSON.parse(event.body);
-        const insertResult = await query(
-          `INSERT INTO messages (user_id, institute_id, sender_type, message_type, subject, content, is_read) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-          [user_id, institute_id, sender_type, message_type, subject, content, is_read || false]
-        );
-        return createResponse(201, insertResult.rows[0]);
+    // GET /messages/user/:userId - Get messages for a user
+    if (httpMethod === 'GET' && pathParts[1] === 'user' && pathParts[2]) {
+      const userId = pathParts[2];
+      
+      const result = await pool.query(
+        `SELECT * FROM messages 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC`,
+        [userId]
+      );
 
-      case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
-          return createResponse(400, null, 'Message ID is required');
-        }
-        
-        if (path.includes('/read')) {
-          // Mark message as read
-          const updateResult = await query(
-            'UPDATE messages SET is_read = true, updated_at = NOW() WHERE id = $1 RETURNING *',
-            [pathParameters.id]
-          );
-          return createResponse(200, updateResult.rows[0] || null);
-        } else {
-          // Update message
-          const updates = JSON.parse(event.body);
-          const fields = [];
-          const values = [];
-          let paramCount = 1;
-
-          Object.entries(updates).forEach(([key, value]) => {
-            if (value !== undefined && key !== 'id' && key !== 'created_at' && key !== 'updated_at') {
-              fields.push(`${key} = $${paramCount}`);
-              values.push(value);
-              paramCount++;
-            }
-          });
-
-          if (fields.length === 0) {
-            return createResponse(400, null, 'No valid fields to update');
-          }
-
-          values.push(pathParameters.id);
-          const updateResult = await query(
-            `UPDATE messages SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
-            values
-          );
-          return createResponse(200, updateResult.rows[0] || null);
-        }
-
-      case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
-          return createResponse(400, null, 'Message ID is required');
-        }
-        const deleteResult = await query('DELETE FROM messages WHERE id = $1', [pathParameters.id]);
-        return createResponse(200, { deleted: deleteResult.rowCount > 0 });
-
-      default:
-        return createResponse(405, null, 'Method not allowed');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          data: result.rows
+        }),
+      };
     }
+
+    // POST /messages - Create a new message
+    if (httpMethod === 'POST') {
+      const { user_id, institute_id, subject, content, sender_type } = JSON.parse(event.body);
+
+      if (!user_id || !subject || !content) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ 
+            error: 'user_id, subject, and content are required',
+            success: false 
+          }),
+        };
+      }
+
+      const result = await pool.query(
+        `INSERT INTO messages (user_id, institute_id, subject, content, sender_type, is_read, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, false, NOW(), NOW()) 
+         RETURNING *`,
+        [user_id, institute_id || null, subject, content, sender_type || 'customer']
+      );
+
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          data: result.rows[0]
+        }),
+      };
+    }
+
+    // PUT /messages/:id/read - Mark message as read
+    if (httpMethod === 'PUT' && pathParts[2] === 'read') {
+      const messageId = pathParts[1];
+      
+      const result = await pool.query(
+        `UPDATE messages 
+         SET is_read = true, updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING *`,
+        [messageId]
+      );
+
+      if (result.rows.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Message not found',
+            success: false 
+          }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          data: result.rows[0]
+        }),
+      };
+    }
+
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
+
   } catch (error) {
-    console.error('Message API error:', error);
-    return createResponse(500, null, error.message);
+    console.error('Messages function error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        success: false 
+      }),
+    };
   }
 };

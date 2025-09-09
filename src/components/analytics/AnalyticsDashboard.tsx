@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,8 @@ import { he } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useAuth } from '@/contexts/AuthContext';
+import { dbOperations } from '@/lib/database';
+import { useToast } from '@/hooks/use-toast';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -25,48 +27,117 @@ interface AnalyticsDashboardProps {
 
 const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedDays, setSelectedDays] = useState('7');
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [institutes, setInstitutes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - in real app, this would come from your data context or API
-  const generateMockData = (days: number) => {
-    const data = [];
-    const revenue = [];
-    const services = [];
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = format(subDays(new Date(), i), 'dd/MM', { locale: he });
-      const appointments = Math.floor(Math.random() * 15) + 5;
-      const dailyRevenue = Math.floor(Math.random() * 2000) + 1000;
+  // Load real data from database
+  useEffect(() => {
+    const loadAnalyticsData = async () => {
+      if (!user?.id) return;
       
-      data.push({
-        date,
-        appointments,
-        completed: Math.floor(appointments * 0.8),
-        cancelled: Math.floor(appointments * 0.1),
-        pending: Math.floor(appointments * 0.1)
-      });
-      
-      revenue.push({
-        date,
-        revenue: dailyRevenue,
-        target: 1500
-      });
+      try {
+        setLoading(true);
+        
+        // Get user's institutes if they're a provider
+        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+        setInstitutes(userInstitutes);
+        
+        // Get appointments for all user's institutes
+        const allAppointments = [];
+        for (const institute of userInstitutes) {
+          const instituteAppointments = await dbOperations.getAppointmentsByInstitute(institute.id);
+          allAppointments.push(...instituteAppointments);
+        }
+        
+        setAppointments(allAppointments);
+      } catch (error) {
+        console.error('Error loading analytics data:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון נתוני אנליטיקה",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAnalyticsData();
+  }, [user?.id, toast]);
+
+  // Process real data into analytics format
+  const data = useMemo(() => {
+    if (loading || appointments.length === 0) {
+      // Return empty data structure while loading
+      return { appointments: [], revenue: [], services: [] };
     }
 
-    // Services data
-    const serviceTypes = ['טיפול שיקום', 'טיפול ספורטאים', 'טיפול סטנדרטי', 'קריותרפיה מתקדמת'];
-    serviceTypes.forEach(service => {
-      services.push({
-        name: service,
-        count: Math.floor(Math.random() * 50) + 20,
-        revenue: Math.floor(Math.random() * 5000) + 2000
+    const days = parseInt(selectedDays);
+    const appointmentData = [];
+    const revenueData = [];
+    const serviceStats = new Map();
+    
+    // Filter appointments by date range
+    const cutoffDate = subDays(new Date(), days);
+    const recentAppointments = appointments.filter(apt => 
+      new Date(apt.appointment_date) >= cutoffDate
+    );
+    
+    // Generate daily data
+    for (let i = days - 1; i >= 0; i--) {
+      const date = format(subDays(new Date(), i), 'dd/MM', { locale: he });
+      const dayDate = format(subDays(new Date(), i), 'yyyy-MM-dd');
+      
+      const dayAppointments = recentAppointments.filter(apt => apt.appointment_date === dayDate);
+      const totalCount = dayAppointments.length;
+      const completed = dayAppointments.filter(apt => apt.status === 'completed').length;
+      const cancelled = dayAppointments.filter(apt => apt.status === 'cancelled').length;
+      const pending = dayAppointments.filter(apt => apt.status === 'pending').length;
+      
+      appointmentData.push({
+        date,
+        appointments: totalCount,
+        completed,
+        cancelled,
+        pending
       });
-    });
+      
+      const dailyRevenue = dayAppointments
+        .filter(apt => apt.status === 'completed')
+        .reduce((sum, apt) => sum + (apt.price || 0), 0);
+      
+      revenueData.push({
+        date,
+        revenue: dailyRevenue,
+        target: 1500 // Could be made configurable
+      });
+      
+      // Count services
+      dayAppointments.forEach(apt => {
+        const serviceName = apt.service_name;
+        if (serviceName) {
+          const current = serviceStats.get(serviceName) || { count: 0, revenue: 0 };
+          current.count += 1;
+          if (apt.status === 'completed') {
+            current.revenue += apt.price || 0;
+          }
+          serviceStats.set(serviceName, current);
+        }
+      });
+    }
+    
+    // Convert service stats to array
+    const services = Array.from(serviceStats.entries()).map(([name, stats]) => ({
+      name,
+      count: stats.count,
+      revenue: stats.revenue
+    }));
 
-    return { appointments: data, revenue, services };
-  };
-
-  const data = useMemo(() => generateMockData(parseInt(selectedDays)), [selectedDays]);
+    return { appointments: appointmentData, revenue: revenueData, services };
+  }, [appointments, selectedDays, loading]);
 
   // Calculate totals
   const totals = useMemo(() => {

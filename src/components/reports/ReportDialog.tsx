@@ -11,7 +11,7 @@ import { format, differenceInDays, isFuture, addDays } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { dbOperations } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReportGenerator } from '@/lib/reportGenerator';
 import type { ReportData, ReportFilters } from '@/lib/reportTypes';
@@ -60,30 +60,24 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
   const fetchReportData = async (filters: ReportFilters): Promise<ReportData | null> => {
     try {
       // Get user's institute
-      const { data: institutes, error: instituteError } = await supabase
-        .from('institutes')
-        .select('*')
-        .eq('owner_id', user?.id)
-        .single();
-
-      if (instituteError || !institutes) {
+      const institutes = await dbOperations.getInstitutesByOwner(user?.id || '');
+      
+      if (!institutes || institutes.length === 0) {
         throw new Error('לא נמצא מכון המשויך למשתמש');
       }
+      
+      const institute = institutes[0]; // Use first institute
 
       // Fetch appointments for the date range
-      const { data: appointments, error: appointmentsError } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          services (name, price)
-        `)
-        .eq('institute_id', institutes.id)
-        .gte('appointment_date', format(filters.startDate, 'yyyy-MM-dd'))
-        .lte('appointment_date', format(filters.endDate, 'yyyy-MM-dd'));
-
-      if (appointmentsError) {
-        throw new Error('שגיאה בטעינת נתוני התורים');
-      }
+      const allAppointments = await dbOperations.getAppointmentsByInstitute(institute.id);
+      
+      // Filter appointments by date range
+      const appointments = allAppointments.filter(apt => {
+        const aptDate = new Date(apt.appointment_date);
+        const startDate = new Date(format(filters.startDate, 'yyyy-MM-dd'));
+        const endDate = new Date(format(filters.endDate, 'yyyy-MM-dd'));
+        return aptDate >= startDate && aptDate <= endDate;
+      });
 
       if (!appointments || appointments.length === 0) {
         return null;

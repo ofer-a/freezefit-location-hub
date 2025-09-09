@@ -12,15 +12,15 @@ export const handler = async (event, context) => {
     
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
-          // Get single service
-          const result = await query('SELECT * FROM services WHERE id = $1', [pathParameters.id]);
-          return createResponse(200, result.rows[0] || null);
-        } else if (path.includes('/institute/')) {
+        if (path.includes('/institute/')) {
           // Get services by institute
           const instituteId = path.split('/institute/')[1];
           const result = await query('SELECT * FROM services WHERE institute_id = $1 ORDER BY name', [instituteId]);
           return createResponse(200, result.rows);
+        } else if (pathParameters && pathParameters.id) {
+          // Get single service
+          const result = await query('SELECT * FROM services WHERE id = $1', [pathParameters.id]);
+          return createResponse(200, result.rows[0] || null);
         } else {
           // Get all services
           const result = await query('SELECT * FROM services ORDER BY name');

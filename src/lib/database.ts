@@ -156,26 +156,32 @@ export const dbOperations = {
     return response.data || [];
   },
 
+  async getTherapist(id: string): Promise<Therapist | null> {
+    const response = await apiClient.getTherapist(id);
+    return response.data;
+  },
+
   async createTherapist(therapist: Omit<Therapist, 'id' | 'created_at' | 'updated_at'>): Promise<Therapist> {
     const response = await apiClient.createTherapist(therapist);
     if (!response.data) throw new Error(response.error || 'Failed to create therapist');
     return response.data;
   },
 
-  async updateTherapist(id: string, updates: Partial<Therapist>): Promise<Therapist | null> {
-    const response = await apiClient.updateTherapist(id, updates);
-    return response.data;
-  },
-
-  async deleteTherapist(id: string): Promise<boolean> {
-    const response = await apiClient.deleteTherapist(id);
-    return response.data?.deleted || false;
-  },
-
   // Services
   async getServicesByInstitute(instituteId: string): Promise<Service[]> {
     const response = await apiClient.getServicesByInstitute(instituteId);
     return response.data || [];
+  },
+
+  async getService(id: string): Promise<Service | null> {
+    const response = await apiClient.getService(id);
+    return response.data;
+  },
+
+  async createService(service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> {
+    const response = await apiClient.createService(service);
+    if (!response.data) throw new Error(response.error || 'Failed to create service');
+    return response.data;
   },
 
   // Business Hours

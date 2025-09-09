@@ -5,20 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Calendar, Clock, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: string;
-  subject: string;
-  content: string;
-  sender_type: string;
-  message_type: string;
-  is_read: boolean;
-  created_at: string;
-  institute_id: string;
-}
+import { dbOperations, Message } from '@/lib/database';
 
 interface MessageBoxProps {
   isOpen: boolean;
@@ -42,13 +31,7 @@ const MessageBox = ({ isOpen, onClose }: MessageBoxProps) => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await dbOperations.getMessagesByUser(user.id);
       setMessages(data || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -64,13 +47,8 @@ const MessageBox = ({ isOpen, onClose }: MessageBoxProps) => {
 
   const markAsRead = async (messageId: string) => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('id', messageId);
-
-      if (error) throw error;
-
+      await dbOperations.markMessageAsRead(messageId);
+      
       setMessages(prev => 
         prev.map(msg => 
           msg.id === messageId ? { ...msg, is_read: true } : msg

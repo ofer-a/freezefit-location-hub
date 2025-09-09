@@ -15,35 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Star, ArrowLeft } from 'lucide-react';
 import { dbOperations } from '@/lib/database';
 
-// Mock data for institute and therapist
-const mockInstitutes = [
-  {
-    id: 1,
-    name: 'מרכז קריוסטיים',
-    address: 'רחוב הרצל 15, תל אביב',
-    therapists: [
-      { id: 1, name: 'דני כהן', specialty: 'ספורטאים', experience: 5 },
-      { id: 2, name: 'מיכל לוי', specialty: 'שיקום', experience: 8 }
-    ]
-  },
-  {
-    id: 2,
-    name: 'קריו פלוס',
-    address: 'דרך מנחם בגין 132, תל אביב',
-    therapists: [
-      { id: 3, name: 'רונית דוד', specialty: 'קריותרפיה', experience: 10 },
-    ]
-  },
-  {
-    id: 3,
-    name: 'אייס פיט',
-    address: 'רחוב אבן גבירול 30, תל אביב',
-    therapists: [
-      { id: 4, name: 'אלון ברק', specialty: 'ספורטאי עילית', experience: 7 },
-      { id: 5, name: 'נועה פרץ', specialty: 'שחזור שריר', experience: 6 }
-    ]
-  }
-];
+// This component now loads institute data from the database via useEffect
 
 const AddReview = () => {
   const { instituteId, therapistId } = useParams<{ instituteId: string; therapistId: string }>();

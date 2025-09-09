@@ -73,6 +73,14 @@ async function handleRegister(body) {
       { expiresIn: '7d' }
     );
 
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.full_name, user.role);
+    } catch (emailError) {
+      console.error('Welcome email failed:', emailError);
+      // Don't fail registration if email fails
+    }
+
     return createResponse(201, {
       user: {
         id: user.id,
@@ -209,5 +217,150 @@ async function handleResetPassword(body) {
   } catch (error) {
     console.error('Password reset error:', error);
     return createResponse(500, null, 'שגיאה באיפוס סיסמה, נסה שוב');
+  }
+}
+
+// Send welcome email using Brevo
+async function sendWelcomeEmail(email, name, role) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  
+  if (!BREVO_API_KEY || BREVO_API_KEY === 'your_brevo_api_key_here') {
+    console.log('Brevo API key not configured, skipping welcome email');
+    return;
+  }
+
+  try {
+    // Welcome email content based on user role
+    const welcomeContent = {
+      customer: {
+        subject: '🎉 ברוכים הבאים ל-FreezeFit!',
+        htmlContent: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0066cc; margin-bottom: 10px;">ברוכים הבאים ל-FreezeFit! 🧊</h1>
+                <p style="font-size: 18px; color: #666;">היי ${name || 'חבר/ה יקר/ה'}!</p>
+              </div>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h2 style="color: #0066cc; margin-top: 0;">🎊 ההרשמה הושלמה בהצלחה!</h2>
+                <p>אנחנו שמחים שהצטרפת לקהילת FreezeFit. עכשיו תוכל/י:</p>
+                <ul style="padding-right: 20px;">
+                  <li>🔍 לחפש מכוני קריותרפיה באזורך</li>
+                  <li>📅 לקבוע תורים בקלות</li>
+                  <li>⭐ לקרוא ביקורות ולהשאיר המלצות</li>
+                  <li>💬 להישאר בקשר עם המטפלים</li>
+                </ul>
+              </div>
+              
+              <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="color: #0066cc; margin-top: 0;">🧊 מה זה קריותרפיה?</h3>
+                <p>קריותרפיה היא טיפול טבעי המשתמש בקור לשיפור הבריאות והרווחה. הטיפול יכול לעזור עם:</p>
+                <ul style="padding-right: 20px;">
+                  <li>הפחתת דלקות וכאבים</li>
+                  <li>שיפור התאוששות שרירים</li>
+                  <li>חיזוק מערכת החיסון</li>
+                  <li>הגברת רמות האנרגיה</li>
+                </ul>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.SITE_URL || 'https://freesefit.netlify.app'}/find-institute" 
+                   style="background: #0066cc; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                  🔍 למצוא מכון קריותרפיה
+                </a>
+              </div>
+              
+              <div style="border-top: 2px solid #eee; padding-top: 20px; text-align: center; color: #666; font-size: 14px;">
+                <p>שאלות? אנחנו כאן לעזור! 💙</p>
+                <p>צוות FreezeFit</p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      provider: {
+        subject: '🏢 ברוכים הבאים ל-FreezeFit - פורטל ספקים!',
+        htmlContent: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0066cc; margin-bottom: 10px;">ברוכים הבאים ל-FreezeFit! 🏢</h1>
+                <p style="font-size: 18px; color: #666;">היי ${name || 'שותף/ה עסקי/ת'}!</p>
+              </div>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h2 style="color: #0066cc; margin-top: 0;">🎊 ההרשמה לפורטל הספקים הושלמה!</h2>
+                <p>אנחנו שמחים שהצטרפת לרשת FreezeFit. כעת תוכל/י:</p>
+                <ul style="padding-right: 20px;">
+                  <li>📋 לנהל את פרטי המכון שלך</li>
+                  <li>📅 לנהל תורים ולקוחות</li>
+                  <li>📊 לצפות בדוחות ואנליטיקות</li>
+                  <li>💬 לתקשר עם לקוחות</li>
+                </ul>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="color: #0066cc; margin-top: 0;">📈 יתרונות החברות ברשת</h3>
+                <ul style="padding-right: 20px;">
+                  <li>חשיפה למקס ללקוחות פוטנציאליים</li>
+                  <li>מערכת ניהול מתקדמת</li>
+                  <li>תמיכה טכנית מלאה</li>
+                  <li>כלי שיווק וקידום</li>
+                </ul>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.SITE_URL || 'https://your-site.netlify.app'}/dashboard" 
+                   style="background: #0066cc; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                  🏢 לעבור לדשבורד
+                </a>
+              </div>
+              
+              <div style="border-top: 2px solid #eee; padding-top: 20px; text-align: center; color: #666; font-size: 14px;">
+                <p>צריכים עזרה? אנחנו כאן בשבילכם! 💼</p>
+                <p>צוות FreezeFit</p>
+              </div>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    const content = welcomeContent[role] || welcomeContent.customer;
+
+    // Send email via Brevo
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'FreezeFit',
+          email: 'welcome@freezefit.com'
+        },
+        to: [{
+          email: email,
+          name: name || 'משתמש חדש'
+        }],
+        subject: content.subject,
+        htmlContent: content.htmlContent,
+        tags: ['welcome-email', `role-${role}`]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Brevo API error: ${response.status} - ${errorText}`);
+    }
+
+    console.log(`Welcome email sent successfully to ${email}`);
+    
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    // Don't throw - we don't want to fail registration if email fails
   }
 }

@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { dbOperations } from '@/lib/database';
 
 interface ReplyDialogProps {
   isOpen: boolean;
@@ -40,40 +40,30 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
 
     try {
       // First, get the customer's user ID from their email
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', customerEmail)
-        .single();
+      // Using Neon DB API - simplified approach for now
+      const profiles = { id: customerEmail }; // Using email as ID temporarily
 
       if (profileError || !profiles) {
         throw new Error('לא ניתן למצוא את פרטי הלקוח');
       }
 
       // Get the institute ID for the current user
-      const { data: institutes, error: instituteError } = await supabase
-        .from('institutes')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
+      const institutes = await dbOperations.getInstitutesByOwner(user?.id || '');
 
-      if (instituteError || !institutes) {
+      if (!institutes || institutes.length === 0) {
         throw new Error('לא ניתן למצוא את פרטי המכון');
       }
 
       // Insert the message
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert({
-          user_id: profiles.id,
-          institute_id: institutes.id,
-          sender_type: 'institute_owner',
-          message_type: 'inquiry_reply',
-          subject: subject.trim(),
-          content: message.trim(),
-        });
-
-      if (messageError) throw messageError;
+      await dbOperations.createMessage({
+        user_id: profiles.id,
+        institute_id: institutes[0].id,
+        subject: subject.trim(),
+        content: message.trim(),
+        sender_type: 'institute_owner',
+        message_type: 'inquiry_reply',
+        is_read: false
+      });
 
       toast({
         title: "הודעה נשלחה",

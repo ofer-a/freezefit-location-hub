@@ -12,18 +12,15 @@ export const handler = async (event, context) => {
     
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        if (path.includes('/institute/')) {
+          // Get business hours by institute
+          const instituteId = path.split('/institute/')[1];
+          const result = await query('SELECT * FROM business_hours WHERE institute_id = $1 ORDER BY day_of_week', [instituteId]);
+          return createResponse(200, result.rows);
+        } else if (pathParameters && pathParameters.id) {
           // Get single business hour entry
           const result = await query('SELECT * FROM business_hours WHERE id = $1', [pathParameters.id]);
           return createResponse(200, result.rows[0] || null);
-        } else if (path.includes('/institute/')) {
-          // Get business hours by institute
-          const instituteId = path.split('/institute/')[1];
-          const result = await query(
-            'SELECT * FROM business_hours WHERE institute_id = $1 ORDER BY day_of_week',
-            [instituteId]
-          );
-          return createResponse(200, result.rows);
         } else {
           // Get all business hours
           const result = await query('SELECT * FROM business_hours ORDER BY institute_id, day_of_week');
@@ -35,7 +32,7 @@ export const handler = async (event, context) => {
         const insertResult = await query(
           `INSERT INTO business_hours (institute_id, day_of_week, open_time, close_time, is_open) 
            VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-          [institute_id, day_of_week, open_time, close_time, is_open !== undefined ? is_open : true]
+          [institute_id, day_of_week, open_time, close_time, is_open]
         );
         return createResponse(201, insertResult.rows[0]);
 

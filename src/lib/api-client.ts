@@ -66,6 +66,10 @@ class ApiClient {
     return this.request(`/therapists/institute/${instituteId}`);
   }
 
+  async getTherapist(id: string) {
+    return this.request(`/therapists/${id}`);
+  }
+
   async createTherapist(therapistData: any) {
     return this.request('/therapists', {
       method: 'POST',
@@ -73,22 +77,20 @@ class ApiClient {
     });
   }
 
-  async updateTherapist(id: string, updates: any) {
-    return this.request(`/therapists/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async deleteTherapist(id: string) {
-    return this.request(`/therapists/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
   // Services
   async getServicesByInstitute(instituteId: string) {
     return this.request(`/services/institute/${instituteId}`);
+  }
+
+  async getService(id: string) {
+    return this.request(`/services/${id}`);
+  }
+
+  async createService(serviceData: any) {
+    return this.request('/services', {
+      method: 'POST',
+      body: JSON.stringify(serviceData),
+    });
   }
 
   // Business Hours
