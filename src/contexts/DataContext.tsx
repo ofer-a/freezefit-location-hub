@@ -36,6 +36,20 @@ interface UserClub {
   availableGifts: Gift[];
 }
 
+interface LoyaltyData {
+  loyalty_level: string;
+  current_points: number;
+  next_level_points: number;
+  benefits: string[];
+}
+
+interface DatabaseGift {
+  id: string;
+  name: string;
+  points_cost: number;
+  image_url: string;
+}
+
 interface ContactInquiry {
   name: string;
   email: string;
@@ -135,7 +149,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
         // Transform database appointments to match our interface
         const transformedAppointments = allAppointments.map(apt => ({
-          id: parseInt(apt.id.split('-')[0], 16), // Convert UUID to number for compatibility
+          id: apt.id, // Use full UUID to prevent key collisions
           customerName: apt.service_name, // Use service name for display
           service: apt.service_name,
           date: apt.appointment_date,
@@ -177,7 +191,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             customerName: 'לקוח אנונימי',
             customerId: review.user_id,
             instituteName: institute.institute_name,
-            instituteId: parseInt(institute.id.split('-')[0], 16),
+            instituteId: institute.id,
             therapistName: 'מטפל',
             therapistId: 1,
             rating: review.rating,
@@ -193,8 +207,46 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       }
     };
 
+    const loadLoyaltyData = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Load user loyalty data
+        const loyaltyData = await dbOperations.getUserLoyalty(user.id) as LoyaltyData;
+        if (loyaltyData) {
+          setUserClub(prevClub => ({
+            ...prevClub,
+            level: loyaltyData.loyalty_level,
+            points: loyaltyData.current_points,
+            nextLevelPoints: loyaltyData.next_level_points,
+            benefits: loyaltyData.benefits
+          }));
+        }
+
+        // Load available gifts
+        const gifts = await dbOperations.getAvailableGifts() as DatabaseGift[];
+        if (gifts) {
+          setUserClub(prevClub => ({
+            ...prevClub,
+            availableGifts: gifts.map(gift => ({
+              id: parseInt(gift.id.split('-')[0], 16), // Convert UUID to number for compatibility
+              name: gift.name,
+              pointsCost: gift.points_cost,
+              image: gift.image_url || '/placeholder.svg'
+            }))
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading loyalty data:', error);
+      }
+    };
+
     loadAppointments();
     loadReviews();
+    
+    if (user?.id) {
+      loadLoyaltyData();
+    }
   }, [isAuthenticated, user?.id]);
 
   // Add review function
@@ -261,108 +313,114 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   // Function to update appointment status
-  const updateAppointmentStatus = (appointmentId: number, currentStatus: string, newStatus: string) => {
-    const statusMap: { [key: string]: 'נקבע' | 'הושלם' | 'בוטל' } = {
-      'pending': 'נקבע',
-      'confirmed': 'נקבע',
-      'completed': 'הושלם',
-      'cancelled': 'בוטל'
-    };
+  const updateAppointmentStatus = async (appointmentId: string | number, currentStatus: string, newStatus: string) => {
+    try {
+      // Update appointment status in database
+      await dbOperations.updateAppointmentStatus(appointmentId.toString(), newStatus);
+      
+      const statusMap: { [key: string]: 'נקבע' | 'הושלם' | 'בוטל' } = {
+        'pending': 'נקבע',
+        'confirmed': 'נקבע',
+        'completed': 'הושלם',
+        'cancelled': 'בוטל'
+      };
 
-    const mappedNewStatus = statusMap[newStatus] || newStatus as 'נקבע' | 'הושלם' | 'בוטל';
+      const mappedNewStatus = statusMap[newStatus] || newStatus as 'נקבע' | 'הושלם' | 'בוטל';
 
-    if (currentStatus === 'pending') {
-      const appointment = pendingAppointments.find(apt => apt.id === appointmentId);
-      if (appointment) {
-        setPendingAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
-        
-        if (newStatus === 'confirmed') {
-          setConfirmedAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
-        } else if (newStatus === 'cancelled') {
-          // Deduct points when appointment is cancelled (50 points that were added during booking)
-          setUserClub(prevClub => ({
-            ...prevClub,
-            points: Math.max(0, prevClub.points - 50) // Ensure points don't go below 0
-          }));
-          setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
-        } else {
+      if (currentStatus === 'pending') {
+        const appointment = pendingAppointments.find(apt => apt.id.toString() === appointmentId.toString());
+        if (appointment) {
+          setPendingAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
+          
+          if (newStatus === 'confirmed') {
+            setConfirmedAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
+          } else if (newStatus === 'cancelled') {
+            // Deduct points when appointment is cancelled (50 points that were added during booking)
+            updateUserClubPoints(-50);
+            setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
+          } else {
+            setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
+          }
+        }
+      } else if (currentStatus === 'confirmed') {
+        const appointment = confirmedAppointments.find(apt => apt.id.toString() === appointmentId.toString());
+        if (appointment) {
+          setConfirmedAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
+          
+          if (newStatus === 'cancelled') {
+            // Deduct points when confirmed appointment is cancelled
+            updateUserClubPoints(-50);
+          }
+          
           setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
         }
       }
-    } else if (currentStatus === 'confirmed') {
-      const appointment = confirmedAppointments.find(apt => apt.id === appointmentId);
-      if (appointment) {
-        setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
-        
-        if (newStatus === 'cancelled') {
-          // Deduct points when confirmed appointment is cancelled
-          setUserClub(prevClub => ({
-            ...prevClub,
-            points: Math.max(0, prevClub.points - 50) // Ensure points don't go below 0
-          }));
-        }
-        
-        setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
-      }
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      throw error;
     }
   };
 
-  // User club data with updated gift images
+  // User club data - now loaded from database
   const [userClub, setUserClub] = useState({
-    level: 'זהב',
-    points: 850,
-    nextLevelPoints: 1000,
-    benefits: [
-      'הנחה של 15% על כל הטיפולים',
-      'עדיפות בהזמנת תורים',
-      'גישה למבצעים בלעדיים',
-      'נקודות בונוס על כל טיפול'
-    ],
-    availableGifts: [
-      {
-        id: 1,
-        name: 'טיפול מתנה',
-        pointsCost: 200,
-        image: '/lovable-uploads/a1b8497e-3684-42ea-9ad8-69ff9ff062d1.png'
-      },
-      {
-        id: 2,
-        name: 'חולצת מותג',
-        pointsCost: 350,
-        image: '/lovable-uploads/e8aa38a8-789a-4462-813f-069777b952bb.png'
-      },
-      {
-        id: 3,
-        name: 'סט אביזרים',
-        pointsCost: 500,
-        image: '/lovable-uploads/bde00d1e-667f-47df-98d8-9c7c4fb4dbda.png'
-      }
-    ]
+    level: 'ברונזה',
+    points: 0,
+    nextLevelPoints: 200,
+    benefits: ['נקודות על כל טיפול', 'גישה למבצעים מיוחדים'],
+    availableGifts: []
   });
 
-  // Function to redeem a gift
-  const redeemGift = (giftId: number) => {
-    setUserClub(prevClub => {
-      const gift = prevClub.availableGifts.find(gift => gift.id === giftId);
-      if (gift && prevClub.points >= gift.pointsCost) {
-        return {
-          ...prevClub,
-          points: prevClub.points - gift.pointsCost,
-          availableGifts: prevClub.availableGifts.filter(gift => gift.id !== giftId)
-        };
-      } else {
-        alert('Not enough points to redeem this gift.');
-        return prevClub;
+  // Function to redeem a gift - now uses real database
+  const redeemGift = async (giftId: number) => {
+    if (!user?.id) return;
+
+    try {
+      const result = await dbOperations.redeemGift({
+        user_id: user.id,
+        gift_id: giftId.toString()
+      }) as LoyaltyData;
+
+      if (result) {
+        // Update local state with new loyalty data
+        setUserClub({
+          level: result.loyalty_level,
+          points: result.current_points,
+          nextLevelPoints: result.next_level_points,
+          benefits: result.benefits,
+          availableGifts: userClub.availableGifts.filter(gift => gift.id !== giftId)
+        });
       }
-    });
+    } catch (error) {
+      console.error('Error redeeming gift:', error);
+      alert('לא ניתן לממש את המתנה. נסה שוב.');
+    }
   };
 
-  // Function to update user club points
-  const updateUserClubPoints = (points: number) => {
-    setUserClub(prevClub => ({
-      ...prevClub,
-      points: prevClub.points + points
-    }));
+  // Function to update user club points - now uses real database
+  const updateUserClubPoints = async (points: number) => {
+    if (!user?.id) return;
+
+    try {
+      const result = await dbOperations.addLoyaltyPoints({
+        user_id: user.id,
+        points: points,
+        source: 'appointment',
+        description: 'נקודות על השלמת טיפול'
+      }) as LoyaltyData;
+
+      if (result) {
+        // Update local state with new loyalty data
+        setUserClub(prevClub => ({
+          ...prevClub,
+          level: result.loyalty_level,
+          points: result.current_points,
+          nextLevelPoints: result.next_level_points,
+          benefits: result.benefits
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating points:', error);
+    }
   };
 
   // Updated function to add new appointment with proper structure

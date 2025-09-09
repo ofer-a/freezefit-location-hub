@@ -151,6 +151,106 @@ class ApiClient {
       method: 'PUT',
     });
   }
+
+  // Loyalty System
+  async getUserLoyalty(userId: string) {
+    return this.request(`/loyalty/user/${userId}`);
+  }
+
+  async getAvailableGifts() {
+    return this.request('/loyalty/gifts');
+  }
+
+  async getUserTransactions(userId: string) {
+    return this.request(`/loyalty/transactions/${userId}`);
+  }
+
+  async addLoyaltyPoints(data: {
+    user_id: string;
+    points: number;
+    source: string;
+    reference_id?: string;
+    description?: string;
+  }) {
+    return this.request('/loyalty/add-points', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async redeemGift(data: { user_id: string; gift_id: string }) {
+    return this.request('/loyalty/redeem-gift', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Workshops
+  async getWorkshopsByInstitute(instituteId: string) {
+    return this.request(`/workshops/institute/${instituteId}`);
+  }
+
+  async getAllWorkshops() {
+    return this.request('/workshops');
+  }
+
+  async createWorkshop(workshopData: any) {
+    return this.request('/workshops', {
+      method: 'POST',
+      body: JSON.stringify(workshopData),
+    });
+  }
+
+  // Extended User Profiles
+  async getExtendedUserProfile(userId: string) {
+    return this.request(`/user-profiles/${userId}`);
+  }
+
+  async updateExtendedUserProfile(userId: string, profileData: any) {
+    return this.request(`/user-profiles/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // Activities
+  async getActivitiesByInstitute(instituteId: string, limit?: number) {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/activities/institute/${instituteId}${params}`);
+  }
+
+  async getActivitiesByUser(userId: string, limit?: number) {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/activities/user/${userId}${params}`);
+  }
+
+  async createActivity(activityData: any) {
+    return this.request('/activities', {
+      method: 'POST',
+      body: JSON.stringify(activityData),
+    });
+  }
+
+  // Institute ratings and coordinates
+  async getInstituteRating(instituteId: string) {
+    return this.request(`/institutes/${instituteId}/rating`);
+  }
+
+  async getInstituteCoordinates(instituteId: string) {
+    return this.request(`/institutes/${instituteId}/coordinates`);
+  }
+
+  // Gallery Images
+  async getGalleryImagesByInstitute(instituteId: string) {
+    return this.request(`/gallery/institute/${instituteId}`);
+  }
+
+  async createGalleryImage(imageData: any) {
+    return this.request('/gallery', {
+      method: 'POST',
+      body: JSON.stringify(imageData),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

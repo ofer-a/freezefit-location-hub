@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 // Interface for institutes
 interface Institute {
-  id: number;
+  id: string;
   name: string;
   address: string;
   distance: number;
@@ -50,7 +50,7 @@ const FindInstitute = () => {
   
   const [institutes, setInstitutes] = useState<any[]>([]);
   const [allInstitutes, setAllInstitutes] = useState<any[]>([]);
-  const [selectedInstitute, setSelectedInstitute] = useState<number | null>(null);
+  const [selectedInstitute, setSelectedInstitute] = useState<string | null>(null);
   const [activeView, setActiveView] = useState('list'); // 'list' or 'map'
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -67,25 +67,34 @@ const FindInstitute = () => {
             // Get therapists for this institute
             const therapists = await dbOperations.getTherapistsByInstitute(institute.id);
             
+            // Get real ratings and coordinates
+            const [ratings, coordinates] = await Promise.all([
+              dbOperations.getReviewsByInstitute(institute.id).then(reviews => ({
+                average: reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 4.5,
+                count: reviews.length
+              })),
+              dbOperations.getServicesByInstitute(institute.id).then(() => ({
+                lat: 32.0853 + (Math.random() - 0.5) * 0.1, // Still using random for now
+                lng: 34.7818 + (Math.random() - 0.5) * 0.1
+              }))
+            ]);
+
             return {
-              id: parseInt(institute.id.split('-')[0], 16), // Convert UUID to number for compatibility
+              id: institute.id,
               name: institute.institute_name,
               address: institute.address || 'כתובת לא זמינה',
-              distance: Math.random() * 10 + 1, // Random distance for demo
-              rating: 4.5 + Math.random() * 0.5, // Random rating between 4.5-5
-              reviewCount: Math.floor(Math.random() * 100) + 20,
+              distance: Math.random() * 10 + 1, // Could be calculated from real coordinates
+              rating: Math.round(ratings.average * 10) / 10,
+              reviewCount: ratings.count,
               therapists: therapists.map(therapist => ({
-                id: parseInt(therapist.id.split('-')[0], 16),
+                id: therapist.id,
                 name: therapist.name,
                 specialty: therapist.bio || 'מטפל מוסמך',
                 experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
                 image: therapist.image_url || '/placeholder.svg'
               })),
-              hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00',
-              coordinates: {
-                lat: 32.0853 + (Math.random() - 0.5) * 0.1,
-                lng: 34.7818 + (Math.random() - 0.5) * 0.1
-              }
+              hours: 'א-ה: 8:00-20:00, ו: 8:00-14:00', // Could load from business_hours table
+              coordinates: coordinates
             };
           })
         );
@@ -183,7 +192,7 @@ const FindInstitute = () => {
 
   const { confirmedAppointments, updateUserClubPoints, addNewAppointment } = useData();
 
-  const handleBookAppointment = async (instituteId: number) => {
+  const handleBookAppointment = async (instituteId: string) => {
     const institute = allInstitutes.find(inst => inst.id === instituteId);
     if (institute) {
       console.log('Booking appointment for institute:', institute.name);
@@ -193,7 +202,7 @@ const FindInstitute = () => {
       try {
         const dbInstitutes = await dbOperations.getInstitutes();
         const originalInstitute = dbInstitutes.find(dbInst => 
-          parseInt(dbInst.id.split('-')[0], 16) === instituteId
+          dbInst.id === instituteId
         );
         
         if (originalInstitute) {
@@ -204,7 +213,7 @@ const FindInstitute = () => {
           const updatedInstitute = {
             ...institute,
             therapists: freshTherapists.map(therapist => ({
-              id: parseInt(therapist.id.split('-')[0], 16),
+              id: therapist.id,
               name: therapist.name,
               specialty: therapist.bio || 'מטפל מוסמך',
               experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
@@ -225,7 +234,7 @@ const FindInstitute = () => {
     }
   };
   
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime || !selectedService || !selectedTherapist || !bookingInstitute || !user) {
       toast({
         variant: "destructive",
@@ -235,43 +244,66 @@ const FindInstitute = () => {
       return;
     }
     
-    // Format date for appointment
-    const formattedDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
-    
-    // Create new appointment with proper structure
-    const newAppointment = {
-      id: Date.now(), // Generate unique ID
-      therapistName: selectedTherapist,
-      service: selectedService,
-      date: formattedDate,
-      time: selectedTime,
-      duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
-      phone: '050-0000000', // Mock phone number
-      institute: bookingInstitute.name
-    };
-    
-    console.log('Creating appointment:', newAppointment); // Debug log
-    
-    // Add the appointment
-    addNewAppointment(newAppointment);
-    
-    // Add points to user club (50 points per appointment)
-    updateUserClubPoints(50);
-    
-    // Close dialog and show toast
-    setIsBookingDialogOpen(false);
-    
-    toast({
-      title: "התור נקבע בהצלחה",
-      description: `נקבע תור ב${bookingInstitute.name} עם ${selectedTherapist} לתאריך ${formattedDate}, שעה ${selectedTime}`,
-    });
-    
-    // Reset form
-    setSelectedDate(undefined);
-    setSelectedTime('');
-    setSelectedService('');
-    setSelectedTherapist('');
-    setBookingInstitute(null);
+    try {
+      // Format date for database (YYYY-MM-DD)
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      const displayDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
+      
+      // Create appointment in database
+      const appointmentData = {
+        user_id: user.id,
+        institute_id: bookingInstitute.id,
+        service_name: selectedService,
+        appointment_date: formattedDate,
+        appointment_time: selectedTime,
+        status: 'pending',
+        price: selectedService.includes('קצר') ? 150 : 250 // Example pricing
+      };
+      
+      console.log('Creating appointment in database:', appointmentData);
+      const dbAppointment = await dbOperations.createAppointment(appointmentData);
+      
+      // Create local appointment object for immediate UI update
+      const newAppointment = {
+        id: dbAppointment.id,
+        therapistName: selectedTherapist,
+        service: selectedService,
+        date: displayDate,
+        time: selectedTime,
+        duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
+        phone: user.phone || '050-0000000',
+        institute: bookingInstitute.name
+      };
+      
+      // Add the appointment to local state
+      addNewAppointment(newAppointment);
+      
+      // Add points to user club (50 points per appointment)
+      updateUserClubPoints(50);
+      
+      // Close dialog and show toast
+      setIsBookingDialogOpen(false);
+      
+      toast({
+        title: "התור נקבע בהצלחה",
+        description: `נקבע תור ב${bookingInstitute.name} עם ${selectedTherapist} לתאריך ${displayDate}, שעה ${selectedTime}`,
+      });
+      
+      // Reset form
+      setSelectedDate(undefined);
+      setSelectedTime('');
+      setSelectedService('');
+      setSelectedTherapist('');
+      setBookingInstitute(null);
+      
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה ביצירת התור",
+        description: "לא ניתן לקבוע את התור. אנא נסה שוב מאוחר יותר.",
+      });
+    }
   };
 
   const handleMarkerClick = (instituteId: number) => {

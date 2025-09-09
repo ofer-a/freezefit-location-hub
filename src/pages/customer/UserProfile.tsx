@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -17,6 +17,7 @@ import { User, Calendar, Clock, MessageSquare, Award, Gift, Check, Mail } from '
 import RescheduleDialog from '@/components/appointments/RescheduleDialog';
 import DeleteAccountDialog from '@/components/ui/dialog-delete-account';
 import MessageBox from '@/components/messages/MessageBox';
+import { dbOperations } from '@/lib/database';
 
 const UserProfile = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -48,8 +49,8 @@ const UserProfile = () => {
   const [userDetails, setUserDetails] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '050-1234567', // Mock data
-    address: 'רחוב האלון 5, תל אביב' // Mock data
+    phone: '',
+    address: ''
   });
   
   const [passwordData, setPasswordData] = useState({
@@ -58,12 +59,34 @@ const UserProfile = () => {
     confirmPassword: ''
   });
 
+  // Load extended user profile data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user?.id) return;
+
+      try {
+        const extendedProfile = await dbOperations.getExtendedUserProfile(user.id);
+        if (extendedProfile) {
+          setUserDetails(prev => ({
+            ...prev,
+            phone: extendedProfile.phone || '',
+            address: extendedProfile.address || ''
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+
+    loadUserProfile();
+  }, [user?.id]);
+
   // Check authentication
-  useState(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
-  });
+  }, [isAuthenticated, navigate]);
 
   // Handle appointment cancellation - check if it's pending or confirmed
   const handleCancelAppointment = (appointmentId: number) => {

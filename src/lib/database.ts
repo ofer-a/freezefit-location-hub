@@ -73,6 +73,14 @@ export interface Service {
   updated_at?: string;
 }
 
+export interface GalleryImage {
+  id: string;
+  institute_id: string;
+  image_url: string;
+  category: string;
+  created_at?: string;
+}
+
 export interface BusinessHours {
   id: string;
   institute_id: string;
@@ -238,6 +246,92 @@ export const dbOperations = {
 
   async markMessageAsRead(id: string): Promise<Message | null> {
     const response = await apiClient.markMessageAsRead(id);
+    return response.data;
+  },
+
+  // Loyalty System
+  async getUserLoyalty(userId: string) {
+    const response = await apiClient.getUserLoyalty(userId);
+    return response.data;
+  },
+
+  async getAvailableGifts() {
+    const response = await apiClient.getAvailableGifts();
+    return response.data || [];
+  },
+
+  async getUserTransactions(userId: string) {
+    const response = await apiClient.getUserTransactions(userId);
+    return response.data || [];
+  },
+
+  async addLoyaltyPoints(data: {
+    user_id: string;
+    points: number;
+    source: string;
+    reference_id?: string;
+    description?: string;
+  }) {
+    const response = await apiClient.addLoyaltyPoints(data);
+    return response.data;
+  },
+
+  async redeemGift(data: { user_id: string; gift_id: string }) {
+    const response = await apiClient.redeemGift(data);
+    return response.data;
+  },
+
+  // Workshops
+  async getWorkshopsByInstitute(instituteId: string) {
+    const response = await apiClient.getWorkshopsByInstitute(instituteId);
+    return response.data || [];
+  },
+
+  async getAllWorkshops() {
+    const response = await apiClient.getAllWorkshops();
+    return response.data || [];
+  },
+
+  async createWorkshop(workshopData: any) {
+    const response = await apiClient.createWorkshop(workshopData);
+    return response.data;
+  },
+
+  // Extended User Profiles
+  async getExtendedUserProfile(userId: string) {
+    const response = await apiClient.getExtendedUserProfile(userId);
+    return response.data;
+  },
+
+  async updateExtendedUserProfile(userId: string, profileData: any) {
+    const response = await apiClient.updateExtendedUserProfile(userId, profileData);
+    return response.data;
+  },
+
+  // Activities
+  async getActivitiesByInstitute(instituteId: string, limit?: number) {
+    const response = await apiClient.getActivitiesByInstitute(instituteId, limit);
+    return response.data || [];
+  },
+
+  async getActivitiesByUser(userId: string, limit?: number) {
+    const response = await apiClient.getActivitiesByUser(userId, limit);
+    return response.data || [];
+  },
+
+  async createActivity(activityData: any) {
+    const response = await apiClient.createActivity(activityData);
+    return response.data;
+  },
+
+  // Gallery Images
+  async getGalleryImagesByInstitute(instituteId: string): Promise<GalleryImage[]> {
+    const response = await apiClient.getGalleryImagesByInstitute(instituteId);
+    return response.data || [];
+  },
+
+  async createGalleryImage(imageData: Omit<GalleryImage, 'id' | 'created_at'>): Promise<GalleryImage> {
+    const response = await apiClient.createGalleryImage(imageData);
     return response.data;
   }
 };

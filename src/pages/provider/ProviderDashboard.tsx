@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Calendar, Users, Store, User, MessageSquare, FileText, TrendingUp, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
+import { dbOperations } from '@/lib/database';
 
 const ProviderDashboard = () => {
   const {
@@ -36,36 +37,68 @@ const ProviderDashboard = () => {
   const today = new Date().toISOString().split('T')[0];
   const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today).slice(0, 3);
 
-  // Get recent activities
-  const recentActivities = [{
-    id: 1,
-    type: 'appointment',
-    message: 'חמדה חדשה מיוסי כהן',
-    time: 'לפני 30 דקות',
-    date: '15/05/25',
-    color: 'green'
-  }, {
-    id: 2,
-    type: 'update',
-    message: 'עדכון מחירון',
-    time: 'לפני שעתיים',
-    description: 'עדכנת את מחירי הטיפולים',
-    color: 'blue'
-  }, {
-    id: 3,
-    type: 'review',
-    message: 'לקוח חדש נרשם',
-    time: 'לפני 5 שעות',
-    description: 'רנית לוי נרשמה לאתר',
-    color: 'purple'
-  }, {
-    id: 4,
-    type: 'review',
-    message: 'ביקורת גדשה',
-    time: 'אתמול, 14:20',
-    description: 'ביקורת חדשה נקבלה (4.5 כוכבים)',
-    color: 'yellow'
-  }];
+  // Recent activities state - now loaded from database
+  const [recentActivities, setRecentActivities] = useState([]);
+
+  // Load activities from database
+  useEffect(() => {
+    const loadActivities = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Get user's institutes
+        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+        if (userInstitutes.length === 0) return;
+
+        // Load activities for the first institute
+        const activities = await dbOperations.getActivitiesByInstitute(userInstitutes[0].id, 5);
+        
+        // Transform activities to match expected format
+        const transformedActivities = activities.map((activity, index) => ({
+          id: index + 1,
+          type: activity.activity_type,
+          message: activity.title,
+          time: getRelativeTime(new Date(activity.created_at)),
+          description: activity.description,
+          color: getActivityColor(activity.activity_type)
+        }));
+        
+        setRecentActivities(transformedActivities);
+      } catch (error) {
+        console.error('Error loading activities:', error);
+      }
+    };
+
+    loadActivities();
+  }, [user?.id]);
+
+  // Helper function to get relative time
+  const getRelativeTime = (date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) {
+      return `לפני ${diffMins} דקות`;
+    } else if (diffHours < 24) {
+      return `לפני ${diffHours} שעות`;
+    } else {
+      return `לפני ${diffDays} ימים`;
+    }
+  };
+
+  // Helper function to get activity color
+  const getActivityColor = (type) => {
+    switch (type) {
+      case 'appointment': return 'green';
+      case 'review': return 'yellow';
+      case 'registration': return 'purple';
+      case 'update': return 'blue';
+      default: return 'gray';
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">

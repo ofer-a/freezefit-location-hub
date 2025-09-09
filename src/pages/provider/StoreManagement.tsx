@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, Plus, X, Edit, Save } from 'lucide-react';
+import { dbOperations } from '@/lib/database';
 
-// Mock data types
+// Database entity interfaces
 interface Workshop {
   id: number;
   title: string;
@@ -46,67 +47,14 @@ const StoreManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Workshops state
-  const [workshops, setWorkshops] = useState<Workshop[]>([
-    {
-      id: 1,
-      title: 'סדנת התאוששות לספורטאים',
-      description: 'סדנה מעשית לספורטאים הרוצים ללמוד טכניקות התאוששות מתקדמות',
-      date: '20/05/2025',
-      time: '18:00',
-      duration: '90 דקות',
-      price: 200,
-      maxParticipants: 15,
-      currentParticipants: 8
-    },
-    {
-      id: 2,
-      title: 'יסודות קריותרפיה',
-      description: 'סדנת מבוא לשיטות טיפול בקור וההשפעות הבריאותיות',
-      date: '25/05/2025',
-      time: '17:30',
-      duration: '120 דקות',
-      price: 180,
-      maxParticipants: 20,
-      currentParticipants: 12
-    }
-  ]);
+  // Workshops state - now loaded from database
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
   
-  // Services state
-  const [services, setServices] = useState<Service[]>([
-    {
-      id: 1,
-      name: 'טיפול קריותרפיה סטנדרטי',
-      description: 'טיפול בסיסי עם שהייה בטמפרטורות נמוכות',
-      price: 150,
-      duration: '45 דקות'
-    },
-    {
-      id: 2,
-      name: 'טיפול ספורטאים מתקדם',
-      description: 'טיפול המותאם במיוחד לספורטאים אחרי אימונים ותחרויות',
-      price: 250,
-      duration: '60 דקות'
-    },
-    {
-      id: 3,
-      name: 'חבילת התאוששות מלאה',
-      description: 'טיפול משולב עם טיפולי קור וחימום לאחר פציעות',
-      price: 350,
-      duration: '90 דקות'
-    }
-  ]);
+  // Services state - now loaded from database
+  const [services, setServices] = useState<Service[]>([]);
   
-  // Business hours state
-  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([
-    { day: 'ראשון', hours: '8:00 - 20:00', isOpen: true },
-    { day: 'שני', hours: '8:00 - 20:00', isOpen: true },
-    { day: 'שלישי', hours: '8:00 - 20:00', isOpen: true },
-    { day: 'רביעי', hours: '8:00 - 20:00', isOpen: true },
-    { day: 'חמישי', hours: '8:00 - 20:00', isOpen: true },
-    { day: 'שישי', hours: '8:00 - 14:00', isOpen: true },
-    { day: 'שבת', hours: 'סגור', isOpen: false }
-  ]);
+  // Business hours state - now loaded from database
+  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
 
   // Dialog states
   const [showNewWorkshopDialog, setShowNewWorkshopDialog] = useState(false);
@@ -132,6 +80,79 @@ const StoreManagement = () => {
   });
   
   const [editingHours, setEditingHours] = useState<BusinessHours[]>(businessHours);
+
+  // Load data from database
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Get user's institutes
+        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+        if (userInstitutes.length === 0) return;
+
+        const instituteId = userInstitutes[0].id;
+
+        // Load workshops
+        const workshopsData = await dbOperations.getWorkshopsByInstitute(instituteId);
+        const transformedWorkshops = workshopsData.map(workshop => ({
+          id: parseInt(workshop.id.split('-')[0], 16),
+          title: workshop.title,
+          description: workshop.description,
+          date: new Date(workshop.workshop_date).toLocaleDateString('he-IL'),
+          time: workshop.workshop_time,
+          duration: `${workshop.duration} דקות`,
+          price: workshop.price,
+          maxParticipants: workshop.max_participants,
+          currentParticipants: workshop.current_participants
+        }));
+        setWorkshops(transformedWorkshops);
+
+        // Load services
+        const servicesData = await dbOperations.getServicesByInstitute(instituteId);
+        const transformedServices = servicesData.map(service => ({
+          id: parseInt(service.id.split('-')[0], 16),
+          name: service.name,
+          description: service.description,
+          price: service.price,
+          duration: service.duration
+        }));
+        setServices(transformedServices);
+
+        // Load business hours
+        const businessHoursData = await dbOperations.getBusinessHoursByInstitute(instituteId);
+        const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+        const transformedHours = dayNames.map((day, index) => {
+          const dayData = businessHoursData.find(bh => bh.day_of_week === index);
+          if (dayData && dayData.is_open) {
+            return {
+              day,
+              hours: `${dayData.open_time} - ${dayData.close_time}`,
+              isOpen: true
+            };
+          } else {
+            return {
+              day,
+              hours: 'סגור',
+              isOpen: false
+            };
+          }
+        });
+        setBusinessHours(transformedHours);
+        setEditingHours(transformedHours);
+
+      } catch (error) {
+        console.error('Error loading store data:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את נתוני החנות",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadData();
+  }, [user?.id, toast]);
 
   // Handle new workshop submission
   const handleAddWorkshop = (e: React.FormEvent) => {

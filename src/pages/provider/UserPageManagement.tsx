@@ -24,7 +24,7 @@ interface GalleryImage {
 
 // Types for therapist
 interface Therapist {
-  id: number;
+  id: string;
   name: string;
   experience: string;
   bio: string;
@@ -54,8 +54,8 @@ const UserPageManagement = () => {
           const instituteTherapists = await dbOperations.getTherapistsByInstitute(userInstitutes[0].id);
           
           // Transform database therapists to match component interface
-          const transformedTherapists = instituteTherapists.map((therapist, index) => ({
-            id: index + 1, // Use sequential IDs for compatibility
+          const transformedTherapists = instituteTherapists.map((therapist) => ({
+            id: therapist.id, // Use actual database ID to prevent duplicates
             name: therapist.name,
             experience: therapist.experience || '0',
             bio: therapist.bio || 'מטפל מוסמך',
@@ -102,7 +102,7 @@ const UserPageManagement = () => {
   const [showNewImageDialog, setShowNewImageDialog] = useState(false);
   
   // Selected therapist for removal
-  const [selectedTherapist, setSelectedTherapist] = useState<number | null>(null);
+  const [selectedTherapist, setSelectedTherapist] = useState<string | null>(null);
   const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
   
   // Form states
@@ -120,7 +120,7 @@ const UserPageManagement = () => {
   const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
 
   // Handle therapist image upload for existing therapists
-  const handleTherapistImageUpload = (therapistId: number, file: File) => {
+  const handleTherapistImageUpload = (therapistId: string, file: File) => {
     const imageUrl = URL.createObjectURL(file);
     
     setTherapists(prevTherapists => 
@@ -179,7 +179,7 @@ const UserPageManagement = () => {
     
     const therapistToAdd: Therapist = {
       ...newTherapist,
-      id: therapists.length + 1,
+      id: `therapist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Generate unique string ID
       image: imageUrl
     };
     

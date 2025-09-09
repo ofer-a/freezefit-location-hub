@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { dbOperations } from '@/lib/database'
 
 interface Review {
-  id: number
+  id: string
   username?: string
   rating: number
   content: string
@@ -16,7 +16,7 @@ interface Review {
 }
 
 interface Institute {
-  id: number
+  id: string
   name: string
   address: string
   rating: number
@@ -32,8 +32,8 @@ interface InstitutePreviewModalProps {
 // This function will be replaced with a custom hook that loads reviews from database
 
 // Gallery items for the circular gallery - institute specific
-const getGalleryItems = (instituteId: number) => {
-  if (instituteId === 2) { // Cryo Plus
+const getGalleryItems = (instituteId: string) => {
+  if (instituteId.includes('2') || instituteId.includes('cryo')) { // Cryo Plus
     return [
       {
         image: "/lovable-uploads/9d188ea5-1475-4047-92d5-34c0e1b37fa5.png",
@@ -79,9 +79,11 @@ const StarRating = ({ rating }: { rating: number }) => {
 
 export function InstitutePreviewModal({ institute, isOpen, onClose }: InstitutePreviewModalProps) {
   const [reviews, setReviews] = useState<Review[]>([])
+  const [galleryImages, setGalleryImages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [galleryLoading, setGalleryLoading] = useState(false)
 
-  // Load reviews from database when institute changes
+  // Load reviews and gallery images from database when institute changes
   useEffect(() => {
     const loadReviews = async () => {
       if (!institute?.id) return
@@ -89,16 +91,12 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
       try {
         setLoading(true)
         
-        // Convert institute ID to UUID format for database lookup
-        // Map numeric IDs to actual UUIDs from database
-        const idStr = institute.id.toString().repeat(4)  // Convert 2 to "2222"
-        const instituteUUID = `bbbbbbbb-${idStr}-${idStr}-${idStr}-${idStr}${idStr}${idStr}`
-        
-        const dbReviews = await dbOperations.getReviewsByInstitute(instituteUUID)
+        // Use institute ID directly (now it's a UUID string)
+        const dbReviews = await dbOperations.getReviewsByInstitute(institute.id)
         
         // Transform database reviews to match component interface
-        const transformedReviews = dbReviews.map(review => ({
-          id: parseInt(review.id.split('-')[0], 16),
+        const transformedReviews = dbReviews.map((review, index) => ({
+          id: `${institute.id}-review-${index}-${review.id}`, // Create unique composite key
           username: `משתמש ${review.id.slice(-4)}`, // Anonymous username based on ID
           rating: review.rating,
           content: review.content,
@@ -115,8 +113,42 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
       }
     }
 
+    const loadGalleryImages = async () => {
+      if (!institute?.id) return
+      
+      try {
+        setGalleryLoading(true)
+        
+        const dbImages = await dbOperations.getGalleryImagesByInstitute(institute.id)
+        
+        // Transform database images to match gallery component interface
+        const transformedImages = dbImages.map(image => ({
+          image: image.image_url,
+          text: image.category || 'תמונה'
+        }))
+        
+        setGalleryImages(transformedImages)
+      } catch (error) {
+        console.error('Error loading gallery images:', error)
+        // Fallback to default images
+        setGalleryImages([
+          {
+            image: "/lovable-uploads/5eb33892-d2af-4b1d-b7a9-92708867a204.png",
+            text: "אזור המתנה"
+          },
+          {
+            image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
+            text: "אמבט קרח"
+          }
+        ])
+      } finally {
+        setGalleryLoading(false)
+      }
+    }
+
     if (isOpen && institute) {
       loadReviews()
+      loadGalleryImages()
     }
   }, [institute?.id, isOpen])
 
@@ -150,12 +182,21 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
         <div className="overflow-y-auto max-h-[calc(95vh-120px)] bg-black">
           {/* Circular Gallery Section */}
           <div className="h-[60vh] w-full bg-black">
-            <CircularGallery 
-              items={getGalleryItems(institute.id)}
-              bend={3}
-              textColor="#ffffff"
-              borderRadius={0.05}
-            />
+            {galleryLoading ? (
+              <div className="flex items-center justify-center h-full text-white">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                  <p>טוען תמונות...</p>
+                </div>
+              </div>
+            ) : (
+              <CircularGallery 
+                items={galleryImages.length > 0 ? galleryImages : getGalleryItems(institute.id)}
+                bend={3}
+                textColor="#ffffff"
+                borderRadius={0.05}
+              />
+            )}
           </div>
 
           {/* Reviews Section */}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { InstitutePreviewModal } from './InstitutePreviewModal';
 
 interface Therapist {
-  id: number;
+  id: string;
   name: string;
   specialty: string;
   experience: number;
@@ -14,7 +14,7 @@ interface Therapist {
 }
 
 interface Institute {
-  id: number;
+  id: string;
   name: string;
   address: string;
   distance: number;
@@ -27,8 +27,8 @@ interface Institute {
 
 interface InstituteListProps {
   institutes: Institute[];
-  selectedInstitute: number | null;
-  onBookAppointment: (instituteId: number) => void;
+  selectedInstitute: string | null;
+  onBookAppointment: (instituteId: string) => void;
 }
 
 const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: InstituteListProps) => {
@@ -70,7 +70,7 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
                     <MapPin className="h-4 w-4 ml-1" />
                     {institute.address}
                     <span className="mx-2">•</span>
-                    <span>{institute.distance} ק"מ ממך</span>
+                    <span>{institute.distance.toFixed(2)} ק"מ ממך</span>
                   </div>
                 </div>
                 <div className="flex items-center bg-primary/10 px-2 py-1 rounded">

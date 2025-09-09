@@ -40,17 +40,17 @@ const AddReview = () => {
       try {
         const institutes = await dbOperations.getInstitutes();
         const foundInstitute = institutes.find(inst => 
-          parseInt(inst.id.split('-')[0], 16) === Number(instituteId)
+          inst.id === instituteId
         );
         
         if (foundInstitute) {
           const therapists = await dbOperations.getTherapistsByInstitute(foundInstitute.id);
           setInstitute({
-            id: parseInt(foundInstitute.id.split('-')[0], 16),
+            id: foundInstitute.id,
             name: foundInstitute.institute_name,
             address: foundInstitute.address,
             therapists: therapists.map(therapist => ({
-              id: parseInt(therapist.id.split('-')[0], 16),
+              id: therapist.id,
               name: therapist.name,
               specialty: therapist.bio || 'מטפל מוסמך',
               experience: parseInt(therapist.experience?.split(' ')[0] || '5')
