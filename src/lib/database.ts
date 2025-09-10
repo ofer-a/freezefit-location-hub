@@ -1,5 +1,6 @@
 // Database operations now use API client for Netlify Functions
 import { apiClient } from './api-client';
+import { withCache, CACHE_KEYS } from './cache';
 
 // Updated to use API client instead of direct database connection
 export const db = {
@@ -144,8 +145,18 @@ export const dbOperations = {
 
   // Institutes
   async getInstitutes(): Promise<Institute[]> {
-    const response = await apiClient.getInstitutes();
-    return response.data || [];
+    return withCache(CACHE_KEYS.INSTITUTES, async () => {
+      const response = await apiClient.getInstitutes();
+      return response.data || [];
+    });
+  },
+
+  // Optimized method to get institutes with all related data
+  async getInstitutesDetailed(): Promise<any[]> {
+    return withCache(CACHE_KEYS.INSTITUTES_DETAILED, async () => {
+      const response = await apiClient.getInstitutesDetailed();
+      return response.data || [];
+    }, 10 * 60 * 1000); // Cache for 10 minutes since this is expensive
   },
 
   async getInstitute(id: string): Promise<Institute | null> {
@@ -160,8 +171,10 @@ export const dbOperations = {
 
   // Therapists
   async getTherapistsByInstitute(instituteId: string): Promise<Therapist[]> {
-    const response = await apiClient.getTherapistsByInstitute(instituteId);
-    return response.data || [];
+    return withCache(CACHE_KEYS.THERAPISTS(instituteId), async () => {
+      const response = await apiClient.getTherapistsByInstitute(instituteId);
+      return response.data || [];
+    });
   },
 
   async getTherapist(id: string): Promise<Therapist | null> {
@@ -194,8 +207,10 @@ export const dbOperations = {
 
   // Business Hours
   async getBusinessHoursByInstitute(instituteId: string): Promise<BusinessHours[]> {
-    const response = await apiClient.getBusinessHoursByInstitute(instituteId);
-    return response.data || [];
+    return withCache(CACHE_KEYS.BUSINESS_HOURS(instituteId), async () => {
+      const response = await apiClient.getBusinessHoursByInstitute(instituteId);
+      return response.data || [];
+    });
   },
 
   // Appointments
@@ -222,8 +237,10 @@ export const dbOperations = {
 
   // Reviews
   async getReviewsByInstitute(instituteId: string): Promise<Review[]> {
-    const response = await apiClient.getReviewsByInstitute(instituteId);
-    return response.data || [];
+    return withCache(CACHE_KEYS.REVIEWS(instituteId), async () => {
+      const response = await apiClient.getReviewsByInstitute(instituteId);
+      return response.data || [];
+    });
   },
 
   async createReview(review: Omit<Review, 'id' | 'created_at'>): Promise<Review> {

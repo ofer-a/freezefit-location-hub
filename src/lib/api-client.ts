@@ -54,6 +54,11 @@ class ApiClient {
     return this.request('/institutes');
   }
 
+  // Optimized endpoint for getting institutes with all related data
+  async getInstitutesDetailed() {
+    return this.request('/institutes-detailed');
+  }
+
   async getInstitute(id: string) {
     return this.request(`/institutes/${id}`);
   }

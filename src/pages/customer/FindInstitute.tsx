@@ -19,8 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { CalendarIcon, Clock } from 'lucide-react';
+import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Interface for institutes
 interface Institute {
@@ -54,112 +56,102 @@ const FindInstitute = () => {
   const [activeView, setActiveView] = useState('list'); // 'list' or 'map'
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // Load institutes from database
+  // Load institutes from database with single optimized API call
   useEffect(() => {
     const loadInstitutes = async () => {
       try {
-        const dbInstitutes = await dbOperations.getInstitutes();
+        setLoading(true);
+        setLoadingProgress(20);
         
-        // Transform database institutes to match the expected interface
-        const transformedInstitutes = await Promise.all(
-          dbInstitutes.map(async (institute, index) => {
-            // Get therapists for this institute
-            const therapists = await dbOperations.getTherapistsByInstitute(institute.id);
+        // Single API call to get all institute data with aggregated information
+        const detailedInstitutes = await dbOperations.getInstitutesDetailed();
+        setLoadingProgress(80);
+        
+        if (detailedInstitutes.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        // Transform the aggregated data
+        const transformedInstitutes = detailedInstitutes.map((institute, index) => {
+          const baseCoordinates = [
+            { lat: 32.0853, lng: 34.7818 }, // Tel Aviv center
+            { lat: 32.0890, lng: 34.7850 }, // Near Sarona
+            { lat: 32.0820, lng: 34.7750 }, // Ramat Aviv
+            { lat: 31.7683, lng: 35.2137 }, // Jerusalem
+            { lat: 32.7940, lng: 34.9896 }, // Haifa
+            { lat: 32.9242, lng: 35.0818 }, // Karmiel
+          ];
+          const coordinates = baseCoordinates[index % baseCoordinates.length];
+          
+          const distance = userLocation 
+            ? Math.round(
+                Math.sqrt(
+                  Math.pow(coordinates.lat - userLocation.lat, 2) + 
+                  Math.pow(coordinates.lng - userLocation.lng, 2)
+                ) * 111
+              )
+            : Math.round(Math.random() * 10 + 1);
+
+          // Format business hours from aggregated data
+          const formatBusinessHours = (hours: any[]) => {
+            if (!hours || hours.length === 0) return 'שעות פתיחה: יש ליצור קשר';
             
-            // Get real ratings and coordinates from database
-            const [ratings, coordinates, businessHours] = await Promise.all([
-              dbOperations.getReviewsByInstitute(institute.id).then(reviews => ({
-                average: reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 4.5,
-                count: reviews.length
-              })),
-              // Try to get real coordinates from institute_coordinates table, fallback to Tel Aviv area
-              (async () => {
-                try {
-                  // This would be implemented in dbOperations to get real coordinates
-                  // For now, assign different base coordinates per institute to avoid overlap
-                  const baseCoordinates = [
-                    { lat: 32.0853, lng: 34.7818 }, // Tel Aviv center
-                    { lat: 32.0890, lng: 34.7850 }, // Near Sarona
-                    { lat: 32.0820, lng: 34.7750 }, // Ramat Aviv
-                    { lat: 31.7683, lng: 35.2137 }, // Jerusalem
-                    { lat: 32.7940, lng: 34.9896 }, // Haifa
-                    { lat: 32.9242, lng: 35.0818 }, // Karmiel
-                  ];
-                  const coords = baseCoordinates[index % baseCoordinates.length];
-                  return coords;
-                } catch (error) {
-                  return { lat: 32.0853, lng: 34.7818 }; // Default to Tel Aviv
-                }
-              })(),
-              dbOperations.getBusinessHoursByInstitute(institute.id)
-            ]);
+            const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+            const workingDays = hours.filter(h => h.is_open);
+            
+            if (workingDays.length === 0) return 'סגור';
+            
+            const groups: any[] = [];
+            workingDays.forEach(day => {
+              const timeStr = `${day.open_time}-${day.close_time}`;
+              const existing = groups.find(g => g.time === timeStr);
+              if (existing) {
+                existing.days.push(day.day_of_week);
+              } else {
+                groups.push({ time: timeStr, days: [day.day_of_week] });
+              }
+            });
+            
+            return groups.map(group => {
+              const sortedDays = group.days.sort();
+              const dayRange = sortedDays.length > 2 && 
+                sortedDays.every((day: number, i: number) => i === 0 || day === sortedDays[i-1] + 1)
+                ? `${dayNames[sortedDays[0]]}-${dayNames[sortedDays[sortedDays.length - 1]]}`
+                : sortedDays.map((d: number) => dayNames[d]).join(',');
+              return `${dayRange}: ${group.time}`;
+            }).join(', ');
+          };
 
-            // Calculate distance from user location if available
-            const distance = userLocation 
-              ? Math.round(
-                  Math.sqrt(
-                    Math.pow(coordinates.lat - userLocation.lat, 2) + 
-                    Math.pow(coordinates.lng - userLocation.lng, 2)
-                  ) * 111 // Rough km conversion
-                )
-              : Math.round(Math.random() * 10 + 1); // Fallback to random if no user location
-
-            // Format business hours from database
-            const formatBusinessHours = (hours: any[]) => {
-              if (!hours || hours.length === 0) return 'שעות פתיחה: יש ליצור קשר';
-              
-              const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-              const workingDays = hours.filter(h => h.is_open);
-              
-              if (workingDays.length === 0) return 'סגור';
-              
-              // Group consecutive days with same hours
-              const groups: any[] = [];
-              workingDays.forEach(day => {
-                const timeStr = `${day.open_time}-${day.close_time}`;
-                const existing = groups.find(g => g.time === timeStr);
-                if (existing) {
-                  existing.days.push(day.day_of_week);
-                } else {
-                  groups.push({ time: timeStr, days: [day.day_of_week] });
-                }
-              });
-              
-              return groups.map(group => {
-                const sortedDays = group.days.sort();
-                const dayRange = sortedDays.length > 2 && 
-                  sortedDays.every((day: number, i: number) => i === 0 || day === sortedDays[i-1] + 1)
-                  ? `${dayNames[sortedDays[0]]}-${dayNames[sortedDays[sortedDays.length - 1]]}`
-                  : sortedDays.map((d: number) => dayNames[d]).join(',');
-                return `${dayRange}: ${group.time}`;
-              }).join(', ');
-            };
-
-            return {
-              id: institute.id,
-              name: institute.institute_name,
-              address: institute.address || 'כתובת לא זמינה',
-              distance,
-              rating: Math.round(ratings.average * 10) / 10,
-              reviewCount: ratings.count,
-              therapists: therapists.map(therapist => ({
-                id: therapist.id,
-                name: therapist.name,
-                specialty: therapist.bio || 'מטפל מוסמך',
-                experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
-                image: therapist.image_url || '/placeholder.svg'
-              })),
-              hours: formatBusinessHours(businessHours),
-              coordinates: coordinates
-            };
-          })
-        );
+          return {
+            id: institute.id,
+            name: institute.institute_name,
+            address: institute.address || 'כתובת לא זמינה',
+            distance,
+            rating: parseFloat(institute.average_rating.toFixed(2)),
+            reviewCount: institute.review_count,
+            therapists: (institute.therapists || []).map((therapist: any) => ({
+              id: therapist.id,
+              name: therapist.name,
+              specialty: therapist.bio || 'מטפל מוסמך',
+              experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
+              image: therapist.image_url || '/placeholder.svg'
+            })),
+            hours: formatBusinessHours(institute.business_hours || []),
+            coordinates
+          };
+        });
 
         setAllInstitutes(transformedInstitutes);
         setInstitutes(transformedInstitutes);
+        setLoadingProgress(100);
+        setLoading(false);
       } catch (error) {
         console.error('Error loading institutes:', error);
+        setLoading(false);
         toast({
           title: "שגיאה",
           description: "לא ניתן לטעון את רשימת המכונים",
@@ -169,7 +161,7 @@ const FindInstitute = () => {
     };
 
     loadInstitutes();
-  }, [toast]);
+  }, [toast, userLocation]);
   
   // Appointment booking state
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
@@ -422,6 +414,43 @@ const FindInstitute = () => {
     'טיפול קצר'
   ];
 
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="space-y-6">
+      {[...Array(3)].map((_, index) => (
+        <div key={index} className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-72 mb-1" />
+            </div>
+            <Skeleton className="h-8 w-16" />
+          </div>
+          
+          <div className="mb-4">
+            <Skeleton className="h-5 w-16 mb-2" />
+            <div className="flex gap-4">
+              <div className="flex items-center">
+                <Skeleton className="h-10 w-10 rounded-full mr-2" />
+                <div>
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <Skeleton className="h-4 w-40 mb-4" />
+          
+          <div className="flex justify-end gap-3">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-20" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -429,6 +458,17 @@ const FindInstitute = () => {
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto">
           <h1 className="text-3xl font-bold mb-8 text-center">מצא מכון טיפול</h1>
+          
+          {/* Loading progress indicator */}
+          {loading && (
+            <div className="mb-6 max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 mb-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm text-gray-600">טוען מכונים...</span>
+              </div>
+              <Progress value={loadingProgress} className="w-full" />
+            </div>
+          )}
           
           <SearchBar 
             searchQuery={searchQuery}
@@ -450,11 +490,15 @@ const FindInstitute = () => {
               </TabsList>
               
               <TabsContent value="list" className="mt-6">
-                <InstituteList 
-                  institutes={filteredInstitutes}
-                  selectedInstitute={selectedInstitute}
-                  onBookAppointment={handleBookAppointment}
-                />
+                {loading && filteredInstitutes.length === 0 ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <InstituteList 
+                    institutes={filteredInstitutes}
+                    selectedInstitute={selectedInstitute}
+                    onBookAppointment={handleBookAppointment}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="map" className="mt-6">
