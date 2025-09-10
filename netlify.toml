@@ -10,6 +10,12 @@
   # Ensure dev dependencies are installed
   NODE_ENV = "development"
 
+# Local development configuration
+[dev]
+  port = 8888
+  targetPort = 8080
+  functions = "netlify/functions"
+
 # Redirect configuration for SPA
 [[redirects]]
   from = "/*"
