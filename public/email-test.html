@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreezeFit Email Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0066cc;
+            text-align: center;
+        }
+        .test-button {
+            background: #0066cc;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .test-button:hover {
+            background: #0052a3;
+        }
+        .test-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 FreezeFit Email Test</h1>
+        
+        <div class="info" style="display: block;">
+            <p><strong>This page tests the welcome email system.</strong></p>
+            <p>Click the button below to send a test email to: <strong>john@softulla.com</strong></p>
+        </div>
+
+        <button id="testBtn" class="test-button" onclick="testEmail()">
+            📧 Send Test Email to john@softulla.com
+        </button>
+
+        <div id="result" class="result">
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="info" style="display: block; margin-top: 30px;">
+            <h3>🔧 How It Works:</h3>
+            <p>This test page calls the Netlify function which:</p>
+            <ul>
+                <li>✅ Checks if environment variables are configured</li>
+                <li>✅ Attempts to send email via Brevo API</li>
+                <li>✅ Returns detailed error information if something fails</li>
+            </ul>
+            <p><strong>Note:</strong> If the test fails, the error message will show exactly what environment variables need to be added in the Netlify dashboard.</p>
+        </div>
+    </div>
+
+    <script>
+        async function testEmail() {
+            const btn = document.getElementById('testBtn');
+            const result = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            // Show testing state
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending email...';
+            result.style.display = 'block';
+            result.className = 'result info';
+            resultContent.innerHTML = '<p>🔄 Testing email function...</p>';
+
+            try {
+                const response = await fetch('/.netlify/functions/test-functions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Success
+                    result.className = 'result success';
+                    resultContent.innerHTML = `
+                        <h3>✅ Email Sent Successfully!</h3>
+                        <p><strong>Recipient:</strong> ${data.email_sent_to}</p>
+                        <p><strong>Message ID:</strong> ${data.brevo_message_id}</p>
+                        <p><strong>Time:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                        <p>📧 <strong>Check your inbox at john@softulla.com</strong></p>
+                        <p>🎉 Welcome email system is working perfectly!</p>
+                    `;
+                } else {
+                    // API error
+                    result.className = 'result error';
+                    let errorHtml = `
+                        <h3>❌ Email Failed</h3>
+                        <p><strong>Error:</strong> ${data.error}</p>
+                        ${data.details ? `<p><strong>Details:</strong> ${data.details}</p>` : ''}
+                    `;
+                    
+                    // Show specific missing variables if provided
+                    if (data.missing_variables) {
+                        errorHtml += `<p><strong>Missing:</strong> ${data.missing_variables.join(', ')}</p>`;
+                    }
+                    
+                    if (data.instructions) {
+                        errorHtml += `<p><strong>Fix:</strong> ${data.instructions}</p>`;
+                    }
+                    
+                    if (data.needed_vars) {
+                        errorHtml += '<h4>Required Environment Variables:</h4><ul>';
+                        for (const [key, description] of Object.entries(data.needed_vars)) {
+                            errorHtml += `<li><strong>${key}:</strong> ${description}</li>`;
+                        }
+                        errorHtml += '</ul>';
+                    }
+                    
+                    resultContent.innerHTML = errorHtml;
+                }
+            } catch (error) {
+                // Network/function error
+                result.className = 'result error';
+                if (error.message.includes('404')) {
+                    resultContent.innerHTML = `
+                        <h3>❌ Function Not Found (404)</h3>
+                        <p><strong>Issue:</strong> Netlify functions are not deployed properly.</p>
+                        <p><strong>Solution:</strong> The Netlify account owner needs to:</p>
+                        <ol>
+                            <li>Add environment variables in Netlify dashboard</li>
+                            <li>Redeploy the site</li>
+                            <li>Check that functions are deployed in Netlify Functions tab</li>
+                        </ol>
+                    `;
+                } else {
+                    resultContent.innerHTML = `
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>This usually means functions are not working properly.</p>
+                    `;
+                }
+            }
+
+            // Reset button
+            btn.disabled = false;
+            btn.textContent = '📧 Send Test Email to john@softulla.com';
+        }
+
+        // Auto-test on page load (optional)
+        // window.addEventListener('load', () => {
+        //     setTimeout(testEmail, 1000);
+        // });
+    </script>
+</body>
+</html>

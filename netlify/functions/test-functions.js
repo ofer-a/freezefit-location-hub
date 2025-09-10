@@ -18,7 +18,15 @@ export const handler = async (event, context) => {
     if (!BREVO_API_KEY) {
       return createResponse(400, {
         success: false,
-        error: 'BREVO_API_KEY not configured in environment variables'
+        error: 'BREVO_API_KEY not configured in environment variables',
+        missing_variables: ['BREVO_API_KEY'],
+        instructions: 'Add the BREVO_API_KEY environment variable in Netlify Dashboard → Site Settings → Environment Variables',
+        needed_vars: {
+          BREVO_API_KEY: 'Get from NETLIFY-ENV-SETUP.md file',
+          DATABASE_URL: 'Get from NETLIFY-ENV-SETUP.md file', 
+          JWT_SECRET: 'Get from NETLIFY-ENV-SETUP.md file',
+          NODE_ENV: 'Set to "production"'
+        }
       });
     }
 
