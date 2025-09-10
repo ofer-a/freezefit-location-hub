@@ -70,7 +70,12 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
                     <MapPin className="h-4 w-4 ml-1" />
                     {institute.address}
                     <span className="mx-2">•</span>
-                    <span>{institute.distance.toFixed(2)} ק"מ ממך</span>
+                    <span>
+                      {institute.distance > 0 
+                        ? `${institute.distance} ק"מ ממך` 
+                        : 'מרחק לא זמין'
+                      }
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center bg-primary/10 px-2 py-1 rounded">
