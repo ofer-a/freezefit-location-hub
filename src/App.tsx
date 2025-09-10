@@ -19,6 +19,7 @@ import StoreManagement from "./pages/provider/StoreManagement";
 import UserPageManagement from "./pages/provider/UserPageManagement";
 import UserProfile from "./pages/customer/UserProfile";
 import AddReview from "./pages/customer/AddReview";
+import EmailTest from "./pages/EmailTest";
 import CustomerInquiries from "./pages/provider/CustomerInquiries";
 import AnalyticsPage from "./pages/provider/AnalyticsPage";
 
@@ -47,6 +48,9 @@ const App = () => (
               <Route path="/find-institute" element={<FindInstitute />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/add-review/:instituteId/:therapistId" element={<AddReview />} />
+              
+              {/* Testing Routes */}
+              <Route path="/email-test" element={<EmailTest />} />
               
               {/* Provider Routes */}
               <Route path="/dashboard" element={<ProviderDashboard />} />
