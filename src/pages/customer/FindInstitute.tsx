@@ -77,25 +77,10 @@ const FindInstitute = () => {
 
         // Transform the aggregated data
         const transformedInstitutes = detailedInstitutes.map((institute, index) => {
-          // Use stable coordinates based on institute ID to ensure consistency
-          const getCoordinatesForInstitute = (instituteId: string) => {
-            // Create a simple hash from institute ID for consistent coordinates
-            const hash = instituteId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const coordIndex = hash % 6; // Use modulo to get consistent index
-            
-            const baseCoordinates = [
-              { lat: 32.0853, lng: 34.7818 }, // Tel Aviv center
-              { lat: 32.0890, lng: 34.7850 }, // Near Sarona
-              { lat: 32.0820, lng: 34.7750 }, // Ramat Aviv
-              { lat: 31.7683, lng: 35.2137 }, // Jerusalem
-              { lat: 32.7940, lng: 34.9896 }, // Haifa
-              { lat: 32.9242, lng: 35.0818 }, // Karmiel
-            ];
-            
-            return baseCoordinates[coordIndex];
-          };
-          
-          const coordinates = getCoordinatesForInstitute(institute.id);
+          // Use real coordinates from database, fallback to default if not available
+          const coordinates = institute.latitude && institute.longitude 
+            ? { lat: institute.latitude, lng: institute.longitude }
+            : { lat: 32.0853, lng: 34.7818 }; // Default to Tel Aviv if no coordinates
           
           // Calculate accurate distance using Haversine formula
           const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -113,6 +98,9 @@ const FindInstitute = () => {
           const distance = userLocation 
             ? Number(calculateDistance(userLocation.lat, userLocation.lng, coordinates.lat, coordinates.lng).toFixed(2))
             : 0; // Show 0 if no user location available
+          
+          // Debug logging
+          console.log(`Institute: ${institute.institute_name}, User Location: ${userLocation ? `${userLocation.lat}, ${userLocation.lng}` : 'null'}, Institute Coords: ${coordinates.lat}, ${coordinates.lng}, Distance: ${distance}km`);
 
           // Format business hours from aggregated data
           const formatBusinessHours = (hours: any[]) => {

@@ -18,14 +18,17 @@ export const useLocation = (): UseLocationReturn => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const userLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
-          });
+          };
+          console.log("User location obtained:", userLocation);
+          setUserLocation(userLocation);
           setIsLoading(false);
         },
         (error) => {
           console.error("Error getting location:", error);
+          console.log("Setting default location to Tel Aviv due to geolocation error");
           toast({
             variant: "destructive",
             title: "שגיאה במיקום",

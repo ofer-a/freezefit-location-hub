@@ -29,3 +29,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify
+.env
+.env.example
+.env.production
+EMAIL-SERVICES.md
+NETLIFY-ENV-SETUP.md
+WELCOME-EMAIL.md
+BREVO-SETUP.md
+DEPLOYMENT.md
+DEPLOYMENT.md
+.env.example

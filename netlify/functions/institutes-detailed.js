@@ -23,6 +23,10 @@ export const handler = async (event, context) => {
         i.created_at,
         i.updated_at,
         
+        -- Institute coordinates
+        ic.latitude,
+        ic.longitude,
+        
         -- Aggregated therapist data
         COALESCE(
           JSON_AGG(
@@ -55,10 +59,11 @@ export const handler = async (event, context) => {
         ) as business_hours
         
       FROM institutes i
+      LEFT JOIN institute_coordinates ic ON i.id = ic.institute_id
       LEFT JOIN therapists t ON i.id = t.institute_id
       LEFT JOIN reviews r ON i.id = r.institute_id
       LEFT JOIN business_hours bh ON i.id = bh.institute_id
-      GROUP BY i.id, i.institute_name, i.address, i.service_name, i.image_url, i.created_at, i.updated_at
+      GROUP BY i.id, i.institute_name, i.address, i.service_name, i.image_url, i.created_at, i.updated_at, ic.latitude, ic.longitude
       ORDER BY i.institute_name
     `);
 
@@ -71,6 +76,8 @@ export const handler = async (event, context) => {
       image_url: row.image_url,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      latitude: row.latitude ? parseFloat(row.latitude) : null,
+      longitude: row.longitude ? parseFloat(row.longitude) : null,
       therapists: row.therapists || [],
       review_count: parseInt(row.review_count) || 0,
       average_rating: parseFloat(row.average_rating) || 4.5,
