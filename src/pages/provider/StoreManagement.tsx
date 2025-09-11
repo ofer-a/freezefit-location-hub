@@ -95,7 +95,7 @@ const StoreManagement = () => {
 
         // Load workshops
         const workshopsData = await dbOperations.getWorkshopsByInstitute(instituteId);
-        const transformedWorkshops = workshopsData.map(workshop => ({
+        const transformedWorkshops = (workshopsData as any[]).map((workshop: any) => ({
           id: parseInt(workshop.id.split('-')[0], 16),
           title: workshop.title,
           description: workshop.description,
@@ -110,7 +110,7 @@ const StoreManagement = () => {
 
         // Load services
         const servicesData = await dbOperations.getServicesByInstitute(instituteId);
-        const transformedServices = servicesData.map(service => ({
+        const transformedServices = (servicesData as any[]).map((service: any) => ({
           id: parseInt(service.id.split('-')[0], 16),
           name: service.name,
           description: service.description,
@@ -123,7 +123,7 @@ const StoreManagement = () => {
         const businessHoursData = await dbOperations.getBusinessHoursByInstitute(instituteId);
         const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
         const transformedHours = dayNames.map((day, index) => {
-          const dayData = businessHoursData.find(bh => bh.day_of_week === index);
+          const dayData = (businessHoursData as any[]).find((bh: any) => bh.day_of_week === index);
           if (dayData && dayData.is_open) {
             return {
               day,
@@ -155,72 +155,240 @@ const StoreManagement = () => {
   }, [user?.id, toast]);
 
   // Handle new workshop submission
-  const handleAddWorkshop = (e: React.FormEvent) => {
+  const handleAddWorkshop = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const workshopToAdd: Workshop = {
-      id: workshops.length + 1,
-      ...newWorkshop,
-      currentParticipants: 0
-    };
-    
-    setWorkshops([...workshops, workshopToAdd]);
-    setShowNewWorkshopDialog(false);
-    
-    // Reset form
-    setNewWorkshop({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      duration: '',
-      price: 0,
-      maxParticipants: 10
-    });
-    
-    toast({
-      title: "סדנה נוספה",
-      description: "הסדנה נוספה בהצלחה לרשימת הסדנאות",
-    });
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף סדנה ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון לשיוך הסדנה",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const workshopData = {
+        institute_id: userInstitutes[0].id,
+        title: newWorkshop.title,
+        description: newWorkshop.description,
+        workshop_date: newWorkshop.date,
+        workshop_time: newWorkshop.time,
+        duration: newWorkshop.duration,
+        price: newWorkshop.price,
+        max_participants: newWorkshop.maxParticipants
+      };
+
+      const savedWorkshop = await dbOperations.createWorkshop(workshopData);
+      
+      // Add to local state
+      const workshopToAdd: Workshop = {
+        id: parseInt((savedWorkshop as any).id.split('-')[0], 16),
+        title: (savedWorkshop as any).title,
+        description: (savedWorkshop as any).description,
+        date: new Date((savedWorkshop as any).workshop_date).toLocaleDateString('he-IL'),
+        time: (savedWorkshop as any).workshop_time,
+        duration: `${(savedWorkshop as any).duration} דקות`,
+        price: (savedWorkshop as any).price,
+        maxParticipants: (savedWorkshop as any).max_participants,
+        currentParticipants: 0
+      };
+      
+      setWorkshops([...workshops, workshopToAdd]);
+      setShowNewWorkshopDialog(false);
+      
+      // Reset form
+      setNewWorkshop({
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        duration: '',
+        price: 0,
+        maxParticipants: 10
+      });
+      
+      toast({
+        title: "סדנה נוספה",
+        description: "הסדנה נוספה בהצלחה לרשימת הסדנאות",
+      });
+    } catch (error) {
+      console.error('Error adding workshop:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את הסדנה",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle new service submission
-  const handleAddService = (e: React.FormEvent) => {
+  const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const serviceToAdd: Service = {
-      id: services.length + 1,
-      ...newService
-    };
-    
-    setServices([...services, serviceToAdd]);
-    setShowNewServiceDialog(false);
-    
-    // Reset form
-    setNewService({
-      name: '',
-      description: '',
-      price: 0,
-      duration: ''
-    });
-    
-    toast({
-      title: "שירות נוסף",
-      description: "השירות נוסף בהצלחה למחירון",
-    });
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף שירות ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון לשיוך השירות",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const serviceData = {
+        institute_id: userInstitutes[0].id,
+        name: newService.name,
+        description: newService.description,
+        price: newService.price,
+        duration: newService.duration
+      };
+
+      const savedService = await dbOperations.createService(serviceData);
+      
+      // Add to local state
+      const serviceToAdd: Service = {
+        id: parseInt((savedService as any).id.split('-')[0], 16),
+        name: (savedService as any).name,
+        description: (savedService as any).description,
+        price: (savedService as any).price,
+        duration: (savedService as any).duration
+      };
+      
+      setServices([...services, serviceToAdd]);
+      setShowNewServiceDialog(false);
+      
+      // Reset form
+      setNewService({
+        name: '',
+        description: '',
+        price: 0,
+        duration: ''
+      });
+      
+      toast({
+        title: "שירות נוסף",
+        description: "השירות נוסף בהצלחה למחירון",
+      });
+    } catch (error) {
+      console.error('Error adding service:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את השירות",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle business hours update
-  const handleUpdateHours = (e: React.FormEvent) => {
+  const handleUpdateHours = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    setBusinessHours(editingHours);
-    setShowEditHoursDialog(false);
-    
-    toast({
-      title: "שעות פעילות עודכנו",
-      description: "שעות הפעילות של העסק עודכנו בהצלחה",
-    });
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן שעות פעילות ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון לעדכון שעות הפעילות",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const instituteId = userInstitutes[0].id;
+      
+      // Get existing business hours
+      const existingHours = await dbOperations.getBusinessHoursByInstitute(instituteId);
+      
+      // Update or create business hours for each day
+      for (let dayIndex = 0; dayIndex < editingHours.length; dayIndex++) {
+        const dayHours = editingHours[dayIndex];
+        const existingDay = existingHours.find(h => h.day_of_week === dayIndex);
+        
+        if (dayHours.isOpen) {
+          const [openTime, closeTime] = dayHours.hours.split(' - ');
+          const businessHoursData = {
+            institute_id: instituteId,
+            day_of_week: dayIndex,
+            open_time: openTime,
+            close_time: closeTime,
+            is_open: true
+          };
+          
+          if (existingDay) {
+            // Update existing
+            await dbOperations.updateBusinessHours(existingDay.id, businessHoursData);
+          } else {
+            // Create new
+            await dbOperations.createBusinessHours(businessHoursData);
+          }
+        } else {
+          // Day is closed
+          if (existingDay) {
+            await dbOperations.updateBusinessHours(existingDay.id, {
+              is_open: false,
+              open_time: null,
+              close_time: null
+            });
+          } else {
+            await dbOperations.createBusinessHours({
+              institute_id: instituteId,
+              day_of_week: dayIndex,
+              is_open: false,
+              open_time: null,
+              close_time: null
+            });
+          }
+        }
+      }
+      
+      setBusinessHours(editingHours);
+      setShowEditHoursDialog(false);
+      
+      toast({
+        title: "שעות פעילות עודכנו",
+        description: "שעות הפעילות של העסק עודכנו בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error updating business hours:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את שעות הפעילות",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

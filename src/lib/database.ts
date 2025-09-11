@@ -213,6 +213,17 @@ export const dbOperations = {
     });
   },
 
+  async createBusinessHours(businessHours: Omit<BusinessHours, 'id' | 'created_at' | 'updated_at'>): Promise<BusinessHours> {
+    const response = await apiClient.createBusinessHours(businessHours);
+    if (!response.data) throw new Error(response.error || 'Failed to create business hours');
+    return response.data;
+  },
+
+  async updateBusinessHours(id: string, businessHours: Partial<BusinessHours>): Promise<BusinessHours | null> {
+    const response = await apiClient.updateBusinessHours(id, businessHours);
+    return response.data;
+  },
+
   // Appointments
   async getAppointmentsByUser(userId: string): Promise<Appointment[]> {
     const response = await apiClient.getAppointmentsByUser(userId);

@@ -104,6 +104,20 @@ class ApiClient {
     return this.request(`/business-hours/institute/${instituteId}`);
   }
 
+  async createBusinessHours(businessHoursData: any) {
+    return this.request('/business-hours', {
+      method: 'POST',
+      body: JSON.stringify(businessHoursData),
+    });
+  }
+
+  async updateBusinessHours(id: string, businessHoursData: any) {
+    return this.request(`/business-hours/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(businessHoursData),
+    });
+  }
+
   // Appointments
   async getAppointmentsByUser(userId: string) {
     return this.request(`/appointments/user/${userId}`);
