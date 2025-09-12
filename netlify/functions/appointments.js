@@ -16,7 +16,11 @@ export const handler = async (event, context) => {
       const pathParts = path.split('/');
       const appointmentsIndex = pathParts.indexOf('appointments');
       if (appointmentsIndex !== -1 && pathParts[appointmentsIndex + 1]) {
-        appointmentId = pathParts[appointmentsIndex + 1];
+        // Only extract as appointmentId if it's not a special path like /user/ or /institute/
+        const nextPart = pathParts[appointmentsIndex + 1];
+        if (nextPart !== 'user' && nextPart !== 'institute') {
+          appointmentId = nextPart;
+        }
       }
     }
     
