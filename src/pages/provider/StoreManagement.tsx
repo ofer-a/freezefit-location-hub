@@ -53,12 +53,20 @@ const StoreManagement = () => {
   // Services state - now loaded from database
   const [services, setServices] = useState<Service[]>([]);
   
+  // Benefits state - for loyalty benefits
+  const [benefits, setBenefits] = useState<Service[]>([]);
+  
+  // Products state - for physical products
+  const [products, setProducts] = useState<Service[]>([]);
+  
   // Business hours state - now loaded from database
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
 
   // Dialog states
   const [showNewWorkshopDialog, setShowNewWorkshopDialog] = useState(false);
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
+  const [showNewBenefitDialog, setShowNewBenefitDialog] = useState(false);
+  const [showNewProductDialog, setShowNewProductDialog] = useState(false);
   const [showEditHoursDialog, setShowEditHoursDialog] = useState(false);
   
   // Form states
@@ -73,6 +81,20 @@ const StoreManagement = () => {
   });
   
   const [newService, setNewService] = useState<Omit<Service, 'id'>>({
+    name: '',
+    description: '',
+    price: 0,
+    duration: ''
+  });
+  
+  const [newBenefit, setNewBenefit] = useState<Omit<Service, 'id'>>({
+    name: '',
+    description: '',
+    price: 0,
+    duration: ''
+  });
+  
+  const [newProduct, setNewProduct] = useState<Omit<Service, 'id'>>({
     name: '',
     description: '',
     price: 0,
@@ -205,7 +227,21 @@ const StoreManagement = () => {
         currentParticipants: 0
       };
       
-      setWorkshops([...workshops, workshopToAdd]);
+      // Reload workshops from database to ensure consistency
+      const updatedWorkshopsData = await dbOperations.getWorkshopsByInstitute(userInstitutes[0].id);
+      const updatedTransformedWorkshops = (updatedWorkshopsData as any[]).map((workshop: any) => ({
+        id: parseInt(workshop.id.split('-')[0], 16),
+        title: workshop.title,
+        description: workshop.description,
+        date: new Date(workshop.workshop_date).toLocaleDateString('he-IL'),
+        time: workshop.workshop_time,
+        duration: `${workshop.duration} דקות`,
+        price: workshop.price,
+        maxParticipants: workshop.max_participants,
+        currentParticipants: workshop.current_participants
+      }));
+      
+      setWorkshops(updatedTransformedWorkshops);
       setShowNewWorkshopDialog(false);
       
       // Reset form
@@ -277,7 +313,17 @@ const StoreManagement = () => {
         duration: (savedService as any).duration
       };
       
-      setServices([...services, serviceToAdd]);
+      // Reload services from database to ensure consistency
+      const updatedServicesData = await dbOperations.getServicesByInstitute(userInstitutes[0].id);
+      const updatedTransformedServices = (updatedServicesData as any[]).map((service: any) => ({
+        id: parseInt(service.id.split('-')[0], 16),
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        duration: service.duration
+      }));
+      
+      setServices(updatedTransformedServices);
       setShowNewServiceDialog(false);
       
       // Reset form
@@ -374,7 +420,28 @@ const StoreManagement = () => {
         }
       }
       
-      setBusinessHours(editingHours);
+      // Reload business hours from database to ensure consistency
+      const updatedBusinessHoursData = await dbOperations.getBusinessHoursByInstitute(instituteId);
+      const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+      const updatedTransformedHours = dayNames.map((day, index) => {
+        const dayData = (updatedBusinessHoursData as any[]).find((bh: any) => bh.day_of_week === index);
+        if (dayData && dayData.is_open) {
+          return {
+            day,
+            hours: `${dayData.open_time} - ${dayData.close_time}`,
+            isOpen: true
+          };
+        } else {
+          return {
+            day,
+            hours: 'סגור',
+            isOpen: false
+          };
+        }
+      });
+      
+      setBusinessHours(updatedTransformedHours);
+      setEditingHours(updatedTransformedHours);
       setShowEditHoursDialog(false);
       
       toast({
@@ -496,13 +563,15 @@ const StoreManagement = () => {
             
             {/* Pricing Tab */}
             <TabsContent value="pricing" className="mt-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>מחירון טיפולים</CardTitle>
-                  <Button onClick={() => setShowNewServiceDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> הוסף שירות
-                  </Button>
-                </CardHeader>
+              <div className="space-y-6">
+                {/* Services Section */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>שירותים</CardTitle>
+                    <Button onClick={() => setShowNewServiceDialog(true)}>
+                      <Plus className="mr-2 h-4 w-4" /> הוסף שירות
+                    </Button>
+                  </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     {services.length > 0 ? (
@@ -530,6 +599,79 @@ const StoreManagement = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Benefits Section */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>הטבות</CardTitle>
+                  <Button onClick={() => setShowNewBenefitDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> הוסף הטבה
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {benefits.length > 0 ? (
+                      benefits.map(benefit => (
+                        <div key={benefit.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex flex-col lg:flex-row justify-between">
+                            <div>
+                              <h3 className="font-bold text-lg">{benefit.name}</h3>
+                              <p className="text-gray-600 mt-1">{benefit.description}</p>
+                            </div>
+                            <div className="mt-4 lg:mt-0 lg:mr-4">
+                              <div className="bg-green-100 p-3 rounded-lg text-center">
+                                <p className="font-bold text-lg text-green-800">
+                                  {benefit.price === 0 ? 'חינם' : `${benefit.price} ₪`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-gray-500">אין הטבות כרגע. הוסף הטבות חדשות.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Products Section */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>מוצרים</CardTitle>
+                  <Button onClick={() => setShowNewProductDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> הוסף מוצר
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {products.length > 0 ? (
+                      products.map(product => (
+                        <div key={product.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex flex-col lg:flex-row justify-between">
+                            <div>
+                              <h3 className="font-bold text-lg">{product.name}</h3>
+                              <p className="text-gray-600 mt-1">{product.description}</p>
+                            </div>
+                            <div className="mt-4 lg:mt-0 lg:mr-4">
+                              <div className="bg-blue-100 p-3 rounded-lg text-center">
+                                <p className="font-bold text-lg text-blue-800">{product.price} ₪</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-gray-500">אין מוצרים כרגע. הוסף מוצרים חדשים.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             </TabsContent>
           </Tabs>
         </div>

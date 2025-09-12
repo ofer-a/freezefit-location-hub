@@ -361,5 +361,9 @@ export const dbOperations = {
   async createGalleryImage(imageData: Omit<GalleryImage, 'id' | 'created_at'>): Promise<GalleryImage> {
     const response = await apiClient.createGalleryImage(imageData);
     return response.data;
+  },
+
+  async deleteGalleryImage(id: string): Promise<void> {
+    await apiClient.deleteGalleryImage(id);
   }
 };

@@ -270,6 +270,12 @@ class ApiClient {
       body: JSON.stringify(imageData),
     });
   }
+
+  async deleteGalleryImage(id: string) {
+    return this.request(`/gallery/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

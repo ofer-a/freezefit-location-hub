@@ -40,12 +40,8 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
 
     try {
       // First, get the customer's user ID from their email
-      // Using Neon DB API - simplified approach for now
-      const profiles = { id: customerEmail }; // Using email as ID temporarily
-
-      if (profileError || !profiles) {
-        throw new Error('לא ניתן למצוא את פרטי הלקוח');
-      }
+      // For now, we'll use a simplified approach - in a real app you'd look up by email
+      const customerUserId = customerEmail; // Using email as ID temporarily
 
       // Get the institute ID for the current user
       const institutes = await dbOperations.getInstitutesByOwner(user?.id || '');
@@ -56,7 +52,7 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
 
       // Insert the message
       await dbOperations.createMessage({
-        user_id: profiles.id,
+        user_id: customerUserId,
         institute_id: institutes[0].id,
         subject: subject.trim(),
         content: message.trim(),

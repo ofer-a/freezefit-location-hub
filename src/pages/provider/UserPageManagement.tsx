@@ -77,25 +77,41 @@ const UserPageManagement = () => {
     };
 
     loadTherapists();
+    loadGallery();
   }, [user?.id, toast]);
-  
-  const [gallery, setGallery] = useState<GalleryImage[]>([
-    {
-      id: 1,
-      url: '/placeholder.svg',
-      title: 'חדר טיפולים ראשי'
-    },
-    {
-      id: 2,
-      url: '/placeholder.svg',
-      title: 'אמבטיות קרח מקצועיות'
-    },
-    {
-      id: 3,
-      url: '/placeholder.svg',
-      title: 'אזור המתנה'
+
+  // Load gallery from database
+  const loadGallery = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      
+      if (userInstitutes.length > 0) {
+        // Get gallery images for the first institute
+        const galleryImages = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
+        
+        // Transform database images to match component interface
+        const transformedImages = galleryImages.map((image) => ({
+          id: parseInt(image.id.split('-')[0], 16), // Convert UUID to number for compatibility
+          url: image.image_url,
+          title: image.category || 'תמונה'
+        }));
+        
+        setGallery(transformedImages);
+      }
+    } catch (error) {
+      console.error('Error loading gallery:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לטעון את גלריית התמונות",
+        variant: "destructive",
+      });
     }
-  ]);
+  };
+  
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
 
   // Dialog states
   const [showNewTherapistDialog, setShowNewTherapistDialog] = useState(false);
@@ -170,34 +186,77 @@ const UserPageManagement = () => {
   };
 
   // Add new therapist
-  const handleAddTherapist = (e: React.FormEvent) => {
+  const handleAddTherapist = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const imageUrl = therapistImageFile 
-      ? URL.createObjectURL(therapistImageFile) 
-      : undefined;
-    
-    const therapistToAdd: Therapist = {
-      ...newTherapist,
-      id: `therapist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Generate unique string ID
-      image: imageUrl
-    };
-    
-    setTherapists([...therapists, therapistToAdd]);
-    setShowNewTherapistDialog(false);
-    
-    // Reset form
-    setNewTherapist({
-      name: '',
-      experience: '',
-      bio: ''
-    });
-    setTherapistImageFile(null);
-    
-    toast({
-      title: "מטפל נוסף",
-      description: "המטפל נוסף בהצלחה",
-    });
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף מטפל ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון לשיוך המטפל",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // For now, we'll use a placeholder URL since we don't have file upload
+      const imageUrl = therapistImageFile 
+        ? `/therapists/placeholder-${Date.now()}.png`
+        : '/placeholder.svg';
+      
+      // Save to database
+      const savedTherapist = await dbOperations.createTherapist({
+        institute_id: userInstitutes[0].id,
+        name: newTherapist.name,
+        experience: newTherapist.experience,
+        bio: newTherapist.bio,
+        image_url: imageUrl
+      });
+      
+      // Add to local state
+      const therapistToAdd: Therapist = {
+        id: savedTherapist.id,
+        name: savedTherapist.name,
+        experience: savedTherapist.experience || '0',
+        bio: savedTherapist.bio || 'מטפל מוסמך',
+        image: savedTherapist.image_url
+      };
+      
+      setTherapists([...therapists, therapistToAdd]);
+      setShowNewTherapistDialog(false);
+      
+      // Reset form
+      setNewTherapist({
+        name: '',
+        experience: '',
+        bio: ''
+      });
+      setTherapistImageFile(null);
+      
+      toast({
+        title: "מטפל נוסף",
+        description: "המטפל נוסף בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error adding therapist:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את המטפל",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle therapist removal
@@ -215,10 +274,10 @@ const UserPageManagement = () => {
   };
 
   // Add new gallery image
-  const handleAddImage = (e: React.FormEvent) => {
+  const handleAddImage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!imageFile) {
+    if (!imageFile || !user?.id) {
       toast({
         variant: "destructive",
         title: "שגיאה",
@@ -227,36 +286,86 @@ const UserPageManagement = () => {
       return;
     }
     
-    // In a real app, we would upload the image to a server
-    const imageUrl = URL.createObjectURL(imageFile);
-    
-    const imageToAdd: GalleryImage = {
-      id: gallery.length + 1,
-      url: imageUrl,
-      title: newImage.title
-    };
-    
-    setGallery([...gallery, imageToAdd]);
-    setShowNewImageDialog(false);
-    
-    // Reset form
-    setNewImage({ title: '' });
-    setImageFile(null);
-    
-    toast({
-      title: "תמונה נוספה",
-      description: "התמונה נוספה בהצלחה לגלריה",
-    });
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      
+      if (userInstitutes.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "שגיאה",
+          description: "לא נמצא מכון לשיוך התמונה",
+        });
+        return;
+      }
+      
+      // For now, we'll use a placeholder URL since we don't have file upload
+      // In a real app, you would upload the file to a server first
+      const imageUrl = `/lovable-uploads/placeholder-${Date.now()}.png`;
+      
+      // Save to database
+      const savedImage = await dbOperations.createGalleryImage({
+        institute_id: userInstitutes[0].id,
+        image_url: imageUrl,
+        category: newImage.title
+      });
+      
+      // Add to local state
+      const imageToAdd: GalleryImage = {
+        id: parseInt(savedImage.id.split('-')[0], 16),
+        url: savedImage.image_url,
+        title: savedImage.category || newImage.title
+      };
+      
+      setGallery([...gallery, imageToAdd]);
+      setShowNewImageDialog(false);
+      
+      // Reset form
+      setNewImage({ title: '' });
+      setImageFile(null);
+      
+      toast({
+        title: "תמונה נוספה",
+        description: "התמונה נוספה בהצלחה לגלריה",
+      });
+    } catch (error) {
+      console.error('Error adding gallery image:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את התמונה",
+      });
+    }
   };
   
   // Remove gallery image
-  const handleRemoveImage = (id: number) => {
-    setGallery(gallery.filter(img => img.id !== id));
-    
-    toast({
-      title: "תמונה הוסרה",
-      description: "התמונה הוסרה בהצלחה מהגלריה",
-    });
+  const handleRemoveImage = async (id: number) => {
+    try {
+      // Find the image to get its database ID
+      const imageToRemove = gallery.find(img => img.id === id);
+      if (!imageToRemove) return;
+      
+      // Convert back to UUID format for database deletion
+      const dbId = `${id.toString(16).padStart(8, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(12, '0')}`;
+      
+      // Delete from database
+      await dbOperations.deleteGalleryImage(dbId);
+      
+      // Remove from local state
+      setGallery(gallery.filter(img => img.id !== id));
+      
+      toast({
+        title: "תמונה הוסרה",
+        description: "התמונה הוסרה בהצלחה מהגלריה",
+      });
+    } catch (error) {
+      console.error('Error removing gallery image:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן להסיר את התמונה",
+      });
+    }
   };
 
   return (

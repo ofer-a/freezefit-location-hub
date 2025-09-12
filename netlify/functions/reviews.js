@@ -10,11 +10,24 @@ export const handler = async (event, context) => {
   try {
     const { httpMethod, path, pathParameters } = event;
     
+    // Extract review ID from path if pathParameters.id is not available
+    let reviewId = pathParameters?.id;
+    if (!reviewId && path.includes('/reviews/') && !path.includes('/institute/') && !path.includes('/user/')) {
+      const pathParts = path.split('/');
+      const reviewsIndex = pathParts.indexOf('reviews');
+      if (reviewsIndex !== -1 && pathParts[reviewsIndex + 1]) {
+        const nextPart = pathParts[reviewsIndex + 1];
+        if (nextPart !== 'institute' && nextPart !== 'user') {
+          reviewId = nextPart;
+        }
+      }
+    }
+    
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        if (reviewId) {
           // Get single review
-          const result = await query('SELECT * FROM reviews WHERE id = $1', [pathParameters.id]);
+          const result = await query('SELECT * FROM reviews WHERE id = $1', [reviewId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/institute/')) {
           // Get reviews by institute with user names
@@ -52,7 +65,7 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
+        if (!reviewId) {
           return createResponse(400, null, 'Review ID is required');
         }
         const updates = JSON.parse(event.body);
@@ -72,7 +85,7 @@ export const handler = async (event, context) => {
           return createResponse(400, null, 'No valid fields to update');
         }
 
-        values.push(pathParameters.id);
+        values.push(reviewId);
         const updateResult = await query(
           `UPDATE reviews SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
           values
@@ -80,10 +93,10 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        if (!reviewId) {
           return createResponse(400, null, 'Review ID is required');
         }
-        const deleteResult = await query('DELETE FROM reviews WHERE id = $1', [pathParameters.id]);
+        const deleteResult = await query('DELETE FROM reviews WHERE id = $1', [reviewId]);
         return createResponse(200, { deleted: deleteResult.rowCount > 0 });
 
       default:
