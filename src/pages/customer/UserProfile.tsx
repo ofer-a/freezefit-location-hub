@@ -43,7 +43,7 @@ const UserProfile = () => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [showMessageBox, setShowMessageBox] = useState(false);
   const [selectedGift, setSelectedGift] = useState<{id: number; name: string; pointsCost: number} | null>(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   
   // Form states
   const [userDetails, setUserDetails] = useState({
@@ -89,7 +89,7 @@ const UserProfile = () => {
   }, [isAuthenticated, navigate]);
 
   // Handle appointment cancellation - check if it's pending or confirmed
-  const handleCancelAppointment = (appointmentId: number) => {
+  const handleCancelAppointment = (appointmentId: string) => {
     const isPending = pendingAppointments.some(apt => apt.id === appointmentId);
     const currentStatus = isPending ? 'pending' : 'confirmed';
     
@@ -102,7 +102,7 @@ const UserProfile = () => {
   };
 
   // Handle reschedule appointment
-  const handleRescheduleAppointment = (appointmentId: number) => {
+  const handleRescheduleAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
     setShowRescheduleDialog(true);
   };

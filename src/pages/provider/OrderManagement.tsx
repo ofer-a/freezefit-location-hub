@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 type AppointmentStatus = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
 interface Appointment {
-  id: number;
+  id: string;
   customerName: string;
   date: string;
   time: string;
@@ -49,7 +49,7 @@ const OrderManagement = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  const handleApprove = async (orderId: number) => {
+  const handleApprove = async (orderId: string) => {
     try {
       await updateAppointmentStatus(orderId, 'pending', 'confirmed');
       
@@ -66,7 +66,7 @@ const OrderManagement = () => {
     }
   };
 
-  const handleReject = async (orderId: number, fromPending: boolean = true) => {
+  const handleReject = async (orderId: string, fromPending: boolean = true) => {
     try {
       await updateAppointmentStatus(
         orderId, 
@@ -88,7 +88,7 @@ const OrderManagement = () => {
     }
   };
 
-  const handleComplete = async (orderId: number) => {
+  const handleComplete = async (orderId: string) => {
     try {
       await updateAppointmentStatus(orderId, 'confirmed', 'completed');
       
@@ -105,7 +105,7 @@ const OrderManagement = () => {
     }
   };
 
-  const handleApproveReschedule = (orderId: number) => {
+  const handleApproveReschedule = (orderId: string) => {
     approveReschedule(orderId);
     
     toast({
@@ -114,7 +114,7 @@ const OrderManagement = () => {
     });
   };
 
-  const handleDeclineReschedule = (orderId: number) => {
+  const handleDeclineReschedule = (orderId: string) => {
     declineReschedule(orderId);
     
     toast({

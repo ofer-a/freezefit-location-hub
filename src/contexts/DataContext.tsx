@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 
 // Define the data types
 interface Appointment {
-  id: number;
+  id: string;
   customerName: string;
   service: string;
   date: string;
@@ -83,10 +83,10 @@ interface DataContextType {
   historyAppointments: Appointment[];
   pendingAppointments: Appointment[];
   rescheduleRequests: Appointment[];
-  updateAppointmentStatus: (appointmentId: number, currentStatus: string, newStatus: string) => void;
-  requestReschedule: (appointmentId: number, newDate: string, newTime: string) => void;
-  approveReschedule: (appointmentId: number) => void;
-  declineReschedule: (appointmentId: number) => void;
+  updateAppointmentStatus: (appointmentId: string | number, currentStatus: string, newStatus: string) => void;
+  requestReschedule: (appointmentId: string | number, newDate: string, newTime: string) => void;
+  approveReschedule: (appointmentId: string | number) => void;
+  declineReschedule: (appointmentId: string | number) => void;
   userClub: UserClub;
   redeemGift: (giftId: number) => void;
   updateUserClubPoints: (points: number) => void;
@@ -272,8 +272,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   // Function to request appointment rescheduling
-  const requestReschedule = (appointmentId: number, newDate: string, newTime: string) => {
-    const appointment = confirmedAppointments.find(apt => apt.id === appointmentId);
+  const requestReschedule = (appointmentId: string | number, newDate: string, newTime: string) => {
+    const appointment = confirmedAppointments.find(apt => apt.id.toString() === appointmentId.toString());
     if (appointment) {
       const rescheduleRequest = {
         ...appointment,
@@ -284,14 +284,14 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         status: 'ממתין לאישור שינוי' as const
       };
       
-      setConfirmedAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+      setConfirmedAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
       setRescheduleRequests(prev => [...prev, rescheduleRequest]);
     }
   };
 
   // Function to approve reschedule request
-  const approveReschedule = (appointmentId: number) => {
-    const rescheduleRequest = rescheduleRequests.find(apt => apt.id === appointmentId);
+  const approveReschedule = (appointmentId: string | number) => {
+    const rescheduleRequest = rescheduleRequests.find(apt => apt.id.toString() === appointmentId.toString());
     if (rescheduleRequest && rescheduleRequest.requestedDate && rescheduleRequest.requestedTime) {
       const approvedAppointment = {
         ...rescheduleRequest,
@@ -304,14 +304,14 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         requestedTime: undefined
       };
       
-      setRescheduleRequests(prev => prev.filter(apt => apt.id !== appointmentId));
+      setRescheduleRequests(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
       setConfirmedAppointments(prev => [...prev, approvedAppointment]);
     }
   };
 
   // Function to decline reschedule request
-  const declineReschedule = (appointmentId: number) => {
-    const rescheduleRequest = rescheduleRequests.find(apt => apt.id === appointmentId);
+  const declineReschedule = (appointmentId: string | number) => {
+    const rescheduleRequest = rescheduleRequests.find(apt => apt.id.toString() === appointmentId.toString());
     if (rescheduleRequest && rescheduleRequest.originalDate && rescheduleRequest.originalTime) {
       const declinedAppointment = {
         ...rescheduleRequest,
@@ -324,7 +324,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         requestedTime: undefined
       };
       
-      setRescheduleRequests(prev => prev.filter(apt => apt.id !== appointmentId));
+      setRescheduleRequests(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
       setConfirmedAppointments(prev => [...prev, declinedAppointment]);
     }
   };

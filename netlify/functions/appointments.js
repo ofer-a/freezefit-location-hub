@@ -10,11 +10,21 @@ export const handler = async (event, context) => {
   try {
     const { httpMethod, path, pathParameters } = event;
     
+    // Extract ID from path if not in pathParameters
+    let appointmentId = pathParameters?.id;
+    if (!appointmentId && path.includes('/appointments/')) {
+      const pathParts = path.split('/');
+      const appointmentsIndex = pathParts.indexOf('appointments');
+      if (appointmentsIndex !== -1 && pathParts[appointmentsIndex + 1]) {
+        appointmentId = pathParts[appointmentsIndex + 1];
+      }
+    }
+    
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        if (appointmentId) {
           // Get single appointment
-          const result = await query('SELECT * FROM appointments WHERE id = $1', [pathParameters.id]);
+          const result = await query('SELECT * FROM appointments WHERE id = $1', [appointmentId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/user/')) {
           // Get appointments by user
@@ -48,7 +58,7 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
+        if (!appointmentId) {
           return createResponse(400, null, 'Appointment ID is required');
         }
         
@@ -57,7 +67,7 @@ export const handler = async (event, context) => {
           const { status } = JSON.parse(event.body);
           const updateResult = await query(
             'UPDATE appointments SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-            [status, pathParameters.id]
+            [status, appointmentId]
           );
           return createResponse(200, updateResult.rows[0] || null);
         } else {
@@ -79,7 +89,7 @@ export const handler = async (event, context) => {
             return createResponse(400, null, 'No valid fields to update');
           }
 
-          values.push(pathParameters.id);
+          values.push(appointmentId);
           const updateResult = await query(
             `UPDATE appointments SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
             values
@@ -88,10 +98,10 @@ export const handler = async (event, context) => {
         }
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        if (!appointmentId) {
           return createResponse(400, null, 'Appointment ID is required');
         }
-        const deleteResult = await query('DELETE FROM appointments WHERE id = $1', [pathParameters.id]);
+        const deleteResult = await query('DELETE FROM appointments WHERE id = $1', [appointmentId]);
         return createResponse(200, { deleted: deleteResult.rowCount > 0 });
 
       default:
