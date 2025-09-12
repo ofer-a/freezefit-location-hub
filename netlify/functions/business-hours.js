@@ -10,6 +10,20 @@ export const handler = async (event, context) => {
   try {
     const { httpMethod, path, pathParameters } = event;
     
+    // Extract ID from path if not in pathParameters
+    let businessHoursId = pathParameters?.id;
+    if (!businessHoursId && path.includes('/business-hours/')) {
+      const pathParts = path.split('/');
+      const businessHoursIndex = pathParts.indexOf('business-hours');
+      if (businessHoursIndex !== -1 && pathParts[businessHoursIndex + 1]) {
+        // Only extract as businessHoursId if it's not a special path like /institute/
+        const nextPart = pathParts[businessHoursIndex + 1];
+        if (nextPart !== 'institute') {
+          businessHoursId = nextPart;
+        }
+      }
+    }
+    
     switch (httpMethod) {
       case 'GET':
         if (path.includes('/institute/')) {
@@ -17,9 +31,9 @@ export const handler = async (event, context) => {
           const instituteId = path.split('/institute/')[1];
           const result = await query('SELECT * FROM business_hours WHERE institute_id = $1 ORDER BY day_of_week', [instituteId]);
           return createResponse(200, result.rows);
-        } else if (pathParameters && pathParameters.id) {
+        } else if (businessHoursId) {
           // Get single business hour entry
-          const result = await query('SELECT * FROM business_hours WHERE id = $1', [pathParameters.id]);
+          const result = await query('SELECT * FROM business_hours WHERE id = $1', [businessHoursId]);
           return createResponse(200, result.rows[0] || null);
         } else {
           // Get all business hours
@@ -37,7 +51,7 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
+        if (!businessHoursId) {
           return createResponse(400, null, 'Business hours ID is required');
         }
         const updates = JSON.parse(event.body);
@@ -57,7 +71,7 @@ export const handler = async (event, context) => {
           return createResponse(400, null, 'No valid fields to update');
         }
 
-        values.push(pathParameters.id);
+        values.push(businessHoursId);
         const updateResult = await query(
           `UPDATE business_hours SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
           values
@@ -65,10 +79,10 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        if (!businessHoursId) {
           return createResponse(400, null, 'Business hours ID is required');
         }
-        const deleteResult = await query('DELETE FROM business_hours WHERE id = $1', [pathParameters.id]);
+        const deleteResult = await query('DELETE FROM business_hours WHERE id = $1', [businessHoursId]);
         return createResponse(200, { deleted: deleteResult.rowCount > 0 });
 
       default:
