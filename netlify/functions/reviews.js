@@ -30,10 +30,14 @@ export const handler = async (event, context) => {
           const result = await query('SELECT * FROM reviews WHERE id = $1', [reviewId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/institute/')) {
-          // Get reviews by institute with user names
+          // Get reviews by institute with user names (handle anonymous reviews)
           const instituteId = path.split('/institute/')[1];
           const result = await query(
-            `SELECT r.*, p.full_name as user_name 
+            `SELECT r.*, 
+                    CASE 
+                      WHEN r.is_anonymous = true THEN 'אנונימי'
+                      ELSE p.full_name 
+                    END as user_name
              FROM reviews r 
              JOIN profiles p ON r.user_id = p.id 
              WHERE r.institute_id = $1 
@@ -56,11 +60,11 @@ export const handler = async (event, context) => {
         }
 
       case 'POST':
-        const { user_id, institute_id, rating, content, review_date } = JSON.parse(event.body);
+        const { user_id, institute_id, rating, content, review_date, is_anonymous } = JSON.parse(event.body);
         const insertResult = await query(
-          `INSERT INTO reviews (user_id, institute_id, rating, content, review_date) 
-           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-          [user_id, institute_id, rating, content, review_date || new Date().toISOString().split('T')[0]]
+          `INSERT INTO reviews (user_id, institute_id, rating, content, review_date, is_anonymous) 
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [user_id, institute_id, rating, content, review_date || new Date().toISOString().split('T')[0], is_anonymous || false]
         );
         return createResponse(201, insertResult.rows[0]);
 

@@ -40,8 +40,11 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
 
     try {
       // First, get the customer's user ID from their email
-      // For now, we'll use a simplified approach - in a real app you'd look up by email
-      const customerUserId = customerEmail; // Using email as ID temporarily
+      const customerProfile = await dbOperations.getProfileByEmail(customerEmail);
+      
+      if (!customerProfile) {
+        throw new Error('לא ניתן למצוא את פרטי הלקוח');
+      }
 
       // Get the institute ID for the current user
       const institutes = await dbOperations.getInstitutesByOwner(user?.id || '');
@@ -52,7 +55,7 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
 
       // Insert the message
       await dbOperations.createMessage({
-        user_id: customerUserId,
+        user_id: customerProfile.id,
         institute_id: institutes[0].id,
         subject: subject.trim(),
         content: message.trim(),

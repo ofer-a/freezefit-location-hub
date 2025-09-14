@@ -42,6 +42,10 @@ class ApiClient {
     return this.request(`/profiles/${id}`);
   }
 
+  async getProfileByEmail(email: string) {
+    return this.request(`/profiles/email/${email}`);
+  }
+
   async createProfile(profileData: any) {
     return this.request('/profiles', {
       method: 'POST',
@@ -67,6 +71,13 @@ class ApiClient {
     return this.request(`/institutes/owner/${ownerId}`);
   }
 
+  async createInstitute(instituteData: any) {
+    return this.request('/institutes', {
+      method: 'POST',
+      body: JSON.stringify(instituteData),
+    });
+  }
+
   // Therapists
   async getTherapistsByInstitute(instituteId: string) {
     return this.request(`/therapists/institute/${instituteId}`);
@@ -83,9 +94,23 @@ class ApiClient {
     });
   }
 
+  async updateTherapist(id: string, updates: any) {
+    return this.request(`/therapists/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteTherapist(id: string) {
+    return this.request(`/therapists/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Services
-  async getServicesByInstitute(instituteId: string) {
-    return this.request(`/services/institute/${instituteId}`);
+  async getServicesByInstitute(instituteId: string, type?: string) {
+    const url = type ? `/services/institute/${instituteId}?type=${type}` : `/services/institute/${instituteId}`;
+    return this.request(url);
   }
 
   async getService(id: string) {
@@ -180,7 +205,7 @@ class ApiClient {
     return this.request('/loyalty/gifts');
   }
 
-  async getUserTransactions(userId: string) {
+  async getUserLoyaltyTransactions(userId: string) {
     return this.request(`/loyalty/transactions/${userId}`);
   }
 
@@ -197,7 +222,10 @@ class ApiClient {
     });
   }
 
-  async redeemGift(data: { user_id: string; gift_id: string }) {
+  async redeemGift(data: {
+    user_id: string;
+    gift_id: string;
+  }) {
     return this.request('/loyalty/redeem-gift', {
       method: 'POST',
       body: JSON.stringify(data),

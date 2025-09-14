@@ -80,7 +80,9 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
                 </div>
                 <div className="flex items-center bg-primary/10 px-2 py-1 rounded">
                   <Star className="h-4 w-4 text-yellow-500 ml-1" />
-                  <span className="font-medium">{institute.rating.toFixed(2)}</span>
+                  <span className="font-medium">
+                    {institute.reviewCount > 0 ? institute.rating.toFixed(2) : 'אין דירוג'}
+                  </span>
                   <span className="text-xs text-gray-500 mr-1">({institute.reviewCount})</span>
                 </div>
               </div>

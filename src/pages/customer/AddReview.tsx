@@ -18,8 +18,8 @@ import { Star, ArrowLeft } from 'lucide-react';
 // This component now loads institute data from the database via useEffect
 
 const AddReview = () => {
-  const { instituteId, therapistId } = useParams<{ instituteId: string; therapistId: string }>();
-  const { isAuthenticated, user } = useAuth();
+  const { instituteId, therapistId } = useParams<{ instituteId: string; therapistId?: string }>();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const { addReview } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,10 +38,12 @@ const AddReview = () => {
   useEffect(() => {
     const loadInstitute = async () => {
       try {
-        const institutes = await dbOperations.getInstitutes();
-        const foundInstitute = institutes.find(inst => 
-          inst.id === instituteId
-        );
+        if (!instituteId) {
+          setLoading(false);
+          return;
+        }
+
+        const foundInstitute = await dbOperations.getInstitute(instituteId);
         
         if (foundInstitute) {
           const therapists = await dbOperations.getTherapistsByInstitute(foundInstitute.id);
@@ -56,6 +58,13 @@ const AddReview = () => {
               experience: parseInt(therapist.experience?.split(' ')[0] || '5')
             }))
           });
+        } else {
+          console.error('Institute not found:', instituteId);
+          toast({
+            title: "שגיאה",
+            description: "לא נמצא מכון מתאים",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error('Error loading institute:', error);
@@ -69,30 +78,30 @@ const AddReview = () => {
       }
     };
 
-    if (instituteId) {
-      loadInstitute();
-    }
+    loadInstitute();
   }, [instituteId, toast]);
-  const therapist = institute?.therapists.find(therapist => therapist.id === Number(therapistId));
+  const therapist = therapistId ? institute?.therapists.find(therapist => therapist.id === Number(therapistId)) : null;
 
   // Check authentication
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { redirectTo: `/add-review/${instituteId}/${therapistId}` } });
+    // Only redirect if loading is complete and user is not authenticated
+    if (!isLoading && !isAuthenticated) {
+      const redirectPath = therapistId ? `/add-review/${instituteId}/${therapistId}` : `/add-review/${instituteId}`;
+      navigate('/login', { state: { redirectTo: redirectPath } });
     }
-  }, [isAuthenticated, navigate, instituteId, therapistId]);
+  }, [isAuthenticated, isLoading, navigate, instituteId, therapistId]);
 
-  // Check if institute and therapist exist
+  // Check if institute exists (therapist is optional) - only after loading is complete
   useEffect(() => {
-    if (!institute || !therapist) {
+    if (!loading && !isLoading && !institute) {
       toast({
         variant: "destructive",
         title: "שגיאה",
-        description: "לא נמצא מכון או מטפל מתאים",
+        description: "לא נמצא מכון מתאים",
       });
       navigate('/find-institute');
     }
-  }, [institute, therapist, toast, navigate]);
+  }, [institute, loading, isLoading, toast, navigate]);
 
   // Handle submit review
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -107,11 +116,21 @@ const AddReview = () => {
       return;
     }
     
-    if (!user || !institute || !therapist) {
+    if (!user || !institute) {
       toast({
         variant: "destructive",
         title: "שגיאה",
         description: "שגיאה במערכת, אנא נסה שוב",
+      });
+      return;
+    }
+    
+    // If therapistId was provided but therapist not found, show error
+    if (therapistId && !therapist) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא נמצא מטפל מתאים",
       });
       return;
     }
@@ -123,7 +142,8 @@ const AddReview = () => {
         institute_id: instituteId!,
         rating,
         content: reviewText,
-        review_date: new Date().toISOString().split('T')[0]
+        review_date: new Date().toISOString().split('T')[0],
+        is_anonymous: isAnonymous
       };
       
       // Save review to database
@@ -145,9 +165,9 @@ const AddReview = () => {
         customerName: isAnonymous ? 'אנונימי' : user.name,
         customerId: user.id,
         instituteName: institute.name,
-        instituteId: Number(instituteId),
-        therapistName: therapist.name,
-        therapistId: Number(therapistId),
+        instituteId: parseInt(instituteId!.split('-')[0], 16), // Convert UUID to number for compatibility
+        therapistName: therapist?.name || 'כללי',
+        therapistId: therapistId ? parseInt(therapistId.split('-')[0], 16) : 0,
         rating,
         reviewText,
         isAnonymous,
@@ -174,6 +194,21 @@ const AddReview = () => {
     }
   };
 
+  // Show loading spinner while authentication or institute data is being loaded
+  if (isLoading || loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">{isLoading ? 'בודק הרשאות...' : 'טוען פרטי מכון...'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -194,11 +229,12 @@ const AddReview = () => {
               <CardTitle className="text-2xl text-center">הוספת ביקורת</CardTitle>
             </CardHeader>
             <CardContent>
-              {institute && therapist && (
+              {institute && (
                 <div>
                   <div className="text-center mb-6">
                     <h2 className="text-xl font-semibold">{institute.name}</h2>
-                    <p className="text-gray-600">מטפל: {therapist.name}</p>
+                    {therapist && <p className="text-gray-600">מטפל: {therapist.name}</p>}
+                    {!therapist && <p className="text-gray-600">ביקורת כללית על המכון</p>}
                   </div>
                   
                   <form onSubmit={handleSubmitReview} className="space-y-6">

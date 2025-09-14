@@ -102,7 +102,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
         const stats = serviceStats.get(serviceName)!;
         stats.count++;
         if (apt.status === 'confirmed') {
-          stats.revenue += apt.price || 0;
+          stats.revenue += Number(apt.price) || 0;
         }
       });
 
@@ -122,7 +122,7 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
         const stats = dailyStats.get(dateStr)!;
         stats.appointments++;
         if (apt.status === 'confirmed') {
-          stats.revenue += apt.price || 0;
+          stats.revenue += Number(apt.price) || 0;
         }
       });
 

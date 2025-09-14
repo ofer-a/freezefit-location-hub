@@ -22,11 +22,34 @@ const ProviderDashboard = () => {
     rescheduleRequests
   } = useData();
   const navigate = useNavigate();
+  const [hasInstitute, setHasInstitute] = useState<boolean | null>(null);
 
   if (!isAuthenticated) {
     navigate('/login');
     return null;
   }
+
+  // Check if user has an institute
+  useEffect(() => {
+    const checkInstitute = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const institutes = await dbOperations.getInstitutesByOwner(user.id);
+        setHasInstitute(institutes.length > 0);
+        
+        // If no institute, redirect to setup
+        if (institutes.length === 0) {
+          navigate('/institute-setup');
+        }
+      } catch (error) {
+        console.error('Error checking institute:', error);
+        setHasInstitute(false);
+      }
+    };
+
+    checkInstitute();
+  }, [user?.id, navigate]);
 
   // Calculate statistics from real data
   const totalAppointments = confirmedAppointments.length + historyAppointments.length + pendingAppointments.length;
@@ -51,10 +74,13 @@ const ProviderDashboard = () => {
   weekAgo.setDate(weekAgo.getDate() - 7);
   const weeklyRevenue = historyAppointments
     .filter(apt => apt.status === 'הושלם' && new Date(apt.date) >= weekAgo)
-    .reduce((sum, apt) => sum + (apt.price || 150), 0); // Default price 150 if not set
+    .reduce((sum, apt) => sum + (Number(apt.price) || 150), 0); // Ensure price is treated as number
 
   // Recent activities state - now loaded from database
   const [recentActivities, setRecentActivities] = useState([]);
+  
+  // Gallery images state
+  const [galleryImages, setGalleryImages] = useState([]);
 
   // Load activities from database
   useEffect(() => {
@@ -80,8 +106,12 @@ const ProviderDashboard = () => {
         }));
         
         setRecentActivities(transformedActivities);
+
+        // Load gallery images for the first institute
+        const gallery = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
+        setGalleryImages(gallery);
       } catch (error) {
-        console.error('Error loading activities:', error);
+        console.error('Error loading data:', error);
       }
     };
 
@@ -166,6 +196,15 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">₪{weeklyRevenue.toLocaleString()}</div>
+                {galleryImages.length > 0 && (
+                  <div className="mt-2">
+                    <img 
+                      src={galleryImages[0].image_url} 
+                      alt="גלריה" 
+                      className="w-16 h-16 object-cover rounded-md"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -10,11 +10,24 @@ export const handler = async (event, context) => {
   try {
     const { httpMethod, path, pathParameters } = event;
     
+    // Extract institute ID from path if pathParameters.id is not available
+    let instituteId = pathParameters?.id;
+    if (!instituteId && path.includes('/institutes/') && !path.includes('/owner/')) {
+      const pathParts = path.split('/');
+      const institutesIndex = pathParts.indexOf('institutes');
+      if (institutesIndex !== -1 && pathParts[institutesIndex + 1]) {
+        const nextPart = pathParts[institutesIndex + 1];
+        if (nextPart !== 'owner') {
+          instituteId = nextPart;
+        }
+      }
+    }
+    
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        if (instituteId) {
           // Get single institute
-          const result = await query('SELECT * FROM institutes WHERE id = $1', [pathParameters.id]);
+          const result = await query('SELECT * FROM institutes WHERE id = $1', [instituteId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/owner/')) {
           // Get institutes by owner
@@ -37,7 +50,7 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
+        if (!instituteId) {
           return createResponse(400, null, 'Institute ID is required');
         }
         const updates = JSON.parse(event.body);
@@ -57,7 +70,7 @@ export const handler = async (event, context) => {
           return createResponse(400, null, 'No valid fields to update');
         }
 
-        values.push(pathParameters.id);
+        values.push(instituteId);
         const updateResult = await query(
           `UPDATE institutes SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
           values
@@ -65,10 +78,10 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        if (!instituteId) {
           return createResponse(400, null, 'Institute ID is required');
         }
-        const deleteResult = await query('DELETE FROM institutes WHERE id = $1', [pathParameters.id]);
+        const deleteResult = await query('DELETE FROM institutes WHERE id = $1', [instituteId]);
         return createResponse(200, { deleted: deleteResult.rowCount > 0 });
 
       default:

@@ -136,10 +136,55 @@ async function addPoints(body) {
   }
 
   try {
-    await query(
-      `SELECT add_loyalty_points($1, $2, $3, $4, $5)`,
-      [user_id, points, source, reference_id || null, description || null]
-    );
+    // First try the stored procedure
+    try {
+      await query(
+        `SELECT add_loyalty_points($1, $2, $3, $4, $5)`,
+        [user_id, points, source, reference_id || null, description || null]
+      );
+    } catch (functionError) {
+      console.log('Stored procedure not available, using manual implementation');
+      
+      // Manual implementation if stored procedure doesn't exist
+      // Insert transaction record
+      await query(
+        `INSERT INTO loyalty_transactions (user_id, transaction_type, points, source, reference_id, description)
+         VALUES ($1, 'earned', $2, $3, $4, $5)`,
+        [user_id, points, source, reference_id || null, description || null]
+      );
+      
+      // Update or create loyalty record
+      await query(
+        `INSERT INTO customer_loyalty (user_id, total_points, current_points)
+         VALUES ($1, $2, $2)
+         ON CONFLICT (user_id) 
+         DO UPDATE SET 
+           total_points = customer_loyalty.total_points + $2,
+           current_points = customer_loyalty.current_points + $2,
+           updated_at = NOW()`,
+        [user_id, points]
+      );
+      
+      // Update loyalty level based on total points
+      const loyaltyResult = await query(
+        `SELECT total_points FROM customer_loyalty WHERE user_id = $1`,
+        [user_id]
+      );
+      
+      if (loyaltyResult.rows.length > 0) {
+        const totalPoints = loyaltyResult.rows[0].total_points;
+        let newLevel = 'ברונזה';
+        if (totalPoints >= 2000) newLevel = 'יהלום';
+        else if (totalPoints >= 1000) newLevel = 'פלטינה';
+        else if (totalPoints >= 500) newLevel = 'זהב';
+        else if (totalPoints >= 200) newLevel = 'כסף';
+        
+        await query(
+          `UPDATE customer_loyalty SET loyalty_level = $1 WHERE user_id = $2`,
+          [newLevel, user_id]
+        );
+      }
+    }
 
     // Get updated loyalty data
     const updatedLoyalty = await getUserLoyalty(user_id);
@@ -147,7 +192,7 @@ async function addPoints(body) {
 
   } catch (error) {
     console.error('Error adding points:', error);
-    return createResponse(500, null, 'Failed to add points');
+    return createResponse(500, null, 'Failed to add points: ' + error.message);
   }
 }
 

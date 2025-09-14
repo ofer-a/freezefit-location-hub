@@ -17,7 +17,7 @@ import { User, Image as ImageIcon, Star, Plus, X, Upload } from 'lucide-react';
 
 // Types for gallery
 interface GalleryImage {
-  id: number;
+  id: string;
   url: string;
   title: string;
 }
@@ -94,7 +94,7 @@ const UserPageManagement = () => {
         
         // Transform database images to match component interface
         const transformedImages = galleryImages.map((image) => ({
-          id: parseInt(image.id.split('-')[0], 16), // Convert UUID to number for compatibility
+          id: image.id, // Use full UUID as string
           url: image.image_url,
           title: image.category || 'תמונה'
         }));
@@ -136,21 +136,36 @@ const UserPageManagement = () => {
   const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
 
   // Handle therapist image upload for existing therapists
-  const handleTherapistImageUpload = (therapistId: string, file: File) => {
-    const imageUrl = URL.createObjectURL(file);
-    
-    setTherapists(prevTherapists => 
-      prevTherapists.map(therapist => 
-        therapist.id === therapistId 
-          ? { ...therapist, image: imageUrl }
-          : therapist
-      )
-    );
-    
-    toast({
-      title: "תמונה עודכנה",
-      description: "תמונת המטפל עודכנה בהצלחה",
-    });
+  const handleTherapistImageUpload = async (therapistId: string, file: File) => {
+    try {
+      // For now, we'll use a placeholder URL since we don't have file upload
+      // In a real implementation, you would upload the file to a storage service
+      const imageUrl = `/therapists/${therapistId}-${Date.now()}.png`;
+      
+      // Update in database
+      await dbOperations.updateTherapist(therapistId, { image_url: imageUrl });
+      
+      // Update local state
+      setTherapists(prevTherapists => 
+        prevTherapists.map(therapist => 
+          therapist.id === therapistId 
+            ? { ...therapist, image: imageUrl }
+            : therapist
+        )
+      );
+      
+      toast({
+        title: "תמונה עודכנה",
+        description: "תמונת המטפל עודכנה בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error updating therapist image:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את תמונת המטפל",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle gallery image upload for existing images
@@ -260,16 +275,29 @@ const UserPageManagement = () => {
   };
 
   // Handle therapist removal
-  const handleRemoveTherapist = () => {
+  const handleRemoveTherapist = async () => {
     if (selectedTherapist !== null) {
-      setTherapists(therapists.filter(therapist => therapist.id !== selectedTherapist));
-      setSelectedTherapist(null);
-      setShowRemoveTherapistDialog(false);
-      
-      toast({
-        title: "מטפל הוסר",
-        description: "המטפל הוסר בהצלחה",
-      });
+      try {
+        // Delete from database
+        await dbOperations.deleteTherapist(selectedTherapist);
+        
+        // Update local state
+        setTherapists(therapists.filter(therapist => therapist.id !== selectedTherapist));
+        setSelectedTherapist(null);
+        setShowRemoveTherapistDialog(false);
+        
+        toast({
+          title: "מטפל הוסר",
+          description: "המטפל הוסר בהצלחה",
+        });
+      } catch (error) {
+        console.error('Error removing therapist:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן להסיר את המטפל",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -312,7 +340,7 @@ const UserPageManagement = () => {
       
       // Add to local state
       const imageToAdd: GalleryImage = {
-        id: parseInt(savedImage.id.split('-')[0], 16),
+        id: savedImage.id, // Use full UUID as string
         url: savedImage.image_url,
         title: savedImage.category || newImage.title
       };
@@ -339,17 +367,10 @@ const UserPageManagement = () => {
   };
   
   // Remove gallery image
-  const handleRemoveImage = async (id: number) => {
+  const handleRemoveImage = async (id: string) => {
     try {
-      // Find the image to get its database ID
-      const imageToRemove = gallery.find(img => img.id === id);
-      if (!imageToRemove) return;
-      
-      // Convert back to UUID format for database deletion
-      const dbId = `${id.toString(16).padStart(8, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(4, '0')}-${id.toString(16).padStart(12, '0')}`;
-      
-      // Delete from database
-      await dbOperations.deleteGalleryImage(dbId);
+      // Delete from database using the UUID directly
+      await dbOperations.deleteGalleryImage(id);
       
       // Remove from local state
       setGallery(gallery.filter(img => img.id !== id));

@@ -6,6 +6,7 @@ import { Star, X } from 'lucide-react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
 import { cn } from '@/lib/utils'
 import { dbOperations } from '@/lib/database'
+import { useNavigate } from 'react-router-dom'
 
 interface Review {
   id: string
@@ -60,6 +61,14 @@ const getGalleryItems = (instituteId: string) => {
 }
 
 const StarRating = ({ rating }: { rating: number }) => {
+  if (rating === 0) {
+    return (
+      <div className="flex items-center space-x-1">
+        <span className="text-sm text-gray-400">אין דירוג</span>
+      </div>
+    )
+  }
+  
   return (
     <div className="flex items-center space-x-1">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -78,6 +87,7 @@ const StarRating = ({ rating }: { rating: number }) => {
 }
 
 export function InstitutePreviewModal({ institute, isOpen, onClose }: InstitutePreviewModalProps) {
+  const navigate = useNavigate()
   const [reviews, setReviews] = useState<Review[]>([])
   const [galleryImages, setGalleryImages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -97,7 +107,7 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
         // Transform database reviews to match component interface
         const transformedReviews = dbReviews.map((review, index) => ({
           id: `${institute.id}-review-${index}-${review.id}`, // Create unique composite key
-          username: `משתמש ${review.id.slice(-4)}`, // Anonymous username based on ID
+          username: review.user_name || `משתמש ${review.id.slice(-4)}`, // Use actual user name from API
           rating: review.rating,
           content: review.content,
           date: review.review_date || review.created_at || '2024-01-01'
@@ -249,7 +259,15 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
             </div>
 
             <div className="mt-6 text-center">
-              <Button variant="outline" className="text-sm bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+              <Button 
+                variant="outline" 
+                className="text-sm bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
+                onClick={() => {
+                  // Navigate to reviews page
+                  navigate(`/institute/${institute.id}/reviews`)
+                  onClose() // Close the modal
+                }}
+              >
                 צפה בכל הביקורות ({institute.reviewCount})
               </Button>
             </div>

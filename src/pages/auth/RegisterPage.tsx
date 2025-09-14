@@ -32,7 +32,7 @@ const RegisterPage = () => {
         title: "נרשמת בהצלחה",
         description: "ברוכים הבאים ל-Freezefit",
       });
-      navigate(role === 'provider' ? '/dashboard' : '/find-institute');
+      navigate(role === 'provider' ? '/institute-setup' : '/find-institute');
     } catch (error) {
       toast({
         variant: "destructive",

@@ -16,6 +16,11 @@ export const handler = async (event, context) => {
           // Get single profile
           const result = await query('SELECT * FROM profiles WHERE id = $1', [pathParameters.id]);
           return createResponse(200, result.rows[0] || null);
+        } else if (path.includes('/email/')) {
+          // Get profile by email
+          const email = path.split('/email/')[1];
+          const result = await query('SELECT * FROM profiles WHERE email = $1', [email]);
+          return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/role/')) {
           // Get profiles by role
           const role = path.split('/role/')[1];

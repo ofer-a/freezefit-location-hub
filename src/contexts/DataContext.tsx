@@ -23,7 +23,7 @@ interface Appointment {
 }
 
 interface Gift {
-  id: number;
+  id: string;
   name: string;
   pointsCost: number;
   image: string;
@@ -177,7 +177,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           duration: '45 דקות', // Default duration - could be loaded from services table
           phone: apt.phone || '050-1234567', // Use appointment phone or default
           therapistName: apt.service_name, // Use service name as therapist name for now
-          price: apt.price || 150 // Add price field with default value
+          price: parseFloat(apt.price) || 150 // Convert price to number with default value
         }));
 
         // Separate appointments by status
@@ -197,25 +197,49 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     const loadReviews = async () => {
       try {
-        // Load reviews for all institutes
-        const institutes = await dbOperations.getInstitutes();
-        const allReviews = [];
+        // Load reviews for user's institutes only
+        let allReviews = [];
         
-        for (const institute of institutes) {
-          const instituteReviews = await dbOperations.getReviewsByInstitute(institute.id);
-          allReviews.push(...instituteReviews.map(review => ({
-            id: review.id,
-            customerName: 'לקוח אנונימי',
-            customerId: review.user_id,
-            instituteName: institute.institute_name,
-            instituteId: institute.id,
-            therapistName: 'מטפל',
-            therapistId: 1,
-            rating: review.rating,
-            reviewText: review.content,
-            isAnonymous: true,
-            submittedAt: new Date(review.review_date || review.created_at)
-          })));
+        if (user?.id) {
+          // Get user's institutes
+          const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+          
+          for (const institute of userInstitutes) {
+            const instituteReviews = await dbOperations.getReviewsByInstitute(institute.id);
+            allReviews.push(...instituteReviews.map(review => ({
+              id: review.id,
+              customerName: review.user_name || 'לקוח אנונימי',
+              customerId: review.user_id,
+              instituteName: institute.institute_name,
+              instituteId: institute.id,
+              therapistName: 'מטפל',
+              therapistId: 1,
+              rating: review.rating,
+              reviewText: review.content,
+              isAnonymous: review.is_anonymous || false,
+              submittedAt: new Date(review.review_date || review.created_at)
+            })));
+          }
+        } else {
+          // For customers, load all reviews
+          const institutes = await dbOperations.getInstitutes();
+          
+          for (const institute of institutes) {
+            const instituteReviews = await dbOperations.getReviewsByInstitute(institute.id);
+            allReviews.push(...instituteReviews.map(review => ({
+              id: review.id,
+              customerName: review.user_name || 'לקוח אנונימי',
+              customerId: review.user_id,
+              instituteName: institute.institute_name,
+              instituteId: institute.id,
+              therapistName: 'מטפל',
+              therapistId: 1,
+              rating: review.rating,
+              reviewText: review.content,
+              isAnonymous: review.is_anonymous || false,
+              submittedAt: new Date(review.review_date || review.created_at)
+            })));
+          }
         }
 
         setReviews(allReviews);
@@ -246,7 +270,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           setUserClub(prevClub => ({
             ...prevClub,
             availableGifts: gifts.map(gift => ({
-              id: parseInt(gift.id.split('-')[0], 16), // Convert UUID to number for compatibility
+              id: gift.id, // Use full UUID as string
               name: gift.name,
               pointsCost: gift.points_cost,
               image: gift.image_url || '/placeholder.svg'
@@ -352,8 +376,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           if (newStatus === 'confirmed') {
             setConfirmedAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
           } else if (newStatus === 'cancelled') {
-            // Deduct points when appointment is cancelled (50 points that were added during booking)
-            updateUserClubPoints(-50);
+            // Deduct points when appointment is cancelled (100 points penalty)
+            updateUserClubPoints(-100);
             setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
           } else {
             setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);
@@ -366,7 +390,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           
           if (newStatus === 'cancelled') {
             // Deduct points when confirmed appointment is cancelled
-            updateUserClubPoints(-50);
+            updateUserClubPoints(-100);
           }
           
           setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);

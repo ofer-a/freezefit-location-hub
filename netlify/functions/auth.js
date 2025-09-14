@@ -25,6 +25,8 @@ export const handler = async (event, context) => {
           return await handleVerifyToken(body);
         } else if (path.includes('/reset-password')) {
           return await handleResetPassword(body);
+        } else if (path.includes('/change-password')) {
+          return await handleChangePassword(body);
         }
         break;
         
@@ -217,6 +219,48 @@ async function handleResetPassword(body) {
   } catch (error) {
     console.error('Password reset error:', error);
     return createResponse(500, null, 'שגיאה באיפוס סיסמה, נסה שוב');
+  }
+}
+
+// Change password (for logged-in users)
+async function handleChangePassword(body) {
+  const { user_id, currentPassword, newPassword } = body;
+  
+  if (!user_id || !currentPassword || !newPassword) {
+    return createResponse(400, null, 'User ID, current password, and new password are required');
+  }
+
+  try {
+    // Find user and get current password hash
+    const userResult = await query('SELECT password_hash FROM profiles WHERE id = $1', [user_id]);
+    
+    if (userResult.rows.length === 0) {
+      return createResponse(404, null, 'משתמש לא נמצא');
+    }
+
+    const { password_hash } = userResult.rows[0];
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, password_hash);
+    
+    if (!isCurrentPasswordValid) {
+      return createResponse(400, null, 'הסיסמה הנוכחית שגויה');
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await query(
+      'UPDATE profiles SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [hashedNewPassword, user_id]
+    );
+
+    return createResponse(200, { message: 'Password changed successfully' });
+
+  } catch (error) {
+    console.error('Password change error:', error);
+    return createResponse(500, null, 'שגיאה בשינוי סיסמה, נסה שוב');
   }
 }
 

@@ -107,7 +107,7 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
       
       const dailyRevenue = dayAppointments
         .filter(apt => apt.status === 'completed')
-        .reduce((sum, apt) => sum + (apt.price || 0), 0);
+        .reduce((sum, apt) => sum + (Number(apt.price) || 0), 0);
       
       revenueData.push({
         date,
@@ -122,7 +122,7 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
           const current = serviceStats.get(serviceName) || { count: 0, revenue: 0 };
           current.count += 1;
           if (apt.status === 'completed') {
-            current.revenue += apt.price || 0;
+            current.revenue += Number(apt.price) || 0;
           }
           serviceStats.set(serviceName, current);
         }

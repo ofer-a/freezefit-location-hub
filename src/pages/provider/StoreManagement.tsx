@@ -17,7 +17,7 @@ import { dbOperations } from '@/lib/database';
 
 // Database entity interfaces
 interface Workshop {
-  id: number;
+  id: string;
   title: string;
   description: string;
   date: string;
@@ -29,7 +29,7 @@ interface Workshop {
 }
 
 interface Service {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
@@ -118,7 +118,7 @@ const StoreManagement = () => {
         // Load workshops
         const workshopsData = await dbOperations.getWorkshopsByInstitute(instituteId);
         const transformedWorkshops = (workshopsData as any[]).map((workshop: any) => ({
-          id: parseInt(workshop.id.split('-')[0], 16),
+          id: workshop.id, // Use full UUID as string
           title: workshop.title,
           description: workshop.description,
           date: new Date(workshop.workshop_date).toLocaleDateString('he-IL'),
@@ -130,16 +130,38 @@ const StoreManagement = () => {
         }));
         setWorkshops(transformedWorkshops);
 
-        // Load services
+        // Load services (only type='service')
         const servicesData = await dbOperations.getServicesByInstitute(instituteId);
         const transformedServices = (servicesData as any[]).map((service: any) => ({
-          id: parseInt(service.id.split('-')[0], 16),
+          id: service.id, // Use full UUID as string
           name: service.name,
           description: service.description,
           price: service.price,
           duration: service.duration
         }));
         setServices(transformedServices);
+
+        // Load benefits (type='benefit')
+        const benefitsData = await dbOperations.getBenefitsByInstitute(instituteId);
+        const transformedBenefits = benefitsData.map((benefit: any) => ({
+          id: benefit.id,
+          name: benefit.name,
+          description: benefit.description,
+          price: benefit.price,
+          duration: benefit.duration || 'הטבה'
+        }));
+        setBenefits(transformedBenefits);
+
+        // Load products (type='product')
+        const productsData = await dbOperations.getProductsByInstitute(instituteId);
+        const transformedProducts = productsData.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          duration: product.duration || 'מוצר'
+        }));
+        setProducts(transformedProducts);
 
         // Load business hours
         const businessHoursData = await dbOperations.getBusinessHoursByInstitute(instituteId);
@@ -216,7 +238,7 @@ const StoreManagement = () => {
       
       // Add to local state
       const workshopToAdd: Workshop = {
-        id: parseInt((savedWorkshop as any).id.split('-')[0], 16),
+        id: (savedWorkshop as any).id, // Use full UUID as string
         title: (savedWorkshop as any).title,
         description: (savedWorkshop as any).description,
         date: new Date((savedWorkshop as any).workshop_date).toLocaleDateString('he-IL'),
@@ -230,7 +252,7 @@ const StoreManagement = () => {
       // Reload workshops from database to ensure consistency
       const updatedWorkshopsData = await dbOperations.getWorkshopsByInstitute(userInstitutes[0].id);
       const updatedTransformedWorkshops = (updatedWorkshopsData as any[]).map((workshop: any) => ({
-        id: parseInt(workshop.id.split('-')[0], 16),
+        id: workshop.id, // Use full UUID as string
         title: workshop.title,
         description: workshop.description,
         date: new Date(workshop.workshop_date).toLocaleDateString('he-IL'),
@@ -306,7 +328,7 @@ const StoreManagement = () => {
       
       // Add to local state
       const serviceToAdd: Service = {
-        id: parseInt((savedService as any).id.split('-')[0], 16),
+        id: (savedService as any).id, // Use full UUID as string
         name: (savedService as any).name,
         description: (savedService as any).description,
         price: (savedService as any).price,
@@ -316,7 +338,7 @@ const StoreManagement = () => {
       // Reload services from database to ensure consistency
       const updatedServicesData = await dbOperations.getServicesByInstitute(userInstitutes[0].id);
       const updatedTransformedServices = (updatedServicesData as any[]).map((service: any) => ({
-        id: parseInt(service.id.split('-')[0], 16),
+        id: service.id, // Use full UUID as string
         name: service.name,
         description: service.description,
         price: service.price,
@@ -453,6 +475,154 @@ const StoreManagement = () => {
       toast({
         title: "שגיאה",
         description: "לא ניתן לעדכן את שעות הפעילות",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle adding new benefit
+  const handleAddBenefit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף הטבה ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון להוספת ההטבה",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const instituteId = userInstitutes[0].id;
+
+      // Create benefit data for database
+      const benefitData = {
+        institute_id: instituteId,
+        name: newBenefit.name,
+        description: newBenefit.description,
+        price: newBenefit.price,
+        duration: 'הטבה'
+      };
+
+      // Save to database
+      const savedBenefit = await dbOperations.createBenefit(benefitData);
+      
+      // Reload benefits from database to ensure consistency
+      const updatedBenefitsData = await dbOperations.getBenefitsByInstitute(instituteId);
+      const updatedTransformedBenefits = updatedBenefitsData.map((benefit: any) => ({
+        id: benefit.id,
+        name: benefit.name,
+        description: benefit.description,
+        price: benefit.price,
+        duration: benefit.duration || 'הטבה'
+      }));
+      
+      setBenefits(updatedTransformedBenefits);
+      setShowNewBenefitDialog(false);
+      
+      // Reset form
+      setNewBenefit({
+        name: '',
+        description: '',
+        price: 0,
+        duration: ''
+      });
+      
+      toast({
+        title: "הטבה נוספה",
+        description: "ההטבה נוספה בהצלחה למסד הנתונים",
+      });
+    } catch (error) {
+      console.error('Error adding benefit:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את ההטבה",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle adding new product
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף מוצר ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      if (userInstitutes.length === 0) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא מכון להוספת המוצר",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const instituteId = userInstitutes[0].id;
+
+      // Create product data for database
+      const productData = {
+        institute_id: instituteId,
+        name: newProduct.name,
+        description: newProduct.description,
+        price: newProduct.price,
+        duration: 'מוצר'
+      };
+
+      // Save to database
+      const savedProduct = await dbOperations.createProduct(productData);
+      
+      // Reload products from database to ensure consistency
+      const updatedProductsData = await dbOperations.getProductsByInstitute(instituteId);
+      const updatedTransformedProducts = updatedProductsData.map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        duration: product.duration || 'מוצר'
+      }));
+      
+      setProducts(updatedTransformedProducts);
+      setShowNewProductDialog(false);
+      
+      // Reset form
+      setNewProduct({
+        name: '',
+        description: '',
+        price: 0,
+        duration: ''
+      });
+      
+      toast({
+        title: "מוצר נוסף",
+        description: "המוצר נוסף בהצלחה למסד הנתונים",
+      });
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן להוסיף את המוצר",
         variant: "destructive",
       });
     }
@@ -917,6 +1087,125 @@ const StoreManagement = () => {
                 ביטול
               </Button>
               <Button type="submit">שמור שינויים</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Benefit Dialog */}
+      <Dialog open={showNewBenefitDialog} onOpenChange={setShowNewBenefitDialog}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>הוספת הטבה חדשה</DialogTitle>
+            <DialogDescription>
+              מלא את הפרטים להוספת הטבה חדשה למערכת.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddBenefit} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="benefit-name">שם ההטבה</Label>
+                <Input 
+                  id="benefit-name" 
+                  value={newBenefit.name}
+                  onChange={(e) => setNewBenefit({...newBenefit, name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="benefit-description">תיאור ההטבה</Label>
+                <Textarea 
+                  id="benefit-description" 
+                  value={newBenefit.description}
+                  onChange={(e) => setNewBenefit({...newBenefit, description: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="benefit-price">מחיר (₪)</Label>
+                <Input 
+                  id="benefit-price" 
+                  type="number" 
+                  value={newBenefit.price}
+                  onChange={(e) => setNewBenefit({...newBenefit, price: parseFloat(e.target.value) || 0})}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowNewBenefitDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">הוסף הטבה</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Product Dialog */}
+      <Dialog open={showNewProductDialog} onOpenChange={setShowNewProductDialog}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>הוספת מוצר חדש</DialogTitle>
+            <DialogDescription>
+              מלא את הפרטים להוספת מוצר חדש למערכת.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddProduct} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="product-name">שם המוצר</Label>
+                <Input 
+                  id="product-name" 
+                  value={newProduct.name}
+                  onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="product-description">תיאור המוצר</Label>
+                <Textarea 
+                  id="product-description" 
+                  value={newProduct.description}
+                  onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="product-price">מחיר (₪)</Label>
+                <Input 
+                  id="product-price" 
+                  type="number" 
+                  value={newProduct.price}
+                  onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowNewProductDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">הוסף מוצר</Button>
             </div>
           </form>
         </DialogContent>

@@ -19,9 +19,11 @@ import StoreManagement from "./pages/provider/StoreManagement";
 import UserPageManagement from "./pages/provider/UserPageManagement";
 import UserProfile from "./pages/customer/UserProfile";
 import AddReview from "./pages/customer/AddReview";
+import InstituteReviews from "./pages/customer/InstituteReviews";
 import EmailTest from "./pages/EmailTest";
 import CustomerInquiries from "./pages/provider/CustomerInquiries";
 import AnalyticsPage from "./pages/provider/AnalyticsPage";
+import InstituteSetup from "./pages/provider/InstituteSetup";
 
 // Providers
 import { AuthProvider } from "./contexts/AuthContext";
@@ -48,12 +50,15 @@ const App = () => (
               <Route path="/find-institute" element={<FindInstitute />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/add-review/:instituteId/:therapistId" element={<AddReview />} />
+              <Route path="/add-review/:instituteId" element={<AddReview />} />
+              <Route path="/institute/:instituteId/reviews" element={<InstituteReviews />} />
               
               {/* Testing Routes */}
               <Route path="/email-test" element={<EmailTest />} />
               
               {/* Provider Routes */}
               <Route path="/dashboard" element={<ProviderDashboard />} />
+              <Route path="/institute-setup" element={<InstituteSetup />} />
               <Route path="/order-management" element={<OrderManagement />} />
               <Route path="/store-management" element={<StoreManagement />} />
               <Route path="/user-page-management" element={<UserPageManagement />} />

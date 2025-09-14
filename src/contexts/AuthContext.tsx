@@ -16,10 +16,12 @@ export interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<{ redirectTo: string }>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<{ redirectTo: string }>;
   logout: () => void;
   resetPassword: (email: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 // Create context
@@ -32,6 +34,7 @@ const API_BASE_URL = '/.netlify/functions';
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Check local storage for existing session on mount
   useEffect(() => {
@@ -64,6 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem('freezefit_user');
         }
       }
+      
+      // Set loading to false after verification attempt (whether token exists or not)
+      setIsLoading(false);
     };
 
     verifyStoredToken();
@@ -153,6 +159,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Change password function (for logged-in users)
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!user?.id) {
+      throw new Error('משתמש לא מחובר');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: user.id, 
+          currentPassword, 
+          newPassword 
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'שגיאה בשינוי סיסמה');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('שגיאה בשינוי סיסמה, נסה שוב');
+    }
+  };
+
   // Logout function
   const logout = () => {
     setUser(null);
@@ -165,10 +201,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     isAuthenticated,
     user,
+    isLoading,
     login,
     register,
     logout,
-    resetPassword
+    resetPassword,
+    changePassword
   };
 
   // Provide context

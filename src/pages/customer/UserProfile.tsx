@@ -20,7 +20,7 @@ import MessageBox from '@/components/messages/MessageBox';
 import { dbOperations } from '@/lib/database';
 
 const UserProfile = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading, changePassword } = useAuth();
   const { userClub, redeemGift, requestReschedule } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -69,8 +69,8 @@ const UserProfile = () => {
         if (extendedProfile) {
           setUserDetails(prev => ({
             ...prev,
-            phone: extendedProfile.phone || '',
-            address: extendedProfile.address || ''
+            phone: (extendedProfile as any).phone || '',
+            address: (extendedProfile as any).address || ''
           }));
         }
       } catch (error) {
@@ -83,10 +83,11 @@ const UserProfile = () => {
 
   // Check authentication
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    // Only redirect if loading is complete and user is not authenticated
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login', { state: { redirectTo: '/profile' } });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Handle appointment cancellation - check if it's pending or confirmed
   const handleCancelAppointment = (appointmentId: string) => {
@@ -132,7 +133,7 @@ const UserProfile = () => {
   };
 
   // Handle password change
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -143,19 +144,38 @@ const UserProfile = () => {
       });
       return;
     }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "סיסמה קצרה מדי",
+        description: "הסיסמה חייבת להכיל לפחות 6 תווים",
+      });
+      return;
+    }
     
-    toast({
-      title: "סיסמא שונתה",
-      description: "הסיסמא שונתה בהצלחה",
-    });
-    
-    // Reset form and close dialog
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-    setShowChangePasswordDialog(false);
+    try {
+      await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      
+      toast({
+        title: "סיסמא שונתה",
+        description: "הסיסמא שונתה בהצלחה",
+      });
+      
+      // Reset form and close dialog
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setShowChangePasswordDialog(false);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה בשינוי סיסמה",
+        description: error instanceof Error ? error.message : "אירעה שגיאה בלתי צפויה",
+      });
+    }
   };
 
   // Navigate to add review page
@@ -167,8 +187,8 @@ const UserProfile = () => {
   const progressPercentage = (userClub.points / userClub.nextLevelPoints) * 100;
   
   // Handle gift redemption
-  const handleRedeemGift = (gift: {id: number; name: string; pointsCost: number}) => {
-    setSelectedGift(gift);
+  const handleRedeemGift = (gift: {id: string; name: string; pointsCost: number}) => {
+    setSelectedGift({...gift, id: parseInt(gift.id.split('-')[0], 16)});
     setShowRedeemGiftDialog(true);
   };
 
@@ -209,6 +229,21 @@ const UserProfile = () => {
       });
     }
   };
+
+  // Show loading spinner while authentication is being verified
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">בודק הרשאות...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -646,7 +681,7 @@ const UserProfile = () => {
         isOpen={showRescheduleDialog}
         onClose={() => setShowRescheduleDialog(false)}
         onConfirm={handleRescheduleConfirm}
-        appointmentId={selectedAppointmentId || 0}
+        appointmentId={selectedAppointmentId ? parseInt(selectedAppointmentId.split('-')[0], 16) : 0}
       />
 
       <MessageBox 

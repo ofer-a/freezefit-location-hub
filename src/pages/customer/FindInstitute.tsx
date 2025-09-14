@@ -44,7 +44,7 @@ interface Institute {
 }
 
 const FindInstitute = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const { selectedMapLocation, setSelectedMapLocation, userClub } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -137,7 +137,7 @@ const FindInstitute = () => {
             name: institute.institute_name,
             address: institute.address || 'כתובת לא זמינה',
             distance,
-            rating: parseFloat(institute.average_rating.toFixed(2)),
+            rating: institute.average_rating ? parseFloat(institute.average_rating.toFixed(2)) : 0,
             reviewCount: institute.review_count,
             therapists: (institute.therapists || []).map((therapist: any) => ({
               id: therapist.id,
@@ -179,10 +179,11 @@ const FindInstitute = () => {
 
   // Check authentication
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only redirect if loading is complete and user is not authenticated
+    if (!isLoading && !isAuthenticated) {
       navigate('/login', { state: { redirectTo: '/find-institute' } });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
   
   // If we have a selected location from another screen, use it
   useEffect(() => {
@@ -456,6 +457,21 @@ const FindInstitute = () => {
       ))}
     </div>
   );
+
+  // Show loading spinner while authentication is being verified
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">בודק הרשאות...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

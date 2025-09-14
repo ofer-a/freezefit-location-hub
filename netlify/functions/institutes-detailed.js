@@ -43,7 +43,10 @@ export const handler = async (event, context) => {
         
         -- Aggregated review stats
         COUNT(DISTINCT r.id) as review_count,
-        COALESCE(AVG(r.rating), 4.5) as average_rating,
+        CASE 
+          WHEN COUNT(DISTINCT r.id) = 0 THEN NULL
+          ELSE AVG(r.rating)
+        END as average_rating,
         
         -- Aggregated business hours
         COALESCE(
@@ -80,7 +83,7 @@ export const handler = async (event, context) => {
       longitude: row.longitude ? parseFloat(row.longitude) : null,
       therapists: row.therapists || [],
       review_count: parseInt(row.review_count) || 0,
-      average_rating: parseFloat(row.average_rating) || 4.5,
+      average_rating: row.average_rating ? parseFloat(row.average_rating) : null,
       business_hours: row.business_hours || []
     }));
 

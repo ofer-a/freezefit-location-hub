@@ -114,6 +114,8 @@ export interface Review {
   content: string;
   review_date?: string;
   created_at?: string;
+  user_name?: string; // Added from API JOIN with profiles table
+  is_anonymous?: boolean; // Added for anonymous reviews
 }
 
 export interface Message {
@@ -134,13 +136,18 @@ export const dbOperations = {
   // Profiles
   async getProfile(id: string): Promise<Profile | null> {
     const response = await apiClient.getProfile(id);
-    return response.data;
+    return response.data || null;
+  },
+
+  async getProfileByEmail(email: string): Promise<Profile | null> {
+    const response = await apiClient.getProfileByEmail(email);
+    return response.data || null;
   },
 
   async createProfile(profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>): Promise<Profile> {
     const response = await apiClient.createProfile(profile);
     if (!response.data) throw new Error(response.error || 'Failed to create profile');
-    return response.data;
+    return response.data || [];
   },
 
   // Institutes
@@ -161,12 +168,18 @@ export const dbOperations = {
 
   async getInstitute(id: string): Promise<Institute | null> {
     const response = await apiClient.getInstitute(id);
-    return response.data;
+    return response.data || null;
   },
 
   async getInstitutesByOwner(ownerId: string): Promise<Institute[]> {
     const response = await apiClient.getInstitutesByOwner(ownerId);
     return response.data || [];
+  },
+
+  async createInstitute(instituteData: Omit<Institute, 'id' | 'created_at' | 'updated_at'>): Promise<Institute> {
+    const response = await apiClient.createInstitute(instituteData);
+    if (!response.data) throw new Error(response.error || 'Failed to create institute');
+    return response.data;
   },
 
   // Therapists
@@ -179,7 +192,7 @@ export const dbOperations = {
 
   async getTherapist(id: string): Promise<Therapist | null> {
     const response = await apiClient.getTherapist(id);
-    return response.data;
+    return response.data || null;
   },
 
   async createTherapist(therapist: Omit<Therapist, 'id' | 'created_at' | 'updated_at'>): Promise<Therapist> {
@@ -188,20 +201,57 @@ export const dbOperations = {
     return response.data;
   },
 
+  async updateTherapist(therapistId: string, updates: Partial<Therapist>): Promise<Therapist> {
+    const response = await apiClient.updateTherapist(therapistId, updates);
+    if (!response.data) throw new Error(response.error || 'Failed to update therapist');
+    return response.data;
+  },
+
+  async deleteTherapist(therapistId: string): Promise<void> {
+    const response = await apiClient.deleteTherapist(therapistId);
+    if (!response.success) throw new Error(response.error || 'Failed to delete therapist');
+  },
+
   // Services
   async getServicesByInstitute(instituteId: string): Promise<Service[]> {
-    const response = await apiClient.getServicesByInstitute(instituteId);
+    const response = await apiClient.getServicesByInstitute(instituteId, 'service');
     return response.data || [];
   },
 
   async getService(id: string): Promise<Service | null> {
     const response = await apiClient.getService(id);
-    return response.data;
+    return response.data || null;
   },
 
   async createService(service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> {
     const response = await apiClient.createService(service);
     if (!response.data) throw new Error(response.error || 'Failed to create service');
+    return response.data;
+  },
+
+  // Benefits (using services table with type='benefit')
+  async getBenefitsByInstitute(instituteId: string): Promise<Service[]> {
+    const response = await apiClient.getServicesByInstitute(instituteId, 'benefit');
+    return response.data || [];
+  },
+
+  async createBenefit(benefit: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> {
+    const benefitData = { ...benefit, type: 'benefit' };
+    const response = await apiClient.createService(benefitData);
+    if (!response.data) throw new Error(response.error || 'Failed to create benefit');
+    return response.data;
+  },
+
+  // Products (using services table with type='product')
+  async getProductsByInstitute(instituteId: string): Promise<Service[]> {
+    const response = await apiClient.getServicesByInstitute(instituteId, 'product');
+    return response.data || [];
+  },
+
+  async createProduct(product: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> {
+    const productData = { ...product, type: 'product' };
+    const response = await apiClient.createService(productData);
+    if (!response.data) throw new Error(response.error || 'Failed to create product');
     return response.data;
   },
 
@@ -221,7 +271,7 @@ export const dbOperations = {
 
   async updateBusinessHours(id: string, businessHours: Partial<BusinessHours>): Promise<BusinessHours | null> {
     const response = await apiClient.updateBusinessHours(id, businessHours);
-    return response.data;
+    return response.data || null;
   },
 
   // Appointments
@@ -243,7 +293,7 @@ export const dbOperations = {
 
   async updateAppointmentStatus(id: string, status: Appointment['status']): Promise<Appointment | null> {
     const response = await apiClient.updateAppointmentStatus(id, status);
-    return response.data;
+    return response.data || null;
   },
 
   // Reviews
@@ -274,39 +324,7 @@ export const dbOperations = {
 
   async markMessageAsRead(id: string): Promise<Message | null> {
     const response = await apiClient.markMessageAsRead(id);
-    return response.data;
-  },
-
-  // Loyalty System
-  async getUserLoyalty(userId: string) {
-    const response = await apiClient.getUserLoyalty(userId);
-    return response.data;
-  },
-
-  async getAvailableGifts() {
-    const response = await apiClient.getAvailableGifts();
-    return response.data || [];
-  },
-
-  async getUserTransactions(userId: string) {
-    const response = await apiClient.getUserTransactions(userId);
-    return response.data || [];
-  },
-
-  async addLoyaltyPoints(data: {
-    user_id: string;
-    points: number;
-    source: string;
-    reference_id?: string;
-    description?: string;
-  }) {
-    const response = await apiClient.addLoyaltyPoints(data);
-    return response.data;
-  },
-
-  async redeemGift(data: { user_id: string; gift_id: string }) {
-    const response = await apiClient.redeemGift(data);
-    return response.data;
+    return response.data || null;
   },
 
   // Workshops
@@ -322,18 +340,18 @@ export const dbOperations = {
 
   async createWorkshop(workshopData: any) {
     const response = await apiClient.createWorkshop(workshopData);
-    return response.data;
+    return response.data || [];
   },
 
   // Extended User Profiles
   async getExtendedUserProfile(userId: string) {
     const response = await apiClient.getExtendedUserProfile(userId);
-    return response.data;
+    return response.data || [];
   },
 
   async updateExtendedUserProfile(userId: string, profileData: any) {
     const response = await apiClient.updateExtendedUserProfile(userId, profileData);
-    return response.data;
+    return response.data || [];
   },
 
   // Activities
@@ -349,7 +367,7 @@ export const dbOperations = {
 
   async createActivity(activityData: any) {
     const response = await apiClient.createActivity(activityData);
-    return response.data;
+    return response.data || [];
   },
 
   // Gallery Images
@@ -360,10 +378,46 @@ export const dbOperations = {
 
   async createGalleryImage(imageData: Omit<GalleryImage, 'id' | 'created_at'>): Promise<GalleryImage> {
     const response = await apiClient.createGalleryImage(imageData);
+    if (!response.data) throw new Error(response.error || 'Failed to create gallery image');
     return response.data;
   },
 
   async deleteGalleryImage(id: string): Promise<void> {
     await apiClient.deleteGalleryImage(id);
+  },
+
+  // Loyalty System
+  async getUserLoyalty(userId: string): Promise<any> {
+    const response = await apiClient.getUserLoyalty(userId);
+    return response.data || null;
+  },
+
+  async getAvailableGifts(): Promise<any[]> {
+    const response = await apiClient.getAvailableGifts();
+    return response.data || [];
+  },
+
+  async getUserLoyaltyTransactions(userId: string): Promise<any[]> {
+    const response = await apiClient.getUserLoyaltyTransactions(userId);
+    return response.data || [];
+  },
+
+  async addLoyaltyPoints(data: {
+    user_id: string;
+    points: number;
+    source: string;
+    reference_id?: string;
+    description?: string;
+  }): Promise<any> {
+    const response = await apiClient.addLoyaltyPoints(data);
+    return response.data || null;
+  },
+
+  async redeemGift(data: {
+    user_id: string;
+    gift_id: string;
+  }): Promise<any> {
+    const response = await apiClient.redeemGift(data);
+    return response.data || null;
   }
 };
