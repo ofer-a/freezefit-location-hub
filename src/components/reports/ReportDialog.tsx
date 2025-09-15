@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -220,6 +220,9 @@ export default function ReportDialog({ open, onOpenChange }: ReportDialogProps) 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>יצירת דוח הזמנות</DialogTitle>
+          <DialogDescription>
+            בחר טווח תאריכים וסוג דוח ליצירה
+          </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">

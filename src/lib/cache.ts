@@ -49,6 +49,10 @@ class SimpleCache {
     this.cache.clear();
   }
 
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+
   clearExpired(): void {
     const now = Date.now();
     for (const [key, entry] of this.cache.entries()) {
@@ -98,4 +102,15 @@ export function withCache<T>(
       reject(error);
     }
   });
+}
+
+// Helper function to invalidate cache keys
+export function invalidateCache(keys: string | string[]): void {
+  const keysToInvalidate = Array.isArray(keys) ? keys : [keys];
+  keysToInvalidate.forEach(key => apiCache.delete(key));
+}
+
+// Helper function to clear all cache (useful for testing)
+export function clearAllCache(): void {
+  apiCache.clear();
 }

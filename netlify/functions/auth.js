@@ -27,6 +27,9 @@ export const handler = async (event, context) => {
           return await handleResetPassword(body);
         } else if (path.includes('/change-password')) {
           return await handleChangePassword(body);
+        } else {
+          // Default to login if no specific path is provided
+          return await handleLogin(body);
         }
         break;
         

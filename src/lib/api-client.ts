@@ -78,6 +78,13 @@ class ApiClient {
     });
   }
 
+  async updateInstitute(id: string, instituteData: any) {
+    return this.request(`/institutes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(instituteData),
+    });
+  }
+
   // Therapists
   async getTherapistsByInstitute(instituteId: string) {
     return this.request(`/therapists/institute/${instituteId}`);
@@ -301,6 +308,31 @@ class ApiClient {
 
   async deleteGalleryImage(id: string) {
     return this.request(`/gallery/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Institute Coordinates
+  async getInstituteCoordinates(instituteId: string) {
+    return this.request(`/coordinates/${instituteId}`);
+  }
+
+  async createInstituteCoordinates(coordinatesData: any) {
+    return this.request('/coordinates', {
+      method: 'POST',
+      body: JSON.stringify(coordinatesData),
+    });
+  }
+
+  async updateInstituteCoordinates(instituteId: string, coordinatesData: any) {
+    return this.request(`/coordinates/${instituteId}`, {
+      method: 'PUT',
+      body: JSON.stringify(coordinatesData),
+    });
+  }
+
+  async deleteInstituteCoordinates(instituteId: string) {
+    return this.request(`/coordinates/${instituteId}`, {
       method: 'DELETE',
     });
   }

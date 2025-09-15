@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -58,6 +58,9 @@ const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>שינוי מועד התור</DialogTitle>
+          <DialogDescription>
+            בחר תאריך ושעה חדשים לתור
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Star, X } from 'lucide-react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
@@ -174,9 +174,14 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 bg-black">
         <DialogHeader className="p-6 pb-0 bg-black">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-white">
-              תצוגה מקדימה - {institute.name}
-            </DialogTitle>
+            <div>
+              <DialogTitle className="text-2xl font-bold text-white">
+                תצוגה מקדימה - {institute.name}
+              </DialogTitle>
+              <DialogDescription className="text-gray-300">
+                צפה בפרטי המכון והזמן תור
+              </DialogDescription>
+            </div>
             <Button
               variant="ghost"
               size="icon"

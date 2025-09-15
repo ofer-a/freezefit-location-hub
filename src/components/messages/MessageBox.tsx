@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Calendar, Clock, X } from 'lucide-react';
@@ -96,6 +96,9 @@ const MessageBox = ({ isOpen, onClose }: MessageBoxProps) => {
             <MessageSquare className="h-5 w-5" />
             תיבת הודעות
           </DialogTitle>
+          <DialogDescription>
+            צפה וענה על הודעות מלקוחות
+          </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-y-auto">

@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Plus, X, Edit, Save } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Edit, Save, MapPin, Building, Phone } from 'lucide-react';
 import { dbOperations } from '@/lib/database';
 
 // Database entity interfaces
@@ -42,6 +42,20 @@ interface BusinessHours {
   isOpen: boolean;
 }
 
+interface InstituteInfo {
+  id: string;
+  institute_name: string;
+  address?: string;
+  service_name?: string;
+  image_url?: string;
+}
+
+interface CoordinatesInfo {
+  latitude: number;
+  longitude: number;
+  address_verified: boolean;
+}
+
 const StoreManagement = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -61,6 +75,10 @@ const StoreManagement = () => {
   
   // Business hours state - now loaded from database
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
+  
+  // Institute info state
+  const [instituteInfo, setInstituteInfo] = useState<InstituteInfo | null>(null);
+  const [coordinatesInfo, setCoordinatesInfo] = useState<CoordinatesInfo | null>(null);
 
   // Dialog states
   const [showNewWorkshopDialog, setShowNewWorkshopDialog] = useState(false);
@@ -68,6 +86,8 @@ const StoreManagement = () => {
   const [showNewBenefitDialog, setShowNewBenefitDialog] = useState(false);
   const [showNewProductDialog, setShowNewProductDialog] = useState(false);
   const [showEditHoursDialog, setShowEditHoursDialog] = useState(false);
+  const [showEditInstituteDialog, setShowEditInstituteDialog] = useState(false);
+  const [showEditCoordinatesDialog, setShowEditCoordinatesDialog] = useState(false);
   
   // Form states
   const [newWorkshop, setNewWorkshop] = useState<Omit<Workshop, 'id' | 'currentParticipants'>>({
@@ -102,6 +122,20 @@ const StoreManagement = () => {
   });
   
   const [editingHours, setEditingHours] = useState<BusinessHours[]>(businessHours);
+  
+  const [editingInstitute, setEditingInstitute] = useState<InstituteInfo>({
+    id: '',
+    institute_name: '',
+    address: '',
+    service_name: '',
+    image_url: ''
+  });
+  
+  const [editingCoordinates, setEditingCoordinates] = useState<CoordinatesInfo>({
+    latitude: 0,
+    longitude: 0,
+    address_verified: false
+  });
 
   // Load data from database
   useEffect(() => {
@@ -184,6 +218,24 @@ const StoreManagement = () => {
         });
         setBusinessHours(transformedHours);
         setEditingHours(transformedHours);
+
+        // Load institute information
+        const instituteData = userInstitutes[0];
+        setInstituteInfo(instituteData);
+        setEditingInstitute(instituteData);
+
+        // Load coordinates information
+        const coordinatesData = await dbOperations.getInstituteCoordinates(instituteId);
+        if (coordinatesData) {
+          // Ensure latitude and longitude are numbers
+          const processedCoordinates = {
+            ...coordinatesData,
+            latitude: Number(coordinatesData.latitude),
+            longitude: Number(coordinatesData.longitude)
+          };
+          setCoordinatesInfo(processedCoordinates);
+          setEditingCoordinates(processedCoordinates);
+        }
 
       } catch (error) {
         console.error('Error loading store data:', error);
@@ -628,6 +680,95 @@ const StoreManagement = () => {
     }
   };
 
+  // Handle updating institute information
+  const handleUpdateInstitute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id || !instituteInfo?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן פרטי המכון ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedInstitute = await dbOperations.updateInstitute(instituteInfo.id, editingInstitute);
+      
+      if (updatedInstitute) {
+        setInstituteInfo(updatedInstitute);
+        setShowEditInstituteDialog(false);
+        
+        toast({
+          title: "פרטי המכון עודכנו",
+          description: "פרטי המכון עודכנו בהצלחה",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating institute:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את פרטי המכון",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle updating coordinates
+  const handleUpdateCoordinates = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id || !instituteInfo?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן מיקום המכון ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let updatedCoordinates;
+      
+      if (coordinatesInfo) {
+        // Update existing coordinates
+        updatedCoordinates = await dbOperations.updateInstituteCoordinates(instituteInfo.id, editingCoordinates);
+      } else {
+        // Create new coordinates
+        updatedCoordinates = await dbOperations.createInstituteCoordinates({
+          institute_id: instituteInfo.id,
+          latitude: editingCoordinates.latitude,
+          longitude: editingCoordinates.longitude,
+          address_verified: editingCoordinates.address_verified
+        });
+      }
+      
+      if (updatedCoordinates) {
+        // Ensure latitude and longitude are numbers
+        const processedCoordinates = {
+          ...updatedCoordinates,
+          latitude: Number(updatedCoordinates.latitude),
+          longitude: Number(updatedCoordinates.longitude)
+        };
+        setCoordinatesInfo(processedCoordinates);
+        setShowEditCoordinatesDialog(false);
+        
+        toast({
+          title: "מיקום המכון עודכן",
+          description: "מיקום המכון עודכן בהצלחה",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating coordinates:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את מיקום המכון",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -647,12 +788,115 @@ const StoreManagement = () => {
             </div>
           </div>
           
-          <Tabs defaultValue="workshops" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="institute" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="institute">פרטי המכון</TabsTrigger>
               <TabsTrigger value="workshops">סדנאות</TabsTrigger>
               <TabsTrigger value="hours">שעות פעילות</TabsTrigger>
               <TabsTrigger value="pricing">מחירון</TabsTrigger>
             </TabsList>
+            
+            {/* Institute Information Tab */}
+            <TabsContent value="institute" className="mt-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>פרטי המכון</CardTitle>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setEditingCoordinates(coordinatesInfo || {
+                          latitude: 0,
+                          longitude: 0,
+                          address_verified: false
+                        });
+                        setShowEditCoordinatesDialog(true);
+                      }}
+                    >
+                      <MapPin className="mr-2 h-4 w-4" /> ערוך מיקום
+                    </Button>
+                    <Button onClick={() => {
+                      setEditingInstitute(instituteInfo || {
+                        id: '',
+                        institute_name: '',
+                        address: '',
+                        service_name: '',
+                        image_url: ''
+                      });
+                      setShowEditInstituteDialog(true);
+                    }}>
+                      <Edit className="mr-2 h-4 w-4" /> ערוך פרטים
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {instituteInfo ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-3 space-x-reverse">
+                            <Building className="h-5 w-5 text-gray-500" />
+                            <div>
+                              <p className="text-sm text-gray-500">שם המכון</p>
+                              <p className="font-medium">{instituteInfo.institute_name}</p>
+                            </div>
+                          </div>
+                          
+                          {instituteInfo.address && (
+                            <div className="flex items-center space-x-3 space-x-reverse">
+                              <MapPin className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="text-sm text-gray-500">כתובת</p>
+                                <p className="font-medium">{instituteInfo.address}</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {instituteInfo.service_name && (
+                            <div className="flex items-center space-x-3 space-x-reverse">
+                              <Building className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="text-sm text-gray-500">סוג השירות</p>
+                                <p className="font-medium">{instituteInfo.service_name}</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {coordinatesInfo && coordinatesInfo.latitude && coordinatesInfo.longitude && (
+                            <div className="flex items-center space-x-3 space-x-reverse">
+                              <MapPin className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="text-sm text-gray-500">מיקום</p>
+                                <p className="font-medium">
+                                  {Number(coordinatesInfo.latitude).toFixed(6)}, {Number(coordinatesInfo.longitude).toFixed(6)}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  {coordinatesInfo.address_verified ? 'כתובת מאומתת' : 'כתובת לא מאומתת'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {instituteInfo.image_url && (
+                          <div className="flex justify-center">
+                            <img 
+                              src={instituteInfo.image_url} 
+                              alt={instituteInfo.institute_name}
+                              className="w-48 h-48 object-cover rounded-lg border"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">טוען פרטי המכון...</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
             
             {/* Workshops Tab */}
             <TabsContent value="workshops" className="mt-6">
@@ -1206,6 +1450,145 @@ const StoreManagement = () => {
                 ביטול
               </Button>
               <Button type="submit">הוסף מוצר</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Institute Dialog */}
+      <Dialog open={showEditInstituteDialog} onOpenChange={setShowEditInstituteDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>עריכת פרטי המכון</DialogTitle>
+            <DialogDescription>
+              עדכן את פרטי המכון שלך.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdateInstitute} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="institute-name">שם המכון</Label>
+                <Input 
+                  id="institute-name" 
+                  value={editingInstitute.institute_name}
+                  onChange={(e) => setEditingInstitute({...editingInstitute, institute_name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="institute-address">כתובת</Label>
+                <Textarea 
+                  id="institute-address" 
+                  rows={3}
+                  value={editingInstitute.address || ''}
+                  onChange={(e) => setEditingInstitute({...editingInstitute, address: e.target.value})}
+                  placeholder="הזן את כתובת המכון"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="service-name">סוג השירות</Label>
+                <Input 
+                  id="service-name" 
+                  value={editingInstitute.service_name || ''}
+                  onChange={(e) => setEditingInstitute({...editingInstitute, service_name: e.target.value})}
+                  placeholder="למשל: מכון קרח, סאונה, עיסוי"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="image-url">קישור לתמונה</Label>
+                <Input 
+                  id="image-url" 
+                  value={editingInstitute.image_url || ''}
+                  onChange={(e) => setEditingInstitute({...editingInstitute, image_url: e.target.value})}
+                  placeholder="הזן קישור לתמונת המכון"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowEditInstituteDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">שמור שינויים</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Coordinates Dialog */}
+      <Dialog open={showEditCoordinatesDialog} onOpenChange={setShowEditCoordinatesDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>עריכת מיקום המכון</DialogTitle>
+            <DialogDescription>
+              עדכן את הקואורדינטות של המכון שלך.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdateCoordinates} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="latitude">קו רוחב (Latitude)</Label>
+                  <Input 
+                    id="latitude" 
+                    type="number"
+                    step="0.000001"
+                    value={editingCoordinates.latitude}
+                    onChange={(e) => setEditingCoordinates({...editingCoordinates, latitude: parseFloat(e.target.value) || 0})}
+                    placeholder="32.0853"
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="longitude">קו אורך (Longitude)</Label>
+                  <Input 
+                    id="longitude" 
+                    type="number"
+                    step="0.000001"
+                    value={editingCoordinates.longitude}
+                    onChange={(e) => setEditingCoordinates({...editingCoordinates, longitude: parseFloat(e.target.value) || 0})}
+                    placeholder="34.7818"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <input
+                  type="checkbox"
+                  id="address-verified"
+                  checked={editingCoordinates.address_verified}
+                  onChange={(e) => setEditingCoordinates({...editingCoordinates, address_verified: e.target.checked})}
+                  className="rounded"
+                />
+                <Label htmlFor="address-verified">כתובת מאומתת</Label>
+              </div>
+              
+              <div className="text-sm text-gray-500">
+                <p>טיפ: השתמש ב-Google Maps כדי למצוא את הקואורדינטות המדויקות של המכון שלך.</p>
+                <p>לחץ לחיצה ימנית על המיקום ב-Google Maps ובחר "מה הקואורדינטות?"</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowEditCoordinatesDialog(false)}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">שמור מיקום</Button>
             </div>
           </form>
         </DialogContent>

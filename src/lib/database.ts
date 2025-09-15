@@ -1,6 +1,6 @@
 // Database operations now use API client for Netlify Functions
 import { apiClient } from './api-client';
-import { withCache, CACHE_KEYS } from './cache';
+import { withCache, CACHE_KEYS, invalidateCache } from './cache';
 
 // Updated to use API client instead of direct database connection
 export const db = {
@@ -46,6 +46,16 @@ export interface Institute {
   address?: string;
   service_name?: string;
   image_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InstituteCoordinates {
+  id: string;
+  institute_id: string;
+  latitude: number;
+  longitude: number;
+  address_verified: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -155,7 +165,7 @@ export const dbOperations = {
     return withCache(CACHE_KEYS.INSTITUTES, async () => {
       const response = await apiClient.getInstitutes();
       return response.data || [];
-    });
+    }) as Promise<Institute[]>;
   },
 
   // Optimized method to get institutes with all related data
@@ -163,7 +173,7 @@ export const dbOperations = {
     return withCache(CACHE_KEYS.INSTITUTES_DETAILED, async () => {
       const response = await apiClient.getInstitutesDetailed();
       return response.data || [];
-    }, 10 * 60 * 1000); // Cache for 10 minutes since this is expensive
+    }, 10 * 60 * 1000) as Promise<any[]>; // Cache for 10 minutes since this is expensive
   },
 
   async getInstitute(id: string): Promise<Institute | null> {
@@ -176,9 +186,47 @@ export const dbOperations = {
     return response.data || [];
   },
 
+  async updateInstitute(id: string, instituteData: Partial<Institute>): Promise<Institute | null> {
+    const response = await apiClient.updateInstitute(id, instituteData);
+    if (response.data) {
+      // Invalidate cache when institute is updated
+      invalidateCache([CACHE_KEYS.INSTITUTES, CACHE_KEYS.INSTITUTES_DETAILED]);
+    }
+    return response.data || null;
+  },
+
+  // Institute Coordinates
+  async getInstituteCoordinates(instituteId: string): Promise<InstituteCoordinates | null> {
+    const response = await apiClient.getInstituteCoordinates(instituteId);
+    return response.data || null;
+  },
+
+  async createInstituteCoordinates(coordinatesData: Omit<InstituteCoordinates, 'id' | 'created_at' | 'updated_at'>): Promise<InstituteCoordinates> {
+    const response = await apiClient.createInstituteCoordinates(coordinatesData);
+    if (!response.data) throw new Error(response.error || 'Failed to create coordinates');
+    
+    // Invalidate cache when coordinates are created (affects detailed institutes)
+    invalidateCache([CACHE_KEYS.INSTITUTES_DETAILED]);
+    
+    return response.data;
+  },
+
+  async updateInstituteCoordinates(instituteId: string, coordinatesData: Partial<InstituteCoordinates>): Promise<InstituteCoordinates | null> {
+    const response = await apiClient.updateInstituteCoordinates(instituteId, coordinatesData);
+    if (response.data) {
+      // Invalidate cache when coordinates are updated (affects detailed institutes)
+      invalidateCache([CACHE_KEYS.INSTITUTES_DETAILED]);
+    }
+    return response.data || null;
+  },
+
   async createInstitute(instituteData: Omit<Institute, 'id' | 'created_at' | 'updated_at'>): Promise<Institute> {
     const response = await apiClient.createInstitute(instituteData);
     if (!response.data) throw new Error(response.error || 'Failed to create institute');
+    
+    // Invalidate cache when new institute is created
+    invalidateCache([CACHE_KEYS.INSTITUTES, CACHE_KEYS.INSTITUTES_DETAILED]);
+    
     return response.data;
   },
 
@@ -187,7 +235,7 @@ export const dbOperations = {
     return withCache(CACHE_KEYS.THERAPISTS(instituteId), async () => {
       const response = await apiClient.getTherapistsByInstitute(instituteId);
       return response.data || [];
-    });
+    }) as Promise<Therapist[]>;
   },
 
   async getTherapist(id: string): Promise<Therapist | null> {
@@ -260,7 +308,7 @@ export const dbOperations = {
     return withCache(CACHE_KEYS.BUSINESS_HOURS(instituteId), async () => {
       const response = await apiClient.getBusinessHoursByInstitute(instituteId);
       return response.data || [];
-    });
+    }) as Promise<BusinessHours[]>;
   },
 
   async createBusinessHours(businessHours: Omit<BusinessHours, 'id' | 'created_at' | 'updated_at'>): Promise<BusinessHours> {
@@ -301,7 +349,7 @@ export const dbOperations = {
     return withCache(CACHE_KEYS.REVIEWS(instituteId), async () => {
       const response = await apiClient.getReviewsByInstitute(instituteId);
       return response.data || [];
-    });
+    }) as Promise<Review[]>;
   },
 
   async createReview(review: Omit<Review, 'id' | 'created_at'>): Promise<Review> {
