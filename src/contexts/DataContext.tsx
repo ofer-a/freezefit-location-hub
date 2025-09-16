@@ -147,7 +147,6 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         if (user.role === 'provider') {
           // For providers, load appointments for their institutes
           const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
-          console.log(`Provider institutes:`, userInstitutes.length);
           
           if (userInstitutes.length > 0) {
             // Get appointments for all user's institutes
@@ -155,12 +154,10 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
               userInstitutes.map(institute => dbOperations.getAppointmentsByInstitute(institute.id))
             );
             allAppointments = instituteAppointments.flat();
-            console.log(`Loading appointments for provider institutes:`, allAppointments.length);
           }
         } else {
           // For customers, load their personal appointments
           allAppointments = await dbOperations.getAppointmentsByUser(user.id);
-          console.log(`Loading appointments for user ${user.id}:`, allAppointments.length);
         }
 
         // Transform database appointments to match our interface
@@ -466,7 +463,6 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   // Updated function to add new appointment with proper structure
   const addNewAppointment = (appointment: any) => {
-    console.log('Adding new appointment:', appointment); // Debug log
     
     const newAppointment: Appointment = {
       id: appointment.id,
@@ -481,10 +477,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       institute: appointment.institute
     };
     
-    console.log('Formatted appointment:', newAppointment); // Debug log
     setPendingAppointments(prev => {
       const updated = [...prev, newAppointment];
-      console.log('Updated pending appointments:', updated); // Debug log
       return updated;
     });
   };
@@ -494,27 +488,31 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setContactInquiries(prev => [...prev, inquiry]);
   };
 
-  // Password reset functions - should be implemented with real email service
+
+  const API_BASE_URL = '/.netlify/functions';
+
+  // Password reset functions - now using real Brevo email service
   const sendPasswordResetCode = async (email: string): Promise<string> => {
     try {
-      // TODO: Implement real email service (Brevo, SendGrid, etc.)
-      // For now, simulate the process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate a secure 6-digit code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // In production, this would send an actual email
-      console.log(`Password reset code for ${email}: ${code}`);
-      
-      // Store the code temporarily (in production, store in database with expiry)
-      sessionStorage.setItem(`reset_code_${email}`, code);
-      sessionStorage.setItem(`reset_code_expiry_${email}`, (Date.now() + 10 * 60 * 1000).toString()); // 10 minutes
-      
-      return code;
+      const response = await fetch(`${API_BASE_URL}/auth/send-reset-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send reset email');
+      }
+
+      // Return a success message instead of a code since we're sending a temporary password
+      return 'Temporary password sent to your email';
     } catch (error) {
-      console.error('Error sending password reset code:', error);
-      throw new Error('Failed to send password reset code');
+      console.error('Error sending password reset email:', error);
+      throw new Error('Failed to send password reset email');
     }
   };
 

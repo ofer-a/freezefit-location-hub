@@ -25,6 +25,8 @@ export const handler = async (event, context) => {
           return await handleVerifyToken(body);
         } else if (path.includes('/reset-password')) {
           return await handleResetPassword(body);
+        } else if (path.includes('/send-reset-email')) {
+          return await handleSendResetEmail(body);
         } else if (path.includes('/change-password')) {
           return await handleChangePassword(body);
         } else {
@@ -222,6 +224,105 @@ async function handleResetPassword(body) {
   } catch (error) {
     console.error('Password reset error:', error);
     return createResponse(500, null, 'שגיאה באיפוס סיסמה, נסה שוב');
+  }
+}
+
+// Send password reset email with temporary password
+async function handleSendResetEmail(body) {
+  const { email } = body;
+  
+  if (!email) {
+    return createResponse(400, null, 'Email is required');
+  }
+
+  try {
+    // Check if user exists
+    const userResult = await query('SELECT id, full_name FROM profiles WHERE email = $1', [email.toLowerCase()]);
+    
+    if (userResult.rows.length === 0) {
+      return createResponse(404, null, 'לא נמצא משתמש עם האימייל הזה');
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate temporary password (8 characters with mix of letters and numbers)
+    const tempPassword = generateTemporaryPassword();
+    
+    // Hash the temporary password
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // Update user's password in database
+    await query(
+      'UPDATE profiles SET password_hash = $1, updated_at = NOW() WHERE email = $2',
+      [hashedPassword, email.toLowerCase()]
+    );
+
+    // Send email with temporary password using Brevo
+    await sendPasswordResetEmail(email, user.full_name, tempPassword);
+
+    return createResponse(200, { 
+      message: 'Temporary password sent to your email',
+      success: true 
+    });
+
+  } catch (error) {
+    console.error('Send reset email error:', error);
+    return createResponse(500, null, 'שגיאה בשליחת אימייל איפוס סיסמה, נסה שוב');
+  }
+}
+
+// Generate temporary password
+function generateTemporaryPassword() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Send password reset email using Brevo
+async function sendPasswordResetEmail(email, fullName, tempPassword) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  
+  if (!BREVO_API_KEY || BREVO_API_KEY === 'your_brevo_api_key_here') {
+    console.log('Brevo API key not configured, skipping password reset email');
+    return;
+  }
+
+  try {
+    // Use Brevo Template ID 8 (Password Reset Template - "איפוס סיסמא משתמש")
+    const templateId = 8;
+
+    // Prepare template parameters - this template uses {{temporary_password}} variable
+    const templateParams = {
+      temporary_password: tempPassword
+    };
+
+    // Send email via Brevo using template
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        templateId: templateId,
+        to: [{ email: email, name: fullName || 'משתמש' }],
+        params: templateParams,
+        tags: ['password-reset']
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Brevo API error: ${response.status} - ${errorText}`);
+    }
+
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw error;
   }
 }
 

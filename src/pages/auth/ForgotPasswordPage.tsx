@@ -22,19 +22,18 @@ const ForgotPasswordPage = () => {
     setIsLoading(true);
     
     try {
-      // Send alternative password
-      const code = await sendPasswordResetCode(email);
+      // Send temporary password via email
+      const message = await sendPasswordResetCode(email);
       
       toast({
-        title: "סיסמה חלופית נשלחה",
-        description: "בדוק את תיבת האימייל שלך לקבלת הסיסמה החלופית",
+        title: "סיסמה זמנית נשלחה",
+        description: "בדוק את תיבת האימייל שלך לקבלת הסיסמה הזמנית. תוכל להתחבר איתה ולשנות את הסיסמה",
       });
       
-      // For demo purposes, we're passing the code in the state
-      // In a real app, this would be sent via email
-      navigate('/reset-password', { 
+      // Redirect to login page since user now has a temporary password
+      navigate('/login', { 
         state: { 
-          email
+          message: "סיסמה זמנית נשלחה לאימייל שלך"
         } 
       });
     } catch (error) {
@@ -57,7 +56,7 @@ const ForgotPasswordPage = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">שחזור סיסמה</CardTitle>
             <CardDescription>
-              הזן את כתובת האימייל שלך ואנו נשלח לך סיסמה חלופית
+              הזן את כתובת האימייל שלך ואנו נשלח לך סיסמה זמנית
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -87,7 +86,7 @@ const ForgotPasswordPage = () => {
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                       שולח...
                     </>
-                  ) : 'שלח סיסמה חלופית'}
+                  ) : 'שלח סיסמה זמנית'}
                 </Button>
               </div>
             </form>
