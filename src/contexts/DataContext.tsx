@@ -197,8 +197,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         // Load reviews for user's institutes only
         let allReviews = [];
         
-        if (user?.id) {
-          // Get user's institutes
+        if (user?.id && user.role === 'provider') {
+          // For providers, load reviews only for their institutes
           const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
           
           for (const institute of userInstitutes) {
@@ -388,6 +388,9 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           if (newStatus === 'cancelled') {
             // Deduct points when confirmed appointment is cancelled
             updateUserClubPoints(-100);
+          } else if (newStatus === 'completed') {
+            // Add points when appointment is completed
+            updateUserClubPoints(100);
           }
           
           setHistoryAppointments(prev => [...prev, { ...appointment, status: mappedNewStatus }]);

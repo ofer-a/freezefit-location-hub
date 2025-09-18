@@ -58,6 +58,62 @@ const FindInstitute = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [instituteServices, setInstituteServices] = useState<{[key: string]: any[]}>({});
+  const [instituteBusinessHours, setInstituteBusinessHours] = useState<{[key: string]: any[]}>({});
+
+  // Load services for a specific institute
+  const loadInstituteServices = async (instituteId: string) => {
+    try {
+      if (instituteServices[instituteId]) {
+        return instituteServices[instituteId]; // Return cached services
+      }
+      
+      const services = await dbOperations.getServicesByInstitute(instituteId);
+      const transformedServices = services.map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        duration: service.duration
+      }));
+      
+      setInstituteServices(prev => ({
+        ...prev,
+        [instituteId]: transformedServices
+      }));
+      
+      return transformedServices;
+    } catch (error) {
+      console.error('Error loading institute services:', error);
+      return [];
+    }
+  };
+
+  // Load business hours for a specific institute
+  const loadInstituteBusinessHours = async (instituteId: string) => {
+    try {
+      if (instituteBusinessHours[instituteId]) {
+        return instituteBusinessHours[instituteId]; // Return cached business hours
+      }
+      
+      const businessHours = await dbOperations.getBusinessHoursByInstitute(instituteId);
+      
+      setInstituteBusinessHours(prev => ({
+        ...prev,
+        [instituteId]: businessHours
+      }));
+      
+      return businessHours;
+    } catch (error) {
+      console.error('Error loading institute business hours:', error);
+      return [];
+    }
+  };
+
+  // Helper function to get business hours for a specific day
+  const getBusinessHoursForDay = (businessHours: any[], dayOfWeek: number) => {
+    return businessHours.find((bh: any) => bh.day_of_week === dayOfWeek);
+  };
 
   // Load institutes from database with single optimized API call
   useEffect(() => {
@@ -254,7 +310,7 @@ const FindInstitute = () => {
       console.log('Booking appointment for institute:', institute.name);
       console.log('Current therapists:', institute.therapists.map(t => t.name));
       
-      // Fetch fresh therapists to ensure we have the correct data
+      // Fetch fresh therapists and services to ensure we have the correct data
       try {
         const dbInstitutes = await dbOperations.getInstitutes();
         const originalInstitute = dbInstitutes.find(dbInst => 
@@ -262,10 +318,17 @@ const FindInstitute = () => {
         );
         
         if (originalInstitute) {
-          const freshTherapists = await dbOperations.getTherapistsByInstitute(originalInstitute.id);
-          console.log('Fresh therapists fetched:', freshTherapists.map(t => t.name));
+          const [freshTherapists, freshServices, freshBusinessHours] = await Promise.all([
+            dbOperations.getTherapistsByInstitute(originalInstitute.id),
+            loadInstituteServices(originalInstitute.id),
+            loadInstituteBusinessHours(originalInstitute.id)
+          ]);
           
-          // Create updated institute with fresh therapist data
+          console.log('Fresh therapists fetched:', freshTherapists.map(t => t.name));
+          console.log('Fresh services fetched:', freshServices.map(s => s.name));
+          console.log('Fresh business hours fetched:', freshBusinessHours);
+          
+          // Create updated institute with fresh therapist and service data
           const updatedInstitute = {
             ...institute,
             therapists: freshTherapists.map(therapist => ({
@@ -305,6 +368,14 @@ const FindInstitute = () => {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       const displayDate = format(selectedDate, 'dd/MM/yyyy', { locale: he });
       
+      // Get the selected service details to get the correct price
+      const selectedServiceData = bookingInstitute && instituteServices[bookingInstitute.id] 
+        ? instituteServices[bookingInstitute.id].find(service => service.name === selectedService)
+        : null;
+      
+      const servicePrice = selectedServiceData ? selectedServiceData.price : (selectedService.includes('קצר') ? 150 : 250);
+      const serviceDuration = selectedServiceData ? selectedServiceData.duration : (selectedService.includes('קצר') ? '30 דקות' : '60 דקות');
+      
       // Create appointment in database
       const appointmentData = {
         user_id: user.id,
@@ -313,7 +384,7 @@ const FindInstitute = () => {
         appointment_date: formattedDate,
         appointment_time: selectedTime,
         status: 'pending' as const,
-        price: selectedService.includes('קצר') ? 150 : 250 // Example pricing
+        price: servicePrice
       };
       
       console.log('Creating appointment in database:', appointmentData);
@@ -336,7 +407,7 @@ const FindInstitute = () => {
         service: selectedService,
         date: displayDate,
         time: selectedTime,
-        duration: selectedService.includes('קצר') ? '30 דקות' : '60 דקות',
+        duration: serviceDuration,
         phone: '050-0000000', // Default phone - user phone would come from extended profile
         institute: bookingInstitute.name
       };
@@ -407,11 +478,59 @@ const FindInstitute = () => {
     }))
   }));
   
-  // Generate available times for booking
-  const availableTimes = [
-    '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
-    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
-  ];
+  // Generate available times for booking based on business hours
+  const getAvailableTimes = (selectedDate: Date | undefined, instituteId: string) => {
+    if (!selectedDate || !instituteBusinessHours[instituteId]) {
+      // Fallback to default times if no business hours data
+      return [
+        '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
+        '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+      ];
+    }
+
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const businessHours = instituteBusinessHours[instituteId];
+    
+    // Get the most recent business hours for this day
+    const dayBusinessHours = getBusinessHoursForDay(businessHours, dayOfWeek);
+
+    if (!dayBusinessHours || !dayBusinessHours.is_open) {
+      return []; // Institute is closed on this day
+    }
+
+    // Generate times based on business hours
+    const openTime = dayBusinessHours.open_time;
+    const closeTime = dayBusinessHours.close_time;
+    
+    if (!openTime || !closeTime) {
+      return []; // No valid business hours
+    }
+
+    const times = [];
+    const openHour = parseInt(openTime.split(':')[0]);
+    const closeHour = parseInt(closeTime.split(':')[0]);
+    
+    for (let hour = openHour; hour < closeHour; hour++) {
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+    }
+    
+    return times;
+  };
+
+  // Check if a date is available for booking
+  const isDateAvailable = (date: Date, instituteId: string) => {
+    if (!instituteBusinessHours[instituteId]) {
+      return true; // If no business hours data, allow all dates
+    }
+
+    const dayOfWeek = date.getDay();
+    const businessHours = instituteBusinessHours[instituteId];
+    
+    // Get the most recent business hours for this day
+    const dayBusinessHours = getBusinessHoursForDay(businessHours, dayOfWeek);
+
+    return dayBusinessHours && dayBusinessHours.is_open;
+  };
   
   // Updated services for booking with the new treatment types
   const services = [
@@ -541,7 +660,24 @@ const FindInstitute = () => {
           <DialogHeader>
             <DialogTitle>הזמנת תור</DialogTitle>
             <DialogDescription>
-              {bookingInstitute && `הזמנת תור במכון ${bookingInstitute.name}`}
+              {bookingInstitute && (
+                <div>
+                  <p>הזמנת תור במכון {bookingInstitute.name}</p>
+                  {instituteBusinessHours[bookingInstitute.id] && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      <p className="font-medium">שעות פעילות:</p>
+                      {instituteBusinessHours[bookingInstitute.id].map((bh: any, index: number) => {
+                        const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+                        return (
+                          <p key={index} className="text-xs">
+                            {dayNames[bh.day_of_week]}: {bh.is_open ? `${bh.open_time} - ${bh.close_time}` : 'סגור'}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
           
@@ -549,6 +685,11 @@ const FindInstitute = () => {
             {/* Date picker */}
             <div className="grid gap-2">
               <label className="text-sm font-medium">בחר תאריך</label>
+              {bookingInstitute && instituteBusinessHours[bookingInstitute.id] && (
+                <p className="text-xs text-gray-500">
+                  ימים אפורים = המכון סגור
+                </p>
+              )}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -563,10 +704,31 @@ const FindInstitute = () => {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date);
+                      // Reset selected time when date changes
+                      setSelectedTime('');
+                    }}
                     initialFocus
                     locale={he}
-                    disabled={(date) => date < new Date() || date > new Date(new Date().setMonth(new Date().getMonth() + 2))}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const maxDate = new Date();
+                      maxDate.setMonth(maxDate.getMonth() + 2);
+                      
+                      // Disable past dates and dates beyond 2 months
+                      if (date < today || date > maxDate) {
+                        return true;
+                      }
+                      
+                      // Disable dates when institute is closed
+                      if (bookingInstitute && !isDateAvailable(date, bookingInstitute.id)) {
+                        return true;
+                      }
+                      
+                      return false;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -575,6 +737,13 @@ const FindInstitute = () => {
             {/* Time picker */}
             <div className="grid gap-2">
               <label className="text-sm font-medium">בחר שעה</label>
+              {selectedDate && bookingInstitute && !isDateAvailable(selectedDate, bookingInstitute.id) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-800">
+                    ⚠️ המכון סגור בתאריך זה
+                  </p>
+                </div>
+              )}
               <Select
                 value={selectedTime}
                 onValueChange={setSelectedTime}
@@ -583,9 +752,21 @@ const FindInstitute = () => {
                   <SelectValue placeholder="בחר שעה" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
+                  {bookingInstitute ? (
+                    getAvailableTimes(selectedDate, bookingInstitute.id).length > 0 ? (
+                      getAvailableTimes(selectedDate, bookingInstitute.id).map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-gray-500 text-center">
+                        המכון סגור בתאריך זה
+                      </div>
+                    )
+                  ) : (
+                    <div className="p-2 text-sm text-gray-500 text-center">
+                      בחר תאריך תחילה
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -601,9 +782,17 @@ const FindInstitute = () => {
                   <SelectValue placeholder="בחר סוג טיפול" />
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map((service) => (
-                    <SelectItem key={service} value={service}>{service}</SelectItem>
-                  ))}
+                  {bookingInstitute && instituteServices[bookingInstitute.id] ? (
+                    instituteServices[bookingInstitute.id].map((service) => (
+                      <SelectItem key={service.id} value={service.name}>
+                        {service.name} - ₪{service.price} ({service.duration})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    services.map((service) => (
+                      <SelectItem key={service} value={service}>{service}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -312,10 +312,6 @@ class ApiClient {
     });
   }
 
-  // Institute Coordinates
-  async getInstituteCoordinates(instituteId: string) {
-    return this.request(`/coordinates/${instituteId}`);
-  }
 
   async createInstituteCoordinates(coordinatesData: any) {
     return this.request('/coordinates', {

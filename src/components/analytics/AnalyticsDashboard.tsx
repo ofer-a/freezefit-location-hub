@@ -29,6 +29,8 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedDays, setSelectedDays] = useState('7');
+  const [showAllTime, setShowAllTime] = useState(false);
+  const [timeDirection, setTimeDirection] = useState<'past' | 'future'>('past');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [institutes, setInstitutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,17 +83,63 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
     const serviceStats = new Map();
     
     // Filter appointments by date range
-    const cutoffDate = subDays(new Date(), days);
-    const recentAppointments = appointments.filter(apt => 
-      new Date(apt.appointment_date) >= cutoffDate
-    );
+    let appointmentsToUse = appointments;
+    
+    if (!showAllTime) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      let cutoffDate: Date;
+      if (timeDirection === 'past') {
+        cutoffDate = subDays(today, days);
+      } else {
+        cutoffDate = new Date(today);
+        cutoffDate.setDate(today.getDate() + days);
+      }
+      
+      const filteredAppointments = appointments.filter(apt => {
+        // Handle both ISO format (2025-09-26T21:00:00.000Z) and YYYY-MM-DD format
+        let aptDate: Date;
+        if (apt.appointment_date.includes('T')) {
+          // ISO format - extract just the date part
+          aptDate = new Date(apt.appointment_date.split('T')[0]);
+        } else {
+          // YYYY-MM-DD format
+          aptDate = new Date(apt.appointment_date);
+        }
+        
+        if (timeDirection === 'past') {
+          return aptDate >= cutoffDate && aptDate < today;
+        } else {
+          return aptDate >= today && aptDate <= cutoffDate;
+        }
+      });
+      appointmentsToUse = filteredAppointments;
+    }
     
     // Generate daily data
-    for (let i = days - 1; i >= 0; i--) {
-      const date = format(subDays(new Date(), i), 'dd/MM', { locale: he });
-      const dayDate = format(subDays(new Date(), i), 'yyyy-MM-dd');
+    for (let i = 0; i < days; i++) {
+      let targetDate: Date;
+      if (timeDirection === 'past') {
+        targetDate = subDays(new Date(), days - 1 - i);
+      } else {
+        targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + i);
+      }
       
-      const dayAppointments = recentAppointments.filter(apt => apt.appointment_date === dayDate);
+      const date = format(targetDate, 'dd/MM', { locale: he });
+      const dayDate = format(targetDate, 'yyyy-MM-dd');
+      
+      const dayAppointments = appointmentsToUse.filter(apt => {
+        // Handle both ISO format and YYYY-MM-DD format
+        let aptDateStr: string;
+        if (apt.appointment_date.includes('T')) {
+          aptDateStr = apt.appointment_date.split('T')[0];
+        } else {
+          aptDateStr = apt.appointment_date;
+        }
+        return aptDateStr === dayDate;
+      });
       const totalCount = dayAppointments.length;
       const completed = dayAppointments.filter(apt => apt.status === 'completed').length;
       const cancelled = dayAppointments.filter(apt => apt.status === 'cancelled').length;
@@ -137,7 +185,7 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
     }));
 
     return { appointments: appointmentData, revenue: revenueData, services };
-  }, [appointments, selectedDays, loading]);
+  }, [appointments, selectedDays, loading, showAllTime, timeDirection]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -175,7 +223,10 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
     doc.text('דוח ניתוח נתונים', 105, 20, { align: 'center' });
     
     doc.setFontSize(12);
-    doc.text(`תקופה: ${selectedDays} ימים אחרונים`, 20, 35);
+    const periodText = showAllTime ? 'כל הזמנים' : 
+                      timeDirection === 'past' ? `${selectedDays} ימים אחרונים` : 
+                      `${selectedDays} ימים קדימה`;
+    doc.text(`תקופה: ${periodText}`, 20, 35);
     doc.text(`נוצר בתאריך: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 20, 45);
     
     // Summary section
@@ -184,9 +235,15 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
     
     const summaryData = [
       ['סה"כ תורים', totals.totalAppointments.toString()],
-      ['תורים שהושלמו', totals.completedAppointments.toString()],
-      ['אחוז הצלחה', `${totals.successRate}%`],
-      ['סה"כ הכנסות', `₪${totals.totalRevenue.toLocaleString()}`]
+      timeDirection === 'future' ? 
+        ['תורים קבועים', totals.totalAppointments.toString()] :
+        ['תורים שהושלמו', totals.completedAppointments.toString()],
+      timeDirection === 'future' ? 
+        ['הכנסות צפויות', `₪${totals.totalRevenue.toLocaleString()}`] :
+        ['אחוז הצלחה', `${totals.successRate}%`],
+      timeDirection === 'future' ? 
+        ['ממוצע יומי צפוי', Math.round(totals.totalAppointments / parseInt(selectedDays)).toString()] :
+        ['סה"כ הכנסות', `₪${totals.totalRevenue.toLocaleString()}`]
     ];
     
     doc.autoTable({
@@ -215,15 +272,50 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
           </div>
           
           <div className="flex gap-4 items-center">
-            <Select value={selectedDays} onValueChange={setSelectedDays}>
+            <Button 
+              variant={showAllTime ? "default" : "outline"}
+              onClick={() => setShowAllTime(!showAllTime)}
+            >
+              {showAllTime ? "הצג תקופה" : "הצג כל הזמנים"}
+            </Button>
+            
+            
+            {!showAllTime && (
+              <div className="flex gap-2">
+                <Button 
+                  variant={timeDirection === 'past' ? "default" : "outline"}
+                  onClick={() => setTimeDirection('past')}
+                  size="sm"
+                >
+                  עבר
+                </Button>
+                <Button 
+                  variant={timeDirection === 'future' ? "default" : "outline"}
+                  onClick={() => setTimeDirection('future')}
+                  size="sm"
+                >
+                  עתיד
+                </Button>
+              </div>
+            )}
+            
+            <Select value={selectedDays} onValueChange={setSelectedDays} disabled={showAllTime}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                <SelectItem value="14">14 ימים אחרונים</SelectItem>
-                <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                <SelectItem value="90">90 ימים אחרונים</SelectItem>
+                <SelectItem value="7">
+                  {timeDirection === 'past' ? '7 ימים אחרונים' : '7 ימים קדימה'}
+                </SelectItem>
+                <SelectItem value="14">
+                  {timeDirection === 'past' ? '14 ימים אחרונים' : '14 ימים קדימה'}
+                </SelectItem>
+                <SelectItem value="30">
+                  {timeDirection === 'past' ? '30 ימים אחרונים' : '30 ימים קדימה'}
+                </SelectItem>
+                <SelectItem value="90">
+                  {timeDirection === 'past' ? '90 ימים אחרונים' : '90 ימים קדימה'}
+                </SelectItem>
               </SelectContent>
             </Select>
             
@@ -233,6 +325,23 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
             </Button>
           </div>
         </div>
+
+        {/* No Data Message */}
+        {!loading && appointments.length === 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Calendar className="h-8 w-8 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-yellow-800">אין נתונים להצגה</h3>
+                <p className="text-yellow-700 mt-1">
+                  לא נמצאו תורים במסד הנתונים. נסה ליצור תורים חדשים או לבדוק את החיבור למסד הנתונים.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -244,40 +353,56 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
             <CardContent>
               <div className="text-2xl font-bold">{totals.totalAppointments}</div>
               <p className="text-xs text-muted-foreground">
-                ב-{selectedDays} ימים אחרונים
+                {showAllTime ? 'כל הזמנים' : 
+                 timeDirection === 'past' ? `ב-${selectedDays} ימים אחרונים` : 
+                 `ב-${selectedDays} ימים קדימה`}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">הכנסות כוללות</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {timeDirection === 'future' ? 'הכנסות צפויות' : 'הכנסות כוללות'}
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">₪{totals.totalRevenue.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                ממוצע יומי: ₪{Math.round(totals.totalRevenue / parseInt(selectedDays)).toLocaleString()}
+                {timeDirection === 'future' ? 
+                  'הכנסות צפויות מהתורים הקבועים' :
+                  `ממוצע יומי: ₪${Math.round(totals.totalRevenue / parseInt(selectedDays)).toLocaleString()}`
+                }
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">אחוז הצלחה</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {timeDirection === 'future' ? 'תורים קבועים' : 'אחוז הצלחה'}
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totals.successRate}%</div>
+              <div className="text-2xl font-bold">
+                {timeDirection === 'future' ? totals.totalAppointments : `${totals.successRate}%`}
+              </div>
               <p className="text-xs text-muted-foreground">
-                {totals.completedAppointments} מתוך {totals.totalAppointments} תורים
+                {timeDirection === 'future' ? 
+                  'תורים קבועים לעתיד' :
+                  `${totals.completedAppointments} מתוך ${totals.totalAppointments} תורים`
+                }
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ממוצע תורים יומי</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {timeDirection === 'future' ? 'ממוצע תורים יומי צפוי' : 'ממוצע תורים יומי'}
+              </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -285,7 +410,7 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
                 {Math.round(totals.totalAppointments / parseInt(selectedDays))}
               </div>
               <p className="text-xs text-muted-foreground">
-                תורים ביום
+                {timeDirection === 'future' ? 'תורים צפויים ביום' : 'תורים ביום'}
               </p>
             </CardContent>
           </Card>
