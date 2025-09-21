@@ -42,6 +42,13 @@ class ApiClient {
     return this.request(`/profiles/${id}`);
   }
 
+  async updateProfile(id: string, profileData: any) {
+    return this.request(`/profiles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
   async getProfileByEmail(email: string) {
     return this.request(`/profiles/email/${email}`);
   }
@@ -128,6 +135,19 @@ class ApiClient {
     return this.request('/services', {
       method: 'POST',
       body: JSON.stringify(serviceData),
+    });
+  }
+
+  async updateService(serviceId: string, serviceData: any) {
+    return this.request(`/services/${serviceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(serviceData),
+    });
+  }
+
+  async deleteService(serviceId: string) {
+    return this.request(`/services/${serviceId}`, {
+      method: 'DELETE',
     });
   }
 

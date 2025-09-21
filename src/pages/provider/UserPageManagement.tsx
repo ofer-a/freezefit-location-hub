@@ -138,9 +138,22 @@ const UserPageManagement = () => {
   // Handle therapist image upload for existing therapists
   const handleTherapistImageUpload = async (therapistId: string, file: File) => {
     try {
+      // Get file extension from the actual file
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        toast({
+          title: "שגיאה",
+          description: "סוג קובץ לא נתמך. אנא בחר תמונה בפורמט JPG, PNG, GIF או WebP",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // For now, we'll use a placeholder URL since we don't have file upload
       // In a real implementation, you would upload the file to a storage service
-      const imageUrl = `/therapists/${therapistId}-${Date.now()}.png`;
+      const imageUrl = `/therapists/${therapistId}-${Date.now()}.${fileExtension}`;
       
       // Update in database
       await dbOperations.updateTherapist(therapistId, { image_url: imageUrl });
@@ -226,10 +239,23 @@ const UserPageManagement = () => {
         return;
       }
 
-      // For now, we'll use a placeholder URL since we don't have file upload
-      const imageUrl = therapistImageFile 
-        ? `/therapists/placeholder-${Date.now()}.png`
-        : '/placeholder.svg';
+      // Get file extension from the actual file if provided
+      let imageUrl = '/placeholder.svg';
+      if (therapistImageFile) {
+        const fileExtension = therapistImageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        
+        if (!allowedExtensions.includes(fileExtension)) {
+          toast({
+            title: "שגיאה",
+            description: "סוג קובץ לא נתמך. אנא בחר תמונה בפורמט JPG, PNG, GIF או WebP",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        imageUrl = `/therapists/placeholder-${Date.now()}.${fileExtension}`;
+      }
       
       // Save to database
       const savedTherapist = await dbOperations.createTherapist({
@@ -327,9 +353,22 @@ const UserPageManagement = () => {
         return;
       }
       
+      // Get file extension from the actual file
+      const fileExtension = imageFile?.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        toast({
+          title: "שגיאה",
+          description: "סוג קובץ לא נתמך. אנא בחר תמונה בפורמט JPG, PNG, GIF או WebP",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // For now, we'll use a placeholder URL since we don't have file upload
       // In a real app, you would upload the file to a server first
-      const imageUrl = `/lovable-uploads/placeholder-${Date.now()}.png`;
+      const imageUrl = `/lovable-uploads/placeholder-${Date.now()}.${fileExtension}`;
       
       // Save to database
       const savedImage = await dbOperations.createGalleryImage({
@@ -372,8 +411,8 @@ const UserPageManagement = () => {
       // Delete from database using the UUID directly
       await dbOperations.deleteGalleryImage(id);
       
-      // Remove from local state
-      setGallery(gallery.filter(img => img.id !== id));
+      // Reload gallery from database to ensure consistency
+      await loadGallery();
       
       toast({
         title: "תמונה הוסרה",

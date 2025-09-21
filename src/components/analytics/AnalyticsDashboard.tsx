@@ -167,6 +167,11 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
       dayAppointments.forEach(apt => {
         const serviceName = apt.service_name;
         if (serviceName) {
+          // Debug: Check if service name looks like an image URL
+          if (serviceName.includes('.jpg') || serviceName.includes('.png') || serviceName.includes('.jpeg') || serviceName.includes('http')) {
+            console.warn('Service name appears to be an image URL:', serviceName, 'for appointment:', apt.id);
+          }
+          
           const current = serviceStats.get(serviceName) || { count: 0, revenue: 0 };
           current.count += 1;
           if (apt.status === 'completed') {
@@ -177,12 +182,21 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
       });
     }
     
-    // Convert service stats to array
-    const services = Array.from(serviceStats.entries()).map(([name, stats]) => ({
-      name,
-      count: stats.count,
-      revenue: stats.revenue
-    }));
+    // Convert service stats to array and filter out any image URLs
+    const services = Array.from(serviceStats.entries())
+      .filter(([name, stats]) => {
+        // Filter out entries where the name looks like an image URL
+        const isImageUrl = name.includes('.jpg') || name.includes('.png') || name.includes('.jpeg') || name.includes('http');
+        if (isImageUrl) {
+          console.warn('Filtering out service with image URL name:', name);
+        }
+        return !isImageUrl;
+      })
+      .map(([name, stats]) => ({
+        name,
+        count: stats.count,
+        revenue: stats.revenue
+      }));
 
     return { appointments: appointmentData, revenue: revenueData, services };
   }, [appointments, selectedDays, loading, showAllTime, timeDirection]);

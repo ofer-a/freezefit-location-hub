@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatHebrewDate } from '@/lib/utils';
-import { User, Calendar, Clock, MessageSquare, Award, Gift, Check, Mail } from 'lucide-react';
+import { User, Calendar, Clock, MessageSquare, Award, Gift, Check, Mail, Upload, Camera } from 'lucide-react';
 import RescheduleDialog from '@/components/appointments/RescheduleDialog';
 import DeleteAccountDialog from '@/components/ui/dialog-delete-account';
 import MessageBox from '@/components/messages/MessageBox';
@@ -59,6 +59,10 @@ const UserProfile = () => {
     confirmPassword: ''
   });
 
+  // Profile image state
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+
   // Load extended user profile data
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -80,6 +84,54 @@ const UserProfile = () => {
 
     loadUserProfile();
   }, [user?.id]);
+
+  // Handle profile image upload
+  const handleProfileImageUpload = async (file: File) => {
+    try {
+      // Get file extension from the actual file
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        toast({
+          title: "שגיאה",
+          description: "סוג קובץ לא נתמך. אנא בחר תמונה בפורמט JPG, PNG, GIF או WebP",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // For now, we'll use a placeholder URL since we don't have file upload
+      // In a real implementation, you would upload the file to a storage service
+      const imageUrl = `/profile-images/${user?.id}-${Date.now()}.${fileExtension}`;
+      
+      // Update profile image in database
+      await dbOperations.updateProfile(user?.id || '', { image_url: imageUrl });
+      
+      // Update local state
+      setProfileImage(imageUrl);
+      setProfileImageFile(file);
+      
+      toast({
+        title: "תמונת פרופיל עודכנה",
+        description: "תמונת הפרופיל עודכנה בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error updating profile image:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את תמונת הפרופיל",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle profile image selection
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleProfileImageUpload(e.target.files[0]);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -121,15 +173,45 @@ const UserProfile = () => {
   };
 
   // Handle user details update
-  const handleUpdateDetails = (e: React.FormEvent) => {
+  const handleUpdateDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    toast({
-      title: "פרטים עודכנו",
-      description: "פרטי המשתמש עודכנו בהצלחה",
-    });
-    
-    setShowUpdateDetailsDialog(false);
+    if (!user?.id) {
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לעדכן פרטים ללא התחברות",
+      });
+      return;
+    }
+
+    try {
+      // Update profile in database
+      await dbOperations.updateProfile(user.id, {
+        full_name: userDetails.name,
+        email: userDetails.email
+      });
+
+      // Update extended profile in database
+      await dbOperations.updateExtendedUserProfile(user.id, {
+        phone: userDetails.phone,
+        address: userDetails.address
+      });
+      
+      toast({
+        title: "פרטים עודכנו",
+        description: "פרטי המשתמש עודכנו בהצלחה",
+      });
+      
+      setShowUpdateDetailsDialog(false);
+    } catch (error) {
+      console.error('Error updating user details:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את הפרטים",
+      });
+    }
   };
 
   // Handle password change
@@ -261,8 +343,27 @@ const UserProfile = () => {
                     <DeleteAccountDialog onConfirmDelete={handleDeleteAccount} />
                   </div>
                   
-                  <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <User className="h-12 w-12 text-primary" />
+                  <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4 relative group overflow-hidden">
+                    {profileImage ? (
+                      <img 
+                        src={profileImage} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover rounded-full" 
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-primary" />
+                    )}
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer">
+                        <Camera className="h-6 w-6 text-white" />
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleProfileImageChange}
+                        />
+                      </label>
+                    </div>
                   </div>
                   <CardTitle className="text-2xl">{user?.name}</CardTitle>
                   <p className="text-gray-500">{user?.email}</p>
@@ -453,7 +554,7 @@ const UserProfile = () => {
                                         size="sm"
                                         variant="outline"
                                         className="flex items-center gap-2"
-                                        onClick={() => handleAddReview(1, 1, false)}
+                                        onClick={() => handleAddReview(appointment.instituteId || 1, appointment.therapistId || 1, false)}
                                       >
                                         <MessageSquare className="h-4 w-4" />
                                         הוסף ביקורת
@@ -463,7 +564,7 @@ const UserProfile = () => {
                                         size="sm"
                                         variant="ghost"
                                         className="text-xs flex items-center gap-2"
-                                        onClick={() => handleAddReview(1, 1, true)}
+                                        onClick={() => handleAddReview(appointment.instituteId || 1, appointment.therapistId || 1, true)}
                                       >
                                         הוסף ביקורת אנונימית
                                       </Button>

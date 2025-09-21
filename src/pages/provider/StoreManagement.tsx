@@ -88,6 +88,8 @@ const StoreManagement = () => {
   const [showEditHoursDialog, setShowEditHoursDialog] = useState(false);
   const [showEditInstituteDialog, setShowEditInstituteDialog] = useState(false);
   const [showEditCoordinatesDialog, setShowEditCoordinatesDialog] = useState(false);
+  const [showEditServiceDialog, setShowEditServiceDialog] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   
   // Form states
   const [newWorkshop, setNewWorkshop] = useState<Omit<Workshop, 'id' | 'currentParticipants'>>({
@@ -226,6 +228,7 @@ const StoreManagement = () => {
 
         // Load coordinates information
         const coordinatesData = await dbOperations.getInstituteCoordinates(instituteId);
+        console.log('Loaded coordinates data:', coordinatesData);
         if (coordinatesData) {
           // Ensure latitude and longitude are numbers
           const processedCoordinates = {
@@ -233,8 +236,11 @@ const StoreManagement = () => {
             latitude: Number(coordinatesData.latitude),
             longitude: Number(coordinatesData.longitude)
           };
+          console.log('Processed coordinates:', processedCoordinates);
           setCoordinatesInfo(processedCoordinates);
           setEditingCoordinates(processedCoordinates);
+        } else {
+          console.log('No coordinates data found for institute:', instituteId);
         }
 
       } catch (error) {
@@ -729,13 +735,16 @@ const StoreManagement = () => {
     }
 
     try {
+      console.log('Saving coordinates:', editingCoordinates);
       let updatedCoordinates;
       
       if (coordinatesInfo) {
         // Update existing coordinates
+        console.log('Updating existing coordinates for institute:', instituteInfo.id);
         updatedCoordinates = await dbOperations.updateInstituteCoordinates(instituteInfo.id, editingCoordinates);
       } else {
         // Create new coordinates
+        console.log('Creating new coordinates for institute:', instituteInfo.id);
         updatedCoordinates = await dbOperations.createInstituteCoordinates({
           institute_id: instituteInfo.id,
           latitude: editingCoordinates.latitude,
@@ -743,6 +752,8 @@ const StoreManagement = () => {
           address_verified: editingCoordinates.address_verified
         });
       }
+      
+      console.log('Updated coordinates result:', updatedCoordinates);
       
       if (updatedCoordinates) {
         // Ensure latitude and longitude are numbers
@@ -764,6 +775,85 @@ const StoreManagement = () => {
       toast({
         title: "שגיאה",
         description: "לא ניתן לעדכן את מיקום המכון",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle editing service
+  const handleEditService = (service: Service) => {
+    setEditingService(service);
+    setShowEditServiceDialog(true);
+  };
+
+  // Handle updating service
+  const handleUpdateService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingService || !instituteInfo?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן שירות ללא פרטים מלאים",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await dbOperations.updateService(editingService.id, {
+        name: editingService.name,
+        description: editingService.description,
+        price: editingService.price,
+        duration: editingService.duration
+      });
+      
+      // Update local state
+      setServices(prevServices => 
+        prevServices.map(service => 
+          service.id === editingService.id ? editingService : service
+        )
+      );
+      
+      setShowEditServiceDialog(false);
+      setEditingService(null);
+      
+      toast({
+        title: "שירות עודכן",
+        description: "השירות עודכן בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error updating service:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את השירות",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle deleting service
+  const handleDeleteService = async (serviceId: string) => {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את השירות?')) {
+      return;
+    }
+
+    try {
+      await dbOperations.deleteService(serviceId);
+      
+      // Update local state
+      setServices(prevServices => 
+        prevServices.filter(service => service.id !== serviceId)
+      );
+      
+      toast({
+        title: "שירות נמחק",
+        description: "השירות נמחק בהצלחה",
+      });
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את השירות",
         variant: "destructive",
       });
     }
@@ -992,14 +1082,34 @@ const StoreManagement = () => {
                       services.map(service => (
                         <div key={service.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex flex-col lg:flex-row justify-between">
-                            <div>
+                            <div className="flex-1">
                               <h3 className="font-bold text-lg">{service.name}</h3>
                               <p className="text-gray-600 mt-1">{service.description}</p>
                               <p className="text-sm text-gray-500 mt-2">משך: {service.duration}</p>
                             </div>
-                            <div className="mt-4 lg:mt-0 lg:mr-4">
+                            <div className="mt-4 lg:mt-0 lg:mr-4 flex items-center gap-4">
                               <div className="bg-primary/10 p-3 rounded-lg text-center">
                                 <p className="font-bold text-lg">{service.price} ₪</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditService(service)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  ערוך
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteService(service.id)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <X className="h-4 w-4" />
+                                  מחק
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -1589,6 +1699,81 @@ const StoreManagement = () => {
                 ביטול
               </Button>
               <Button type="submit">שמור מיקום</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Service Dialog */}
+      <Dialog open={showEditServiceDialog} onOpenChange={setShowEditServiceDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>עריכת שירות</DialogTitle>
+            <DialogDescription>
+              עדכן את פרטי השירות.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdateService} className="space-y-4 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-service-name">שם השירות</Label>
+                <Input 
+                  id="edit-service-name" 
+                  value={editingService?.name || ''}
+                  onChange={(e) => setEditingService(editingService ? {...editingService, name: e.target.value} : null)}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-service-description">תיאור</Label>
+                <Textarea 
+                  id="edit-service-description" 
+                  rows={3}
+                  value={editingService?.description || ''}
+                  onChange={(e) => setEditingService(editingService ? {...editingService, description: e.target.value} : null)}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-service-price">מחיר (₪)</Label>
+                  <Input 
+                    id="edit-service-price" 
+                    type="number"
+                    value={editingService?.price || 0}
+                    onChange={(e) => setEditingService(editingService ? {...editingService, price: Number(e.target.value)} : null)}
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-service-duration">משך</Label>
+                  <Input 
+                    id="edit-service-duration" 
+                    value={editingService?.duration || ''}
+                    onChange={(e) => setEditingService(editingService ? {...editingService, duration: e.target.value} : null)}
+                    placeholder="למשל: 60 דקות"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setShowEditServiceDialog(false);
+                  setEditingService(null);
+                }}
+              >
+                ביטול
+              </Button>
+              <Button type="submit">שמור שינויים</Button>
             </div>
           </form>
         </DialogContent>

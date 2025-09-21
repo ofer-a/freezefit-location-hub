@@ -149,6 +149,12 @@ export const dbOperations = {
     return response.data || null;
   },
 
+  async updateProfile(id: string, profileData: Partial<Profile>): Promise<Profile> {
+    const response = await apiClient.updateProfile(id, profileData);
+    if (!response.data) throw new Error(response.error || 'Failed to update profile');
+    return response.data;
+  },
+
   async getProfileByEmail(email: string): Promise<Profile | null> {
     const response = await apiClient.getProfileByEmail(email);
     return response.data || null;
@@ -275,6 +281,16 @@ export const dbOperations = {
     const response = await apiClient.createService(service);
     if (!response.data) throw new Error(response.error || 'Failed to create service');
     return response.data;
+  },
+
+  async updateService(serviceId: string, serviceData: Partial<Service>): Promise<Service> {
+    const response = await apiClient.updateService(serviceId, serviceData);
+    if (!response.data) throw new Error(response.error || 'Failed to update service');
+    return response.data;
+  },
+
+  async deleteService(serviceId: string): Promise<void> {
+    await apiClient.deleteService(serviceId);
   },
 
   // Benefits (using services table with type='benefit')
