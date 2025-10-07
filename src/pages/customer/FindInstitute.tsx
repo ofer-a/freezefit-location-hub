@@ -207,8 +207,11 @@ const FindInstitute = () => {
           };
         });
 
-        setAllInstitutes(transformedInstitutes);
-        setInstitutes(transformedInstitutes);
+        // Sort institutes by distance (closest first)
+        const sortedInstitutes = transformedInstitutes.sort((a, b) => a.distance - b.distance);
+
+        setAllInstitutes(sortedInstitutes);
+        setInstitutes(sortedInstitutes);
         setLoadingProgress(100);
         setLoading(false);
       } catch (error) {
@@ -656,7 +659,7 @@ const FindInstitute = () => {
       
       {/* Booking Dialog */}
       <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[500px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>הזמנת תור</DialogTitle>
             <DialogDescription>

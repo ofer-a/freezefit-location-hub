@@ -196,15 +196,6 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">₪{weeklyRevenue.toLocaleString()}</div>
-                {galleryImages.length > 0 && (
-                  <div className="mt-2">
-                    <img 
-                      src={galleryImages[0].image_url} 
-                      alt="גלריה" 
-                      className="w-16 h-16 object-cover rounded-md"
-                    />
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>

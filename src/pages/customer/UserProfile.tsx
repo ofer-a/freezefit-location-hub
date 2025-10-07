@@ -77,6 +77,17 @@ const UserProfile = () => {
             address: (extendedProfile as any).address || ''
           }));
         }
+
+        // Load profile image if exists
+        try {
+          const imageData = await dbOperations.getImage('profiles', user.id);
+          if (imageData) {
+            setProfileImage(`data:image/jpeg;base64,${imageData}`);
+          }
+        } catch (error) {
+          // Image not found or error loading - this is normal for new users
+          console.log('No profile image found or error loading:', error);
+        }
       } catch (error) {
         console.error('Error loading user profile:', error);
       }
@@ -101,21 +112,35 @@ const UserProfile = () => {
         return;
       }
       
-      // For now, we'll use a placeholder URL since we don't have file upload
-      // In a real implementation, you would upload the file to a storage service
-      const imageUrl = `/profile-images/${user?.id}-${Date.now()}.${fileExtension}`;
-      
-      // Update profile image in database
-      await dbOperations.updateProfile(user?.id || '', { image_url: imageUrl });
-      
-      // Update local state
-      setProfileImage(imageUrl);
-      setProfileImageFile(file);
-      
-      toast({
-        title: "תמונת פרופיל עודכנה",
-        description: "תמונת הפרופיל עודכנה בהצלחה",
-      });
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target?.result as string;
+          const mimeType = file.type;
+          const imageUrl = `/api/image-upload/profiles/${user?.id}`;
+          
+          // Upload image data to database
+          await dbOperations.uploadImage('profiles', user?.id || '', base64Data.split(',')[1], mimeType, imageUrl);
+          
+          // Update local state
+          setProfileImage(base64Data);
+          setProfileImageFile(file);
+          
+          toast({
+            title: "תמונת פרופיל עודכנה",
+            description: "תמונת הפרופיל נשמרה בהצלחה במסד הנתונים",
+          });
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast({
+            title: "שגיאה",
+            description: "לא ניתן לשמור את תמונת הפרופיל",
+            variant: "destructive",
+          });
+        }
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error updating profile image:', error);
       toast({

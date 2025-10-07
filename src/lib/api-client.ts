@@ -332,6 +332,26 @@ class ApiClient {
     });
   }
 
+  // Image upload and retrieval
+  async uploadImage(table: string, recordId: string, imageData: string, mimeType: string, imageUrl: string) {
+    return this.request('/image-upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        table,
+        record_id: recordId,
+        image_data: imageData,
+        mime_type: mimeType,
+        image_url: imageUrl
+      }),
+    });
+  }
+
+  async getImage(table: string, recordId: string) {
+    return this.request(`/image-upload/${table}/${recordId}`, {
+      method: 'GET',
+    });
+  }
+
 
   async createInstituteCoordinates(coordinatesData: any) {
     return this.request('/coordinates', {

@@ -170,16 +170,6 @@ const InstituteReviews = () => {
             </div>
           </div>
 
-          {/* Add Review Button - Always visible */}
-          <div className="mb-6">
-            <Button 
-              onClick={() => navigate(`/add-review/${instituteId}`)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              כתוב ביקורת
-            </Button>
-          </div>
-
           {/* Reviews */}
           <div className="space-y-6">
             {reviews.length === 0 ? (

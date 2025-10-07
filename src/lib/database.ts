@@ -450,6 +450,19 @@ export const dbOperations = {
     await apiClient.deleteGalleryImage(id);
   },
 
+  // Image operations
+  async uploadImage(table: string, recordId: string, imageData: string, mimeType: string, imageUrl: string): Promise<any> {
+    const response = await apiClient.uploadImage(table, recordId, imageData, mimeType, imageUrl);
+    if (!response.success) throw new Error(response.error || 'Failed to upload image');
+    return response.data;
+  },
+
+  async getImage(table: string, recordId: string): Promise<string> {
+    const response = await apiClient.getImage(table, recordId);
+    if (!response.success) throw new Error(response.error || 'Failed to get image');
+    return response.data;
+  },
+
   // Loyalty System
   async getUserLoyalty(userId: string): Promise<any> {
     const response = await apiClient.getUserLoyalty(userId);

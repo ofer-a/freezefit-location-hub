@@ -54,12 +54,27 @@ const UserPageManagement = () => {
           const instituteTherapists = await dbOperations.getTherapistsByInstitute(userInstitutes[0].id);
           
           // Transform database therapists to match component interface
-          const transformedTherapists = instituteTherapists.map((therapist) => ({
-            id: therapist.id, // Use actual database ID to prevent duplicates
-            name: therapist.name,
-            experience: therapist.experience || '0',
-            bio: therapist.bio || 'מטפל מוסמך',
-            image: therapist.image_url || '/placeholder.svg'
+          const transformedTherapists = await Promise.all(instituteTherapists.map(async (therapist) => {
+            try {
+              // Try to load image data from database
+              const imageData = await dbOperations.getImage('therapists', therapist.id);
+              return {
+                id: therapist.id, // Use actual database ID to prevent duplicates
+                name: therapist.name,
+                experience: therapist.experience || '0',
+                bio: therapist.bio || 'מטפל מוסמך',
+                image: imageData ? `data:image/jpeg;base64,${imageData}` : (therapist.image_url || '/placeholder.svg')
+              };
+            } catch (error) {
+              // Fallback to URL if image data not found
+              return {
+                id: therapist.id,
+                name: therapist.name,
+                experience: therapist.experience || '0',
+                bio: therapist.bio || 'מטפל מוסמך',
+                image: therapist.image_url || '/placeholder.svg'
+              };
+            }
           }));
           
           setTherapists(transformedTherapists);
@@ -93,10 +108,23 @@ const UserPageManagement = () => {
         const galleryImages = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
         
         // Transform database images to match component interface
-        const transformedImages = galleryImages.map((image) => ({
-          id: image.id, // Use full UUID as string
-          url: image.image_url,
-          title: image.category || 'תמונה'
+        const transformedImages = await Promise.all(galleryImages.map(async (image) => {
+          try {
+            // Try to load image data from database
+            const imageData = await dbOperations.getImage('gallery_images', image.id);
+            return {
+              id: image.id, // Use full UUID as string
+              url: imageData ? `data:image/jpeg;base64,${imageData}` : (image.image_url || '/placeholder.svg'),
+              title: image.category || 'תמונה'
+            };
+          } catch (error) {
+            // Fallback to URL if image data not found
+            return {
+              id: image.id,
+              url: image.image_url || '/placeholder.svg',
+              title: image.category || 'תמונה'
+            };
+          }
         }));
         
         setGallery(transformedImages);
@@ -151,26 +179,40 @@ const UserPageManagement = () => {
         return;
       }
       
-      // For now, we'll use a placeholder URL since we don't have file upload
-      // In a real implementation, you would upload the file to a storage service
-      const imageUrl = `/therapists/${therapistId}-${Date.now()}.${fileExtension}`;
-      
-      // Update in database
-      await dbOperations.updateTherapist(therapistId, { image_url: imageUrl });
-      
-      // Update local state
-      setTherapists(prevTherapists => 
-        prevTherapists.map(therapist => 
-          therapist.id === therapistId 
-            ? { ...therapist, image: imageUrl }
-            : therapist
-        )
-      );
-      
-      toast({
-        title: "תמונה עודכנה",
-        description: "תמונת המטפל עודכנה בהצלחה",
-      });
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target?.result as string;
+          const mimeType = file.type;
+          const imageUrl = `/api/image-upload/therapists/${therapistId}`;
+          
+          // Update in database with image data
+          await dbOperations.uploadImage('therapists', therapistId, base64Data.split(',')[1], mimeType, imageUrl);
+          
+          // Update local state
+          setTherapists(prevTherapists => 
+            prevTherapists.map(therapist => 
+              therapist.id === therapistId 
+                ? { ...therapist, image: base64Data }
+                : therapist
+            )
+          );
+          
+          toast({
+            title: "תמונה עודכנה",
+            description: "תמונת המטפל נשמרה בהצלחה במסד הנתונים",
+          });
+        } catch (error) {
+          console.error('Error uploading therapist image:', error);
+          toast({
+            title: "שגיאה",
+            description: "לא ניתן לשמור את תמונת המטפל",
+            variant: "destructive",
+          });
+        }
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error updating therapist image:', error);
       toast({
@@ -366,35 +408,52 @@ const UserPageManagement = () => {
         return;
       }
       
-      // For now, we'll use a placeholder URL since we don't have file upload
-      // In a real app, you would upload the file to a server first
-      const imageUrl = `/lovable-uploads/placeholder-${Date.now()}.${fileExtension}`;
-      
-      // Save to database
-      const savedImage = await dbOperations.createGalleryImage({
-        institute_id: userInstitutes[0].id,
-        image_url: imageUrl,
-        category: newImage.title
-      });
-      
-      // Add to local state
-      const imageToAdd: GalleryImage = {
-        id: savedImage.id, // Use full UUID as string
-        url: savedImage.image_url,
-        title: savedImage.category || newImage.title
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target?.result as string;
+          const mimeType = imageFile.type;
+          const imageUrl = `/api/image-upload/gallery_images/${Date.now()}`;
+          
+          // First create gallery image record
+          const savedImage = await dbOperations.createGalleryImage({
+            institute_id: userInstitutes[0].id,
+            image_url: imageUrl,
+            category: newImage.title
+          });
+          
+          // Then upload the actual image data
+          await dbOperations.uploadImage('gallery_images', savedImage.id, base64Data.split(',')[1], mimeType, imageUrl);
+          
+          // Add to local state
+          const imageToAdd: GalleryImage = {
+            id: savedImage.id,
+            url: base64Data, // Use base64 data for immediate display
+            title: savedImage.category || newImage.title
+          };
+          
+          setGallery([...gallery, imageToAdd]);
+          setShowNewImageDialog(false);
+          
+          // Reset form
+          setNewImage({ title: '' });
+          setImageFile(null);
+          
+          toast({
+            title: "תמונה נוספה",
+            description: "התמונה נשמרה בהצלחה במסד הנתונים",
+          });
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast({
+            variant: "destructive",
+            title: "שגיאה",
+            description: "לא ניתן לשמור את התמונה",
+          });
+        }
       };
-      
-      setGallery([...gallery, imageToAdd]);
-      setShowNewImageDialog(false);
-      
-      // Reset form
-      setNewImage({ title: '' });
-      setImageFile(null);
-      
-      toast({
-        title: "תמונה נוספה",
-        description: "התמונה נוספה בהצלחה לגלריה",
-      });
+      reader.readAsDataURL(imageFile);
     } catch (error) {
       console.error('Error adding gallery image:', error);
       toast({
