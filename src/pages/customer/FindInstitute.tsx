@@ -41,6 +41,7 @@ interface Institute {
   }>;
   hours: string;
   coordinates: { lat: number; lng: number };
+  image_url?: string; // Add optional image_url field for institute profile picture
 }
 
 const FindInstitute = () => {
@@ -195,6 +196,7 @@ const FindInstitute = () => {
             distance,
             rating: institute.average_rating ? parseFloat(institute.average_rating.toFixed(2)) : 0,
             reviewCount: institute.review_count,
+            image_url: institute.image_url || '/placeholder.svg', // Add institute profile picture URL
             therapists: (institute.therapists || []).map((therapist: any) => ({
               id: therapist.id,
               name: therapist.name,
@@ -322,7 +324,7 @@ const FindInstitute = () => {
         
         if (originalInstitute) {
           const [freshTherapists, freshServices, freshBusinessHours] = await Promise.all([
-            dbOperations.getTherapistsByInstitute(originalInstitute.id),
+            dbOperations.getTherapistsByInstitute(originalInstitute.id, false), // Only active therapists
             loadInstituteServices(originalInstitute.id),
             loadInstituteBusinessHours(originalInstitute.id)
           ]);
@@ -596,19 +598,19 @@ const FindInstitute = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" dir="rtl">
       <Header />
-      
+
       <div className="flex-grow py-8 px-4 bg-gray-50">
         <div className="container mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-center">מצא מכון טיפול</h1>
+          <h1 className="text-3xl font-bold mb-8 text-center" dir="rtl">מצא מכון טיפול</h1>
           
           {/* Loading progress indicator */}
           {loading && (
             <div className="mb-6 max-w-4xl mx-auto">
-              <div className="flex items-center gap-3 mb-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
+              <div className="flex items-center gap-3 mb-2 justify-center">
                 <span className="text-sm text-gray-600">טוען מכונים...</span>
+                <Loader2 className="h-5 w-5 animate-spin" />
               </div>
               <Progress value={loadingProgress} className="w-full" />
             </div>
@@ -659,20 +661,20 @@ const FindInstitute = () => {
       
       {/* Booking Dialog */}
       <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[500px] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[500px] max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>הזמנת תור</DialogTitle>
             <DialogDescription>
               {bookingInstitute && (
-                <div>
+                <div className="text-right">
                   <p>הזמנת תור במכון {bookingInstitute.name}</p>
                   {instituteBusinessHours[bookingInstitute.id] && (
                     <div className="mt-2 text-xs text-gray-600">
-                      <p className="font-medium">שעות פעילות:</p>
+                      <p className="font-medium text-right">שעות פעילות:</p>
                       {instituteBusinessHours[bookingInstitute.id].map((bh: any, index: number) => {
                         const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
                         return (
-                          <p key={index} className="text-xs">
+                          <p key={index} className="text-xs text-right">
                             {dayNames[bh.day_of_week]}: {bh.is_open ? `${bh.open_time} - ${bh.close_time}` : 'סגור'}
                           </p>
                         );
@@ -687,9 +689,9 @@ const FindInstitute = () => {
           <div className="grid gap-4 py-4">
             {/* Date picker */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium">בחר תאריך</label>
+              <label className="text-sm font-medium text-right">בחר תאריך</label>
               {bookingInstitute && instituteBusinessHours[bookingInstitute.id] && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 text-right">
                   ימים אפורים = המכון סגור
                 </p>
               )}
@@ -739,7 +741,7 @@ const FindInstitute = () => {
             
             {/* Time picker */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium">בחר שעה</label>
+              <label className="text-sm font-medium text-right">בחר שעה</label>
               {selectedDate && bookingInstitute && !isDateAvailable(selectedDate, bookingInstitute.id) && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-800">
@@ -776,7 +778,7 @@ const FindInstitute = () => {
             
             {/* Service type */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium">סוג טיפול</label>
+              <label className="text-sm font-medium text-right">סוג טיפול</label>
               <Select
                 value={selectedService}
                 onValueChange={setSelectedService}
@@ -802,7 +804,7 @@ const FindInstitute = () => {
             
             {/* Therapist selection */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium">בחר מטפל</label>
+              <label className="text-sm font-medium text-right">בחר מטפל</label>
               <Select
                 value={selectedTherapist}
                 onValueChange={setSelectedTherapist}
@@ -822,18 +824,18 @@ const FindInstitute = () => {
             
             {/* Club points information */}
             <div className="bg-green-50 p-3 rounded-md mt-2">
-              <p className="text-sm text-green-800">
+              <p className="text-sm text-green-800 text-right">
                 הזמנת תור תזכה אותך ב-50 נקודות מועדון!
               </p>
-              <p className="text-xs text-green-700 mt-1">
+              <p className="text-xs text-green-700 mt-1 text-right">
                 יתרה נוכחית: {userClub.points} נקודות
               </p>
             </div>
           </div>
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>ביטול</Button>
+          <DialogFooter className="flex-row-reverse gap-2">
             <Button onClick={handleConfirmBooking}>אשר הזמנה</Button>
+            <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>ביטול</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

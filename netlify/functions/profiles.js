@@ -70,11 +70,54 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        let profileId = pathParameters?.id;
+        if (!profileId && path) {
+          const pathParts = path.split('/');
+          profileId = pathParts[pathParts.length - 1];
+        }
+        
+        if (!profileId) {
           return createResponse(400, null, 'Profile ID is required');
         }
-        const deleteResult = await query('DELETE FROM profiles WHERE id = $1', [pathParameters.id]);
-        return createResponse(200, { deleted: deleteResult.rowCount > 0 });
+        
+        // Check if profile has any appointments, reviews, or other data
+        const appointmentsCheck = await query(
+          'SELECT COUNT(*) as count FROM appointments WHERE user_id = $1',
+          [profileId]
+        );
+        
+        const reviewsCheck = await query(
+          'SELECT COUNT(*) as count FROM reviews WHERE user_id = $1',
+          [profileId]
+        );
+        
+        const hasAppointments = parseInt(appointmentsCheck.rows[0].count) > 0;
+        const hasReviews = parseInt(reviewsCheck.rows[0].count) > 0;
+        
+        if (hasAppointments || hasReviews) {
+          // Deactivate instead of delete
+          const deactivateResult = await query(
+            'UPDATE profiles SET is_active = false, deactivated_at = NOW() WHERE id = $1 RETURNING *',
+            [profileId]
+          );
+          return createResponse(200, { 
+            deactivated: deactivateResult.rowCount > 0,
+            deleted: false,
+            hasAppointments,
+            hasReviews,
+            message: 'Profile deactivated due to existing data'
+          });
+        } else {
+          // Safe to delete
+          const deleteResult = await query('DELETE FROM profiles WHERE id = $1', [profileId]);
+          return createResponse(200, { 
+            deleted: deleteResult.rowCount > 0,
+            deactivated: false,
+            hasAppointments: false,
+            hasReviews: false,
+            message: 'Profile deleted successfully'
+          });
+        }
 
       default:
         return createResponse(405, null, 'Method not allowed');

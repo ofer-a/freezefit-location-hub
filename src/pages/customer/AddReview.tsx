@@ -46,7 +46,7 @@ const AddReview = () => {
         const foundInstitute = await dbOperations.getInstitute(instituteId);
         
         if (foundInstitute) {
-          const therapists = await dbOperations.getTherapistsByInstitute(foundInstitute.id);
+          const therapists = await dbOperations.getTherapistsByInstitute(foundInstitute.id, false); // Only active therapists
           setInstitute({
             id: foundInstitute.id,
             name: foundInstitute.institute_name,

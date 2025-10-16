@@ -20,6 +20,7 @@ interface GalleryImage {
   id: string;
   url: string;
   title: string;
+  image_url?: string; // Add optional image_url field for database reference
 }
 
 // Types for therapist
@@ -29,15 +30,17 @@ interface Therapist {
   experience: string;
   bio: string;
   image?: string;
+  is_active?: boolean;
+  deactivated_at?: string;
 }
 
 const UserPageManagement = () => {
   const { isAuthenticated, user } = useAuth();
-  const { reviews } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Load therapists from database
@@ -50,40 +53,65 @@ const UserPageManagement = () => {
         const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
         
         if (userInstitutes.length > 0) {
-          // Get therapists for the first institute (or combine from all institutes)
-          const instituteTherapists = await dbOperations.getTherapistsByInstitute(userInstitutes[0].id);
+          // Get therapists for the first institute (including inactive ones for management)
+          const instituteTherapists = await dbOperations.getTherapistsByInstitute(userInstitutes[0].id, true);
           
           // Transform database therapists to match component interface
           const transformedTherapists = await Promise.all(instituteTherapists.map(async (therapist) => {
-            try {
-              // Try to load image data from database
-              const imageData = await dbOperations.getImage('therapists', therapist.id);
-              return {
-                id: therapist.id, // Use actual database ID to prevent duplicates
-                name: therapist.name,
-                experience: therapist.experience || '0',
-                bio: therapist.bio || 'מטפל מוסמך',
-                image: imageData ? `data:image/jpeg;base64,${imageData}` : (therapist.image_url || '/placeholder.svg')
-              };
-            } catch (error) {
-              // Fallback to URL if image data not found
+            // Check if therapist has binary image data (indicated by API endpoint URL)
+            const shouldLoadBinaryData = therapist.image_url && therapist.image_url.includes('/.netlify/functions/image-upload');
+            
+            if (shouldLoadBinaryData) {
+              try {
+                // Try to load image data from database
+                const imageData = await dbOperations.getImage('therapists', therapist.id);
+                return {
+                  id: therapist.id, // Use actual database ID to prevent duplicates
+                  name: therapist.name,
+                  experience: therapist.experience || '0',
+                  bio: therapist.bio || 'מטפל מוסמך',
+                  image: imageData ? `data:image/jpeg;base64,${imageData}` : '/placeholder.svg',
+                  is_active: therapist.is_active !== false, // Default to true if not specified
+                  deactivated_at: therapist.deactivated_at
+                };
+              } catch (error) {
+                // Fallback to placeholder if image data not found
+                console.log(`Failed to load image for therapist ${therapist.id}:`, error);
+                return {
+                  id: therapist.id,
+                  name: therapist.name,
+                  experience: therapist.experience || '0',
+                  bio: therapist.bio || 'מטפל מוסמך',
+                  image: '/placeholder.svg',
+                  is_active: therapist.is_active !== false, // Default to true if not specified
+                  deactivated_at: therapist.deactivated_at
+                };
+              }
+            } else {
+              // Use image_url directly or fallback to placeholder
               return {
                 id: therapist.id,
                 name: therapist.name,
                 experience: therapist.experience || '0',
                 bio: therapist.bio || 'מטפל מוסמך',
-                image: therapist.image_url || '/placeholder.svg'
+                image: therapist.image_url || '/placeholder.svg',
+                is_active: therapist.is_active !== false, // Default to true if not specified
+                deactivated_at: therapist.deactivated_at
               };
             }
           }));
           
           setTherapists(transformedTherapists);
+          
+          // Load reviews for the specific institute
+          const instituteReviews = await dbOperations.getReviewsByInstitute(userInstitutes[0].id);
+          setReviews(instituteReviews);
         }
       } catch (error) {
-        console.error('Error loading therapists:', error);
+        console.error('Error loading data:', error);
         toast({
           title: "שגיאה",
-          description: "לא ניתן לטעון את רשימת המטפלים",
+          description: "לא ניתן לטעון את הנתונים",
           variant: "destructive",
         });
       } finally {
@@ -108,26 +136,46 @@ const UserPageManagement = () => {
         const galleryImages = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
         
         // Transform database images to match component interface
-        const transformedImages = await Promise.all(galleryImages.map(async (image) => {
-          try {
-            // Try to load image data from database
-            const imageData = await dbOperations.getImage('gallery_images', image.id);
+        const transformedImages = galleryImages.map((image) => {
+          // Check if image_url suggests binary data exists
+          const shouldLoadBinaryData = image.image_url && image.image_url.includes('/.netlify/functions/image-upload');
+
+          if (shouldLoadBinaryData) {
+            // Return a placeholder that will be loaded asynchronously
             return {
-              id: image.id, // Use full UUID as string
-              url: imageData ? `data:image/jpeg;base64,${imageData}` : (image.image_url || '/placeholder.svg'),
-              title: image.category || 'תמונה'
+              id: image.id,
+              url: '/placeholder.svg', // Will be updated when binary data loads
+              title: image.category || 'תמונה',
+              needsBinaryData: true // Flag for async loading
             };
-          } catch (error) {
-            // Fallback to URL if image data not found
+          } else {
+            // Use image_url directly or fallback to placeholder
             return {
               id: image.id,
               url: image.image_url || '/placeholder.svg',
-              title: image.category || 'תמונה'
+              title: image.category || 'תמונה',
+              needsBinaryData: false
             };
           }
-        }));
+        });
+
+        // Load binary data for images that need it
+        const imagesNeedingBinaryData = transformedImages.filter(img => img.needsBinaryData);
+        for (const image of imagesNeedingBinaryData) {
+          try {
+            const imageData = await dbOperations.getImage('gallery_images', image.id);
+            if (imageData) {
+              image.url = `data:image/jpeg;base64,${imageData}`;
+            }
+          } catch (error) {
+            console.log(`Failed to load binary data for gallery image ${image.id}`);
+            image.url = '/placeholder.svg';
+          }
+        }
         
         setGallery(transformedImages);
+      } else {
+        setGallery([]);
       }
     } catch (error) {
       console.error('Error loading gallery:', error);
@@ -185,7 +233,7 @@ const UserPageManagement = () => {
         try {
           const base64Data = e.target?.result as string;
           const mimeType = file.type;
-          const imageUrl = `/api/image-upload/therapists/${therapistId}`;
+          const imageUrl = `/.netlify/functions/image-upload/therapists/${therapistId}`;
           
           // Update in database with image data
           await dbOperations.uploadImage('therapists', therapistId, base64Data.split(',')[1], mimeType, imageUrl);
@@ -224,7 +272,7 @@ const UserPageManagement = () => {
   };
 
   // Handle gallery image upload for existing images
-  const handleGalleryImageUpload = (imageId: number, file: File) => {
+  const handleGalleryImageUpload = (imageId: string, file: File) => {
     const imageUrl = URL.createObjectURL(file);
     
     setGallery(prevGallery => 
@@ -281,8 +329,19 @@ const UserPageManagement = () => {
         return;
       }
 
-      // Get file extension from the actual file if provided
-      let imageUrl = '/placeholder.svg';
+      // Save to database first (without image)
+      const savedTherapist = await dbOperations.createTherapist({
+        institute_id: userInstitutes[0].id,
+        name: newTherapist.name,
+        experience: newTherapist.experience,
+        bio: newTherapist.bio,
+        image_url: '/placeholder.svg' // Temporary placeholder
+      });
+      
+      let finalImageUrl = '/placeholder.svg';
+      let finalImageData = '/placeholder.svg';
+      
+      // Upload image if provided
       if (therapistImageFile) {
         const fileExtension = therapistImageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
         const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -296,17 +355,39 @@ const UserPageManagement = () => {
           return;
         }
         
-        imageUrl = `/therapists/placeholder-${Date.now()}.${fileExtension}`;
+        try {
+          // Convert file to base64 and upload synchronously
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(therapistImageFile);
+          });
+          
+          const mimeType = therapistImageFile.type;
+          finalImageUrl = `/.netlify/functions/image-upload/therapists/${savedTherapist.id}`;
+          
+          // Upload image data to database
+          await dbOperations.uploadImage('therapists', savedTherapist.id, base64Data.split(',')[1], mimeType, finalImageUrl);
+          
+          // Update the therapist's image_url in the database
+          await dbOperations.updateTherapist(savedTherapist.id, { image_url: finalImageUrl });
+          
+          finalImageData = base64Data;
+          
+          toast({
+            title: "תמונה נשמרה",
+            description: "תמונת המטפל נשמרה בהצלחה במסד הנתונים",
+          });
+        } catch (error) {
+          console.error('Error uploading therapist image:', error);
+          toast({
+            title: "אזהרה",
+            description: "המטפל נוסף אבל התמונה לא נשמרה. תוכל לעדכן אותה מאוחר יותר",
+            variant: "destructive",
+          });
+        }
       }
-      
-      // Save to database
-      const savedTherapist = await dbOperations.createTherapist({
-        institute_id: userInstitutes[0].id,
-        name: newTherapist.name,
-        experience: newTherapist.experience,
-        bio: newTherapist.bio,
-        image_url: imageUrl
-      });
       
       // Add to local state
       const therapistToAdd: Therapist = {
@@ -314,7 +395,7 @@ const UserPageManagement = () => {
         name: savedTherapist.name,
         experience: savedTherapist.experience || '0',
         bio: savedTherapist.bio || 'מטפל מוסמך',
-        image: savedTherapist.image_url
+        image: finalImageData
       };
       
       setTherapists([...therapists, therapistToAdd]);
@@ -346,18 +427,31 @@ const UserPageManagement = () => {
   const handleRemoveTherapist = async () => {
     if (selectedTherapist !== null) {
       try {
-        // Delete from database
-        await dbOperations.deleteTherapist(selectedTherapist);
+        // Delete from database (this will either delete or deactivate based on appointments)
+        const result = await dbOperations.deleteTherapist(selectedTherapist);
         
-        // Update local state
-        setTherapists(therapists.filter(therapist => therapist.id !== selectedTherapist));
+        if (result.deleted) {
+          // Therapist was deleted - remove from UI
+          setTherapists(therapists.filter(therapist => therapist.id !== selectedTherapist));
+          toast({
+            title: "מטפל נמחק",
+            description: "המטפל נמחק בהצלחה מהמערכת",
+          });
+        } else if (result.deactivated) {
+          // Therapist was deactivated - update UI to show inactive status
+          setTherapists(therapists.map(therapist => 
+            therapist.id === selectedTherapist 
+              ? { ...therapist, is_active: false, deactivated_at: new Date().toISOString() }
+              : therapist
+          ));
+          toast({
+            title: "מטפל הושבת",
+            description: "המטפל הושבת עקב תורים עתידיים. הוא יופיע כמיושבת ברשימה",
+          });
+        }
+        
         setSelectedTherapist(null);
         setShowRemoveTherapistDialog(false);
-        
-        toast({
-          title: "מטפל הוסר",
-          description: "המטפל הוסר בהצלחה",
-        });
       } catch (error) {
         console.error('Error removing therapist:', error);
         toast({
@@ -414,23 +508,29 @@ const UserPageManagement = () => {
         try {
           const base64Data = e.target?.result as string;
           const mimeType = imageFile.type;
-          const imageUrl = `/api/image-upload/gallery_images/${Date.now()}`;
-          
+          // Create a temporary ID for the gallery image
+          const tempId = `temp-${Date.now()}`;
+          const imageUrl = `/.netlify/functions/image-upload/gallery_images/${tempId}`;
+
           // First create gallery image record
           const savedImage = await dbOperations.createGalleryImage({
             institute_id: userInstitutes[0].id,
             image_url: imageUrl,
             category: newImage.title
           });
-          
+
+          // Update the image_url to use the actual database ID
+          const finalImageUrl = `/.netlify/functions/image-upload/gallery_images/${savedImage.id}`;
+
           // Then upload the actual image data
-          await dbOperations.uploadImage('gallery_images', savedImage.id, base64Data.split(',')[1], mimeType, imageUrl);
+          await dbOperations.uploadImage('gallery_images', savedImage.id, base64Data.split(',')[1], mimeType, finalImageUrl);
           
           // Add to local state
           const imageToAdd: GalleryImage = {
             id: savedImage.id,
             url: base64Data, // Use base64 data for immediate display
-            title: savedImage.category || newImage.title
+            title: savedImage.category || newImage.title,
+            image_url: finalImageUrl // Store the correct image_url for future reference
           };
           
           setGallery([...gallery, imageToAdd]);
@@ -467,22 +567,29 @@ const UserPageManagement = () => {
   // Remove gallery image
   const handleRemoveImage = async (id: string) => {
     try {
+      // Optimistically remove from UI first for better UX
+      setGallery(prevGallery => prevGallery.filter(image => image.id !== id));
+
       // Delete from database using the UUID directly
       await dbOperations.deleteGalleryImage(id);
-      
+
       // Reload gallery from database to ensure consistency
       await loadGallery();
-      
+
       toast({
         title: "תמונה הוסרה",
         description: "התמונה הוסרה בהצלחה מהגלריה",
       });
     } catch (error) {
       console.error('Error removing gallery image:', error);
+      
+      // Revert the optimistic update on error
+      await loadGallery();
+      
       toast({
         variant: "destructive",
         title: "שגיאה",
-        description: "לא ניתן להסיר את התמונה",
+        description: `לא ניתן להסיר את התמונה: ${error.message}`,
       });
     }
   };
@@ -525,7 +632,7 @@ const UserPageManagement = () => {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {therapists.map(therapist => (
-                      <Card key={therapist.id} className="overflow-hidden">
+                      <Card key={therapist.id} className={`overflow-hidden ${therapist.is_active === false ? 'opacity-60 bg-gray-50' : ''}`}>
                         <div className="flex flex-col md:flex-row">
                           <div className="md:w-1/3 bg-gray-100 p-4 flex items-center justify-center relative group">
                              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
@@ -558,19 +665,33 @@ const UserPageManagement = () => {
                           <div className="md:w-2/3 p-4">
                             <div className="flex justify-between items-start">
                               <div>
-                                 <h3 className="font-bold text-lg">{therapist.name}</h3>
+                                 <div className="flex items-center gap-2">
+                                   <h3 className="font-bold text-lg">{therapist.name}</h3>
+                                   {therapist.is_active === false && (
+                                     <span className="px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded-full">
+                                       לא פעיל
+                                     </span>
+                                   )}
+                                 </div>
                                  <p className="text-gray-700">
                                    {therapist.experience} שנות ניסיון
                                  </p>
+                                 {therapist.is_active === false && therapist.deactivated_at && (
+                                   <p className="text-xs text-gray-500 mt-1">
+                                     הושבת ב: {new Date(therapist.deactivated_at).toLocaleDateString('he-IL')}
+                                   </p>
+                                 )}
                               </div>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                className={`${therapist.is_active === false ? 'text-gray-400' : 'text-red-500 hover:text-red-700 hover:bg-red-50'}`}
                                 onClick={() => {
                                   setSelectedTherapist(therapist.id);
                                   setShowRemoveTherapistDialog(true);
                                 }}
+                                disabled={therapist.is_active === false}
+                                title={therapist.is_active === false ? 'מטפל לא פעיל' : 'הסר מטפל'}
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -665,7 +786,7 @@ const UserPageManagement = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
-                              <h3 className="font-bold text-lg ml-2">{review.customerName}</h3>
+                              <h3 className="font-bold text-lg ml-2">{review.user_name || 'משתמש אנונימי'}</h3>
                               <div className="flex">
                                 {Array.from({ length: 5 }).map((_, i) => (
                                   <Star
@@ -677,10 +798,11 @@ const UserPageManagement = () => {
                                 ))}
                               </div>
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">מטפל: {review.therapistName}</p>
-                            <p className="text-gray-600 mt-2">{review.reviewText}</p>
+                            <p className="text-gray-600 mt-2">{review.content}</p>
                           </div>
-                          <span className="text-sm text-gray-500">{review.submittedAt.toLocaleDateString('he-IL')}</span>
+                          <span className="text-sm text-gray-500">
+                            {new Date(review.created_at || review.review_date || '').toLocaleDateString('he-IL')}
+                          </span>
                         </div>
                       </div>
                     ))}

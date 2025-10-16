@@ -69,6 +69,8 @@ export interface Therapist {
   additional_certification?: string;
   bio?: string;
   image_url?: string;
+  is_active?: boolean;
+  deactivated_at?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -155,6 +157,12 @@ export const dbOperations = {
     return response.data;
   },
 
+  async deleteProfile(id: string): Promise<{deleted?: boolean, deactivated?: boolean, hasAppointments: boolean, hasReviews: boolean, message: string}> {
+    const response = await apiClient.deleteProfile(id);
+    if (!response.success) throw new Error(response.error || 'Failed to delete profile');
+    return response.data;
+  },
+
   async getProfileByEmail(email: string): Promise<Profile | null> {
     const response = await apiClient.getProfileByEmail(email);
     return response.data || null;
@@ -226,6 +234,14 @@ export const dbOperations = {
     return response.data || null;
   },
 
+  async deleteInstitute(instituteId: string): Promise<void> {
+    const response = await apiClient.deleteInstitute(instituteId);
+    if (!response.success) throw new Error(response.error || 'Failed to delete institute');
+    
+    // Invalidate cache when institute is deleted
+    invalidateCache([CACHE_KEYS.INSTITUTES, CACHE_KEYS.INSTITUTES_DETAILED]);
+  },
+
   async createInstitute(instituteData: Omit<Institute, 'id' | 'created_at' | 'updated_at'>): Promise<Institute> {
     const response = await apiClient.createInstitute(instituteData);
     if (!response.data) throw new Error(response.error || 'Failed to create institute');
@@ -237,9 +253,9 @@ export const dbOperations = {
   },
 
   // Therapists
-  async getTherapistsByInstitute(instituteId: string): Promise<Therapist[]> {
+  async getTherapistsByInstitute(instituteId: string, includeInactive: boolean = false): Promise<Therapist[]> {
     return withCache(CACHE_KEYS.THERAPISTS(instituteId), async () => {
-      const response = await apiClient.getTherapistsByInstitute(instituteId);
+      const response = await apiClient.getTherapistsByInstitute(instituteId, includeInactive);
       return response.data || [];
     }) as Promise<Therapist[]>;
   },
@@ -261,9 +277,10 @@ export const dbOperations = {
     return response.data;
   },
 
-  async deleteTherapist(therapistId: string): Promise<void> {
+  async deleteTherapist(therapistId: string): Promise<{deleted?: boolean, deactivated?: boolean, hasAppointments: boolean, message: string}> {
     const response = await apiClient.deleteTherapist(therapistId);
     if (!response.success) throw new Error(response.error || 'Failed to delete therapist');
+    return response.data;
   },
 
   // Services

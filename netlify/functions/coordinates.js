@@ -8,16 +8,17 @@ export const handler = async (event, context) => {
   }
 
   try {
-    const { httpMethod, path, pathParameters } = event;
+    const { httpMethod } = event;
     
     // Extract institute ID from path
-    let instituteId = pathParameters?.id;
-    if (!instituteId && path.includes('/coordinates/')) {
-      const pathParts = path.split('/');
-      const coordinatesIndex = pathParts.indexOf('coordinates');
-      if (coordinatesIndex !== -1 && pathParts[coordinatesIndex + 1]) {
-        instituteId = pathParts[coordinatesIndex + 1];
-      }
+    // Path format: /.netlify/functions/coordinates/{institute_id}
+    const pathParts = event.path.split('/').filter(p => p);
+    let instituteId = null;
+    
+    // Find the index of 'coordinates'
+    const coordinatesIndex = pathParts.findIndex(p => p === 'coordinates');
+    if (coordinatesIndex >= 0 && pathParts.length > coordinatesIndex + 1) {
+      instituteId = pathParts[coordinatesIndex + 1];
     }
     
     switch (httpMethod) {

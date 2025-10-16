@@ -79,7 +79,7 @@ export const useTherapistsNew = (instituteId?: string) => {
 
   const fetchTherapists = useCallback(async () => {
     if (!instituteId) return [];
-    const result = await executeOperation(() => dbOperations.getTherapistsByInstitute(instituteId));
+    const result = await executeOperation(() => dbOperations.getTherapistsByInstitute(instituteId, false)); // Only active therapists
     if (result) setTherapists(result);
     return result;
   }, [executeOperation, instituteId]);

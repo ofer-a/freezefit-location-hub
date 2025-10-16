@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-db": "node scripts/setup-neon-db.js",
+    "migrate": "node scripts/run-all-migrations.js",
     "migrate-data": "node scripts/insert-data-only.js",
     "setup-auth": "node scripts/setup-auth-users.js",
     "setup-newsletter": "node scripts/setup-newsletter.js",

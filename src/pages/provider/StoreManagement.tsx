@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Plus, X, Edit, Save, MapPin, Building, Phone } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Edit, Save, MapPin, Building, Phone, Upload, Camera } from 'lucide-react';
 import { dbOperations } from '@/lib/database';
 
 // Database entity interfaces
@@ -90,6 +90,8 @@ const StoreManagement = () => {
   const [showEditCoordinatesDialog, setShowEditCoordinatesDialog] = useState(false);
   const [showEditServiceDialog, setShowEditServiceDialog] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [showDeleteInstituteDialog, setShowDeleteInstituteDialog] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   
   // Form states
   const [newWorkshop, setNewWorkshop] = useState<Omit<Workshop, 'id' | 'currentParticipants'>>({
@@ -139,15 +141,30 @@ const StoreManagement = () => {
     address_verified: false
   });
 
+  // Institute image state
+  const [instituteImage, setInstituteImage] = useState<string>('/placeholder.svg');
+
   // Load data from database
   useEffect(() => {
+    console.log('useEffect triggered, isAuthenticated:', isAuthenticated, 'user:', user);
     const loadData = async () => {
-      if (!user?.id) return;
+      console.log('loadData called, user:', user?.id);
+      if (!user?.id) {
+        console.log('No user ID, returning early');
+        return;
+      }
+
+      // Get user's institutes
+      const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+      console.log('userInstitutes:', userInstitutes);
+      if (userInstitutes.length === 0) {
+        // No institutes found - redirect to institute setup
+        console.log('No institutes found, redirecting to setup');
+        navigate('/institute-setup');
+        return;
+      }
 
       try {
-        // Get user's institutes
-        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
-        if (userInstitutes.length === 0) return;
 
         const instituteId = userInstitutes[0].id;
 
@@ -223,8 +240,41 @@ const StoreManagement = () => {
 
         // Load institute information
         const instituteData = userInstitutes[0];
+        console.log('Setting instituteInfo:', instituteData);
         setInstituteInfo(instituteData);
         setEditingInstitute(instituteData);
+
+        // Load institute image if exists
+        // Check if we should try to load binary data (only if image_url points to a stored image)
+        const shouldLoadBinaryData = instituteData.image_url &&
+                                       instituteData.image_url.includes('/.netlify/functions/image-upload');
+
+        if (shouldLoadBinaryData) {
+          // Try to load binary image data from API with timeout
+          try {
+            const imageData = await Promise.race([
+              dbOperations.getImage('institutes', instituteData.id),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Image load timeout')), 5000)
+              )
+            ]);
+
+            if (imageData && typeof imageData === 'string' && imageData.length > 0) {
+              setInstituteImage(`data:image/jpeg;base64,${imageData}`);
+            } else {
+              setInstituteImage('/placeholder.svg');
+            }
+          } catch (error) {
+            console.log('Image load failed, using placeholder:', error.message);
+            setInstituteImage('/placeholder.svg');
+          }
+        } else if (instituteData.image_url) {
+          // Use the image_url directly (e.g., placeholder or external URL)
+          setInstituteImage(instituteData.image_url);
+        } else {
+          // No image_url at all, keep the default placeholder
+          setInstituteImage('/placeholder.svg');
+        }
 
         // Load coordinates information
         const coordinatesData = await dbOperations.getInstituteCoordinates(instituteId);
@@ -250,11 +300,19 @@ const StoreManagement = () => {
           description: "לא ניתן לטעון את נתוני החנות",
           variant: "destructive",
         });
+        // Ensure instituteInfo is set even on error to prevent infinite loading
+        if (userInstitutes.length > 0) {
+          setInstituteInfo(userInstitutes[0]);
+          setEditingInstitute(userInstitutes[0]);
+          setInstituteImage('/placeholder.svg');
+        }
       }
     };
 
-    loadData();
-  }, [user?.id, toast]);
+    if (isAuthenticated && user?.id) {
+      loadData();
+    }
+  }, [user?.id, isAuthenticated, toast, navigate]);
 
   // Handle new workshop submission
   const handleAddWorkshop = async (e: React.FormEvent) => {
@@ -686,6 +744,76 @@ const StoreManagement = () => {
     }
   };
 
+  // Handle institute image upload
+  const handleInstituteImageUpload = async (file: File) => {
+    try {
+      // Get file extension from the actual file
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        toast({
+          title: "שגיאה",
+          description: "סוג קובץ לא נתמך. אנא בחר תמונה בפורמט JPG, PNG, GIF או WebP",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target?.result as string;
+          const mimeType = file.type;
+          const imageUrl = `/.netlify/functions/image-upload/institutes/${instituteInfo?.id}`;
+
+          // Extract just the base64 part (remove data:image/jpeg;base64, prefix)
+          const base64Only = base64Data.split(',')[1];
+
+          console.log('Uploading image:');
+          console.log('- MIME type:', mimeType);
+          console.log('- Base64 length:', base64Only.length);
+          console.log('- First 50 chars:', base64Only.substring(0, 50));
+
+          // Upload image data to database
+          await dbOperations.uploadImage('institutes', instituteInfo?.id || '', base64Only, mimeType, imageUrl);
+
+          // Update local state immediately with the uploaded data
+          setInstituteImage(base64Data);
+          setEditingInstitute({...editingInstitute, image_url: imageUrl});
+          
+          toast({
+            title: "תמונה עודכנה",
+            description: "תמונת המכון נשמרה בהצלחה במסד הנתונים",
+          });
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast({
+            title: "שגיאה",
+            description: "לא ניתן לשמור את תמונת המכון",
+            variant: "destructive",
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error updating institute image:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את תמונת המכון",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle institute image selection
+  const handleInstituteImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleInstituteImageUpload(e.target.files[0]);
+    }
+  };
+
   // Handle updating institute information
   const handleUpdateInstitute = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -775,6 +903,47 @@ const StoreManagement = () => {
       toast({
         title: "שגיאה",
         description: "לא ניתן לעדכן את מיקום המכון",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle deleting institute
+  const handleDeleteInstitute = async () => {
+    if (!user?.id || !instituteInfo?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את המכון ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (deleteConfirmationText !== 'מחק מכון') {
+      toast({
+        title: "שגיאה",
+        description: "אנא הקלד 'מחק מכון' לאישור המחיקה",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Delete institute from database
+      await dbOperations.deleteInstitute(instituteInfo.id);
+      
+      toast({
+        title: "מכון נמחק",
+        description: "המכון נמחק בהצלחה מהמערכת",
+      });
+      
+      // Redirect to institute setup
+      navigate('/institute-setup');
+    } catch (error) {
+      console.error('Error deleting institute:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את המכון",
         variant: "destructive",
       });
     }
@@ -917,6 +1086,12 @@ const StoreManagement = () => {
                     }}>
                       <Edit className="mr-2 h-4 w-4" /> ערוך פרטים
                     </Button>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => setShowDeleteInstituteDialog(true)}
+                    >
+                      <X className="mr-2 h-4 w-4" /> מחק מכון
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -967,16 +1142,13 @@ const StoreManagement = () => {
                             </div>
                           )}
                         </div>
-                        
-                        {instituteInfo.image_url && (
-                          <div className="flex justify-center">
-                            <img 
-                              src={instituteInfo.image_url} 
-                              alt={instituteInfo.institute_name}
-                              className="w-48 h-48 object-cover rounded-lg border"
-                            />
-                          </div>
-                        )}
+                        <div className="flex justify-center">
+                          <img 
+                            src={instituteImage} 
+                            alt={instituteInfo.institute_name}
+                            className="w-48 h-48 object-cover rounded-lg border"
+                          />
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1609,13 +1781,45 @@ const StoreManagement = () => {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="image-url">קישור לתמונה</Label>
-                <Input 
-                  id="image-url" 
-                  value={editingInstitute.image_url || ''}
-                  onChange={(e) => setEditingInstitute({...editingInstitute, image_url: e.target.value})}
-                  placeholder="הזן קישור לתמונת המכון"
-                />
+                <Label htmlFor="institute-image">תמונת המכון</Label>
+                <div className="flex items-center gap-4">
+                  <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center relative group overflow-hidden border-2 border-dashed border-gray-300">
+                    <img 
+                      src={instituteImage} 
+                      alt="Institute" 
+                      className="w-full h-full object-cover rounded-lg" 
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer">
+                        <Camera className="h-8 w-8 text-white" />
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleInstituteImageChange}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 mb-2">העלה תמונה למכון שלך</p>
+                    <label className="cursor-pointer">
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <span>
+                          <Upload className="h-4 w-4 ml-2" />
+                          בחר תמונה
+                        </span>
+                      </Button>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleInstituteImageChange}
+                      />
+                    </label>
+                    <p className="text-xs text-gray-500 mt-2">תומך בפורמטים: JPG, PNG, GIF, WebP</p>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -1776,6 +1980,67 @@ const StoreManagement = () => {
               <Button type="submit">שמור שינויים</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Institute Dialog */}
+      <Dialog open={showDeleteInstituteDialog} onOpenChange={setShowDeleteInstituteDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">מחיקת מכון</DialogTitle>
+            <DialogDescription>
+              פעולה זו תמחק את המכון שלך לצמיתות ולא ניתן לבטל אותה.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-semibold text-red-800 mb-2">השלכות מחיקת המכון:</h4>
+              <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                <li>כל המידע של המכון יימחק לצמיתות</li>
+                <li>כל המטפלים הקשורים למכון יימחקו</li>
+                <li>כל השירותים והסדנאות יימחקו</li>
+                <li>כל התורים העתידיים יבוטלו</li>
+                <li>כל הביקורות יימחקו</li>
+                <li>כל התמונות והקבצים יימחקו</li>
+                <li>לא תוכל לשחזר את המידע לאחר המחיקה</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirmation">
+                הקלד "מחק מכון" לאישור המחיקה:
+              </Label>
+              <Input 
+                id="delete-confirmation"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="מחק מכון"
+                className="border-red-300 focus:border-red-500"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteInstituteDialog(false);
+                setDeleteConfirmationText('');
+              }}
+            >
+              ביטול
+            </Button>
+            <Button 
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteInstitute}
+              disabled={deleteConfirmationText !== 'מחק מכון'}
+            >
+              מחק מכון לצמיתות
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       

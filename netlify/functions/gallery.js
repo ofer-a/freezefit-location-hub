@@ -68,10 +68,28 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        if (!pathParameters || !pathParameters.id) {
+        // Extract ID from path if pathParameters.id is not available
+        let imageId = pathParameters?.id;
+        if (!imageId && path) {
+          const pathParts = path.split('/');
+          imageId = pathParts[pathParts.length - 1];
+        }
+        
+        if (!imageId) {
           return createResponse(400, null, 'Gallery image ID is required');
         }
-        const deleteResult = await query('DELETE FROM gallery_images WHERE id = $1', [pathParameters.id]);
+
+        // Check if table has image_data column and clear it before deleting
+        const columnCheck = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name = 'gallery_images' AND column_name = 'image_data'`
+        );
+
+        if (columnCheck.rows.length > 0) {
+          // Clear image data first (in case there are foreign key constraints)
+          await query('UPDATE gallery_images SET image_data = NULL, image_mime_type = NULL WHERE id = $1', [imageId]);
+        }
+
+        const deleteResult = await query('DELETE FROM gallery_images WHERE id = $1', [imageId]);
         return createResponse(200, { deleted: deleteResult.rowCount > 0 });
 
       default:

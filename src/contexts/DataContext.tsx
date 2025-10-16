@@ -88,7 +88,7 @@ interface DataContextType {
   approveReschedule: (appointmentId: string | number) => void;
   declineReschedule: (appointmentId: string | number) => void;
   userClub: UserClub;
-  redeemGift: (giftId: number) => void;
+  redeemGift: (giftId: string) => Promise<void>;
   updateUserClubPoints: (points: number) => void;
   addNewAppointment: (appointment: any) => void;
   contactInquiries: ContactInquiry[];
@@ -412,13 +412,13 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   });
 
   // Function to redeem a gift - now uses real database
-  const redeemGift = async (giftId: number) => {
+  const redeemGift = async (giftId: string) => {
     if (!user?.id) return;
 
     try {
       const result = await dbOperations.redeemGift({
         user_id: user.id,
-        gift_id: giftId.toString()
+        gift_id: giftId
       }) as LoyaltyData;
 
       if (result) {
@@ -433,7 +433,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       }
     } catch (error) {
       console.error('Error redeeming gift:', error);
-      alert('לא ניתן לממש את המתנה. נסה שוב.');
+      throw error; // Re-throw error so it can be caught by the caller
     }
   };
 

@@ -49,6 +49,12 @@ class ApiClient {
     });
   }
 
+  async deleteProfile(id: string) {
+    return this.request(`/profiles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getProfileByEmail(email: string) {
     return this.request(`/profiles/email/${email}`);
   }
@@ -93,8 +99,11 @@ class ApiClient {
   }
 
   // Therapists
-  async getTherapistsByInstitute(instituteId: string) {
-    return this.request(`/therapists/institute/${instituteId}`);
+  async getTherapistsByInstitute(instituteId: string, includeInactive: boolean = false) {
+    const url = includeInactive 
+      ? `/therapists/institute/${instituteId}/include-inactive`
+      : `/therapists/institute/${instituteId}`;
+    return this.request(url);
   }
 
   async getTherapist(id: string) {
@@ -311,7 +320,7 @@ class ApiClient {
   }
 
   async getInstituteCoordinates(instituteId: string) {
-    return this.request(`/institutes/${instituteId}/coordinates`);
+    return this.request(`/coordinates/${instituteId}`);
   }
 
   // Gallery Images
@@ -369,6 +378,12 @@ class ApiClient {
 
   async deleteInstituteCoordinates(instituteId: string) {
     return this.request(`/coordinates/${instituteId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteInstitute(instituteId: string) {
+    return this.request(`/institutes/${instituteId}`, {
       method: 'DELETE',
     });
   }

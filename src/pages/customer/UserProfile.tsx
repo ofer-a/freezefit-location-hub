@@ -42,13 +42,14 @@ const UserProfile = () => {
   const [showRedeemGiftDialog, setShowRedeemGiftDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [showMessageBox, setShowMessageBox] = useState(false);
-  const [selectedGift, setSelectedGift] = useState<{id: number; name: string; pointsCost: number} | null>(null);
+  const [selectedGift, setSelectedGift] = useState<{id: string; name: string; pointsCost: number} | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   
   // Form states
   const [userDetails, setUserDetails] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: '',
+    email: '',
     phone: '',
     address: ''
   });
@@ -69,13 +70,16 @@ const UserProfile = () => {
       if (!user?.id) return;
 
       try {
-        const extendedProfile = await dbOperations.getExtendedUserProfile(user.id);
-        if (extendedProfile) {
-          setUserDetails(prev => ({
-            ...prev,
-            phone: (extendedProfile as any).phone || '',
-            address: (extendedProfile as any).address || ''
-          }));
+        // Get full profile data from database
+        const profile = await dbOperations.getProfile(user.id);
+        
+        if (profile) {
+          setUserDetails({
+            name: profile.full_name || '',
+            email: profile.email || '',
+            phone: (profile as any).phone || '',
+            address: profile.address || ''
+          });
         }
 
         // Load profile image if exists
@@ -118,7 +122,7 @@ const UserProfile = () => {
         try {
           const base64Data = e.target?.result as string;
           const mimeType = file.type;
-          const imageUrl = `/api/image-upload/profiles/${user?.id}`;
+          const imageUrl = `/.netlify/functions/image-upload/profiles/${user?.id}`;
           
           // Upload image data to database
           await dbOperations.uploadImage('profiles', user?.id || '', base64Data.split(',')[1], mimeType, imageUrl);
@@ -214,12 +218,7 @@ const UserProfile = () => {
       // Update profile in database
       await dbOperations.updateProfile(user.id, {
         full_name: userDetails.name,
-        email: userDetails.email
-      });
-
-      // Update extended profile in database
-      await dbOperations.updateExtendedUserProfile(user.id, {
-        phone: userDetails.phone,
+        email: userDetails.email,
         address: userDetails.address
       });
       
@@ -285,6 +284,48 @@ const UserProfile = () => {
     }
   };
 
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    if (!user?.id) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את החשבון ללא התחברות",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Try to delete/deactivate user profile from database
+      const result: {deleted?: boolean, deactivated?: boolean, hasAppointments: boolean, hasReviews: boolean, message: string} = await dbOperations.deleteProfile(user.id);
+      
+      if (result.deactivated) {
+        // Account was deactivated instead of deleted
+        toast({
+          title: "חשבון הושבת",
+          description: "החשבון שלך הושבת בהצלחה. לא ניתן למחוק חשבון עם תורים או ביקורות קיימות",
+        });
+      } else if (result.deleted) {
+        // Account was fully deleted
+        toast({
+          title: "חשבון נמחק",
+          description: "החשבון שלך נמחק בהצלחה מהמערכת",
+        });
+      }
+      
+      // Logout and redirect to home
+      logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את החשבון",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Navigate to add review page
   const handleAddReview = (instituteId: number, therapistId: number, anonymous: boolean = false) => {
     navigate(`/add-review/${instituteId}/${therapistId}?anonymous=${anonymous}`);
@@ -295,47 +336,31 @@ const UserProfile = () => {
   
   // Handle gift redemption
   const handleRedeemGift = (gift: {id: string; name: string; pointsCost: number}) => {
-    setSelectedGift({...gift, id: parseInt(gift.id.split('-')[0], 16)});
+    setSelectedGift({...gift, id: gift.id});
     setShowRedeemGiftDialog(true);
   };
 
-  const confirmRedeemGift = () => {
+  const confirmRedeemGift = async () => {
     if (selectedGift) {
-      redeemGift(selectedGift.id);
-      
-      toast({
-        title: "מתנה נפדתה בהצלחה",
-        description: `נפדתה ${selectedGift.name} תמורת ${selectedGift.pointsCost} נקודות`,
-      });
-      
-      setShowRedeemGiftDialog(false);
+      try {
+        await redeemGift(selectedGift.id);
+        
+        toast({
+          title: "מתנה נפדתה בהצלחה",
+          description: `נפדתה ${selectedGift.name} תמורת ${selectedGift.pointsCost} נקודות`,
+        });
+        
+        setShowRedeemGiftDialog(false);
+      } catch (error) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לפדות את המתנה. נסה שוב.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  // Handle user account deletion
-  const handleDeleteAccount = async () => {
-    try {
-      // In a real app, you would call an API to delete the user account
-      // For now, we'll simulate the deletion process
-      
-      toast({
-        title: "חשבון נמחק",
-        description: "החשבון נמחק בהצלחה",
-        variant: "destructive",
-      });
-      
-      // Log out the user and redirect to home page
-      logout();
-      navigate('/');
-      
-    } catch (error) {
-      toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה במחיקת החשבון",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Show loading spinner while authentication is being verified
   if (isLoading) {
@@ -363,11 +388,6 @@ const UserProfile = () => {
             <div className="w-full md:w-1/3">
               <Card>
                 <CardHeader className="text-center relative">
-                  {/* Delete account button in top-right corner */}
-                  <div className="absolute top-4 right-4">
-                    <DeleteAccountDialog onConfirmDelete={handleDeleteAccount} />
-                  </div>
-                  
                   <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4 relative group overflow-hidden">
                     {profileImage ? (
                       <img 
@@ -400,6 +420,13 @@ const UserProfile = () => {
                       onClick={() => setShowUpdateDetailsDialog(true)}
                     >
                       עדכן פרטים
+                    </Button>
+                    <Button 
+                      className="w-full" 
+                      variant="destructive"
+                      onClick={() => setShowDeleteAccountDialog(true)}
+                    >
+                      מחק חשבון
                     </Button>
                     <Button 
                       className="w-full" 
@@ -808,6 +835,13 @@ const UserProfile = () => {
         onClose={() => setShowRescheduleDialog(false)}
         onConfirm={handleRescheduleConfirm}
         appointmentId={selectedAppointmentId ? parseInt(selectedAppointmentId.split('-')[0], 16) : 0}
+      />
+
+      {/* Delete account dialog */}
+      <DeleteAccountDialog
+        open={showDeleteAccountDialog}
+        onOpenChange={setShowDeleteAccountDialog}
+        onConfirmDelete={handleDeleteAccount}
       />
 
       <MessageBox 

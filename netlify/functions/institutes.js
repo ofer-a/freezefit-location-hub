@@ -81,8 +81,40 @@ export const handler = async (event, context) => {
         if (!instituteId) {
           return createResponse(400, null, 'Institute ID is required');
         }
-        const deleteResult = await query('DELETE FROM institutes WHERE id = $1', [instituteId]);
-        return createResponse(200, { deleted: deleteResult.rowCount > 0 });
+        
+        // Delete all related data first (in order to avoid foreign key constraints)
+        try {
+          // Delete appointments
+          await query('DELETE FROM appointments WHERE institute_id = $1', [instituteId]);
+          
+          // Delete reviews
+          await query('DELETE FROM reviews WHERE institute_id = $1', [instituteId]);
+          
+          // Delete services
+          await query('DELETE FROM services WHERE institute_id = $1', [instituteId]);
+          
+          // Delete workshops
+          await query('DELETE FROM workshops WHERE institute_id = $1', [instituteId]);
+          
+          // Delete business hours
+          await query('DELETE FROM business_hours WHERE institute_id = $1', [instituteId]);
+          
+          // Delete coordinates
+          await query('DELETE FROM institute_coordinates WHERE institute_id = $1', [instituteId]);
+          
+          // Delete gallery images
+          await query('DELETE FROM gallery_images WHERE institute_id = $1', [instituteId]);
+          
+          // Delete therapists
+          await query('DELETE FROM therapists WHERE institute_id = $1', [instituteId]);
+          
+          // Finally delete the institute
+          const deleteResult = await query('DELETE FROM institutes WHERE id = $1', [instituteId]);
+          return createResponse(200, { deleted: deleteResult.rowCount > 0 });
+        } catch (error) {
+          console.error('Error deleting institute:', error);
+          return createResponse(500, null, 'Failed to delete institute: ' + error.message);
+        }
 
       default:
         return createResponse(405, null, 'Method not allowed');
