@@ -327,8 +327,13 @@ const UserProfile = () => {
   };
 
   // Navigate to add review page
-  const handleAddReview = (instituteId: number, therapistId: number, anonymous: boolean = false) => {
-    navigate(`/add-review/${instituteId}/${therapistId}?anonymous=${anonymous}`);
+  const handleAddReview = (instituteId: string, therapistId: string | null, anonymous: boolean = false) => {
+    // Navigate with anonymous flag in state instead of query param
+    const path = therapistId 
+      ? `/add-review/${instituteId}/${therapistId}`
+      : `/add-review/${instituteId}`;
+    
+    navigate(path, { state: { anonymous } });
   };
 
   // Progress calculation for club level
@@ -606,19 +611,10 @@ const UserProfile = () => {
                                         size="sm"
                                         variant="outline"
                                         className="flex items-center gap-2"
-                                        onClick={() => handleAddReview(appointment.instituteId || 1, appointment.therapistId || 1, false)}
+                                        onClick={() => handleAddReview(appointment.instituteId, appointment.therapistId, false)}
                                       >
                                         <MessageSquare className="h-4 w-4" />
                                         הוסף ביקורת
-                                      </Button>
-                                      
-                                      <Button 
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-xs flex items-center gap-2"
-                                        onClick={() => handleAddReview(appointment.instituteId || 1, appointment.therapistId || 1, true)}
-                                      >
-                                        הוסף ביקורת אנונימית
                                       </Button>
                                     </div>
                                   )}

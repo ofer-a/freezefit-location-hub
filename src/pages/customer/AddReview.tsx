@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -22,13 +22,17 @@ const AddReview = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
   const { addReview } = useData();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Get anonymous flag from navigation state
+  const anonymousFromState = location.state?.anonymous || false;
 
   // State for review form
   const [rating, setRating] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [reviewText, setReviewText] = useState<string>('');
-  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(anonymousFromState);
   
   // Find institute and therapist from params
   const [institute, setInstitute] = useState<any>(null);
@@ -80,7 +84,9 @@ const AddReview = () => {
 
     loadInstitute();
   }, [instituteId, toast]);
-  const therapist = therapistId ? institute?.therapists.find(therapist => therapist.id === Number(therapistId)) : null;
+  
+  // Find therapist by UUID string match
+  const therapist = therapistId ? institute?.therapists.find(t => t.id === therapistId) : null;
 
   // Check authentication
   useEffect(() => {

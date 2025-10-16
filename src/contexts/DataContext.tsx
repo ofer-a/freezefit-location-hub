@@ -14,7 +14,9 @@ interface Appointment {
   duration?: string;
   phone?: string;
   therapistName?: string;
+  therapistId?: string | null;
   institute?: string;
+  instituteId?: string;
   originalDate?: string;
   originalTime?: string;
   requestedDate?: string;
@@ -174,6 +176,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           duration: '45 דקות', // Default duration - could be loaded from services table
           phone: apt.phone || '050-1234567', // Use appointment phone or default
           therapistName: apt.service_name, // Use service name as therapist name for now
+          therapistId: null, // Therapist ID not stored in appointments table
+          instituteId: apt.institute_id, // Keep institute ID for reviews
           price: parseFloat(apt.price) || 150 // Convert price to number with default value
         }));
 

@@ -131,10 +131,43 @@ export function InstitutePreviewModal({ institute, isOpen, onClose }: InstituteP
         
         const dbImages = await dbOperations.getGalleryImagesByInstitute(institute.id)
         
-        // Transform database images to match gallery component interface
-        const transformedImages = dbImages.map(image => ({
-          image: image.image_url,
-          text: image.category || 'תמונה'
+        if (dbImages.length === 0) {
+          // No images in database, use fallback
+          setGalleryImages([
+            {
+              image: "/lovable-uploads/811d2004-2481-45ef-bc4b-c35b8c9136ac.png",
+              text: "אזור המתנה"
+            },
+            {
+              image: "/lovable-uploads/233ae73b-0b0b-4350-bd4b-4f80e8bcbac2.png",
+              text: "אמבט קרח"
+            }
+          ])
+          return
+        }
+        
+        // Load binary image data for images stored via image-upload function
+        const transformedImages = await Promise.all(dbImages.map(async (image) => {
+          // Check if image is stored via image-upload function
+          if (image.image_url && image.image_url.includes('/.netlify/functions/image-upload')) {
+            try {
+              const imageData = await dbOperations.getImage('gallery_images', image.id)
+              if (imageData) {
+                return {
+                  image: `data:image/jpeg;base64,${imageData}`,
+                  text: image.category || 'תמונה'
+                }
+              }
+            } catch (error) {
+              console.error(`Failed to load gallery image ${image.id}:`, error)
+            }
+          }
+          
+          // For direct URLs or if binary load failed, use the URL directly
+          return {
+            image: image.image_url || '/placeholder.svg',
+            text: image.category || 'תמונה'
+          }
         }))
         
         setGalleryImages(transformedImages)
