@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { dbOperations } from '@/lib/database';
-import { Building2, MapPin, Phone, Mail } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, AlertTriangle } from 'lucide-react';
 
 const InstituteSetup = () => {
   const { user } = useAuth();
@@ -104,6 +104,23 @@ const InstituteSetup = () => {
             </p>
           </div>
 
+          {/* Requirements Alert */}
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start space-x-3 space-x-reverse">
+              <AlertTriangle className="h-6 w-6 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="text-right">
+                <h3 className="font-bold text-red-800 mb-2">
+                  דרישות חובה להפעלת המכון
+                </h3>
+                <div className="text-red-700 text-sm space-y-1">
+                  <p>• עליך להוסיף לפחות <strong>2 שירותים</strong> למחירון</p>
+                  <p>• עליך להוסיף לפחות <strong>1 מטפל</strong> לצוות המכון</p>
+                  <p>• רק לאחר השלמת דרישות אלה המכון יהיה זמין ללקוחות</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-center">פרטי המכון</CardTitle>
@@ -133,44 +150,48 @@ const InstituteSetup = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="service_name">סוג השירות</Label>
+                  <Label htmlFor="service_name">סוג השירות *</Label>
                   <Input
                     id="service_name"
                     value={formData.service_name}
                     onChange={(e) => handleInputChange('service_name', e.target.value)}
                     placeholder="טיפולי קור, קריוסטיים, וכו'"
+                    required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="phone">טלפון</Label>
+                  <Label htmlFor="phone">טלפון *</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     placeholder="03-1234567"
+                    required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="email">אימייל</Label>
+                  <Label htmlFor="email">אימייל *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder="contact@institute.com"
+                    required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="description">תיאור המכון</Label>
+                  <Label htmlFor="description">תיאור המכון *</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="ספרו על המכון שלכם, השירותים שאתם מציעים..."
                     rows={4}
+                    required
                   />
                 </div>
 
