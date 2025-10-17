@@ -101,6 +101,7 @@ interface DataContextType {
   verifyResetCode: (email: string, code: string) => Promise<boolean>;
   reviews: Review[];
   addReview: (review: Review) => void;
+  institutes: any[];
 }
 
 // Create the context
@@ -130,6 +131,9 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   // Reviews state - now loaded from real database
   const [reviews, setReviews] = useState<Review[]>([]);
+
+  // Institutes state - loaded from database
+  const [institutes, setInstitutes] = useState<any[]>([]);
 
   // Load data from database on component mount
   useEffect(() => {
@@ -283,9 +287,19 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       }
     };
 
+    const loadInstitutes = async () => {
+      try {
+        const institutesData = await dbOperations.getInstitutes();
+        setInstitutes(institutesData);
+      } catch (error) {
+        console.error('Error loading institutes:', error);
+      }
+    };
+
     loadAppointments();
     loadReviews();
-    
+    loadInstitutes();
+
     if (user?.id) {
       loadLoyaltyData();
     }
@@ -558,7 +572,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   return (
-    <DataContext.Provider value={{ 
+    <DataContext.Provider value={{
       confirmedAppointments,
       historyAppointments,
       pendingAppointments,
@@ -578,7 +592,8 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       sendPasswordResetCode,
       verifyResetCode,
       reviews,
-      addReview
+      addReview,
+      institutes
     }}>
       {children}
     </DataContext.Provider>

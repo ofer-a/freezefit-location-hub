@@ -22,7 +22,7 @@ interface ContactFormData {
 
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
-  const { addContactInquiry } = useData();
+  const { addContactInquiry, institutes } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -35,15 +35,8 @@ const HomePage = () => {
     submittedAt: new Date()
   });
 
-  // Available institutes list
-  const availableInstitutes = [
-    'מרכז קריוסטיים',
-    'קריו פלוס', 
-    'אייס פיט',
-    'קריו ירושלים',
-    'חיפה קריותרפי',
-    'צפון קריו'
-  ];
+  // Get institute names from database
+  const availableInstitutes = institutes.map(institute => institute.institute_name);
 
   const handleFindInstitute = () => {
     if (isAuthenticated) {
