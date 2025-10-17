@@ -219,6 +219,7 @@ const UserProfile = () => {
       await dbOperations.updateProfile(user.id, {
         full_name: userDetails.name,
         email: userDetails.email,
+        phone: userDetails.phone,
         address: userDetails.address
       });
       

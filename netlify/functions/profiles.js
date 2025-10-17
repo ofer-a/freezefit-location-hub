@@ -12,9 +12,20 @@ export const handler = async (event, context) => {
     
     switch (httpMethod) {
       case 'GET':
-        if (pathParameters && pathParameters.id) {
+        // Extract profile ID from path
+        let profileId = pathParameters?.id;
+        if (!profileId && path) {
+          const pathParts = path.split('/');
+          const lastPart = pathParts[pathParts.length - 1];
+          // Check if it's a valid UUID (profile ID)
+          if (lastPart && lastPart.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            profileId = lastPart;
+          }
+        }
+        
+        if (profileId) {
           // Get single profile
-          const result = await query('SELECT * FROM profiles WHERE id = $1', [pathParameters.id]);
+          const result = await query('SELECT * FROM profiles WHERE id = $1', [profileId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/email/')) {
           // Get profile by email
@@ -42,9 +53,20 @@ export const handler = async (event, context) => {
         return createResponse(201, insertResult.rows[0]);
 
       case 'PUT':
-        if (!pathParameters || !pathParameters.id) {
+        // Extract profile ID from path
+        let updateProfileId = pathParameters?.id;
+        if (!updateProfileId && path) {
+          const pathParts = path.split('/');
+          const lastPart = pathParts[pathParts.length - 1];
+          if (lastPart && lastPart.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            updateProfileId = lastPart;
+          }
+        }
+        
+        if (!updateProfileId) {
           return createResponse(400, null, 'Profile ID is required');
         }
+        
         const updates = JSON.parse(event.body);
         const fields = [];
         const values = [];
@@ -62,7 +84,7 @@ export const handler = async (event, context) => {
           return createResponse(400, null, 'No valid fields to update');
         }
 
-        values.push(pathParameters.id);
+        values.push(updateProfileId);
         const updateResult = await query(
           `UPDATE profiles SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
           values
@@ -70,25 +92,25 @@ export const handler = async (event, context) => {
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
-        let profileId = pathParameters?.id;
-        if (!profileId && path) {
+        let deleteProfileId = pathParameters?.id;
+        if (!deleteProfileId && path) {
           const pathParts = path.split('/');
-          profileId = pathParts[pathParts.length - 1];
+          deleteProfileId = pathParts[pathParts.length - 1];
         }
         
-        if (!profileId) {
+        if (!deleteProfileId) {
           return createResponse(400, null, 'Profile ID is required');
         }
         
         // Check if profile has any appointments, reviews, or other data
         const appointmentsCheck = await query(
           'SELECT COUNT(*) as count FROM appointments WHERE user_id = $1',
-          [profileId]
+          [deleteProfileId]
         );
         
         const reviewsCheck = await query(
           'SELECT COUNT(*) as count FROM reviews WHERE user_id = $1',
-          [profileId]
+          [deleteProfileId]
         );
         
         const hasAppointments = parseInt(appointmentsCheck.rows[0].count) > 0;
@@ -98,7 +120,7 @@ export const handler = async (event, context) => {
           // Deactivate instead of delete
           const deactivateResult = await query(
             'UPDATE profiles SET is_active = false, deactivated_at = NOW() WHERE id = $1 RETURNING *',
-            [profileId]
+            [deleteProfileId]
           );
           return createResponse(200, { 
             deactivated: deactivateResult.rowCount > 0,
@@ -109,7 +131,7 @@ export const handler = async (event, context) => {
           });
         } else {
           // Safe to delete
-          const deleteResult = await query('DELETE FROM profiles WHERE id = $1', [profileId]);
+          const deleteResult = await query('DELETE FROM profiles WHERE id = $1', [deleteProfileId]);
           return createResponse(200, { 
             deleted: deleteResult.rowCount > 0,
             deactivated: false,
