@@ -369,6 +369,14 @@ class ApiClient {
     });
   }
 
+  // Geocoding service to convert addresses to coordinates
+  async geocodeAddress(address: string) {
+    return this.request('/geocoding', {
+      method: 'POST',
+      body: JSON.stringify({ address }),
+    });
+  }
+
   async updateInstituteCoordinates(instituteId: string, coordinatesData: any) {
     return this.request(`/coordinates/${instituteId}`, {
       method: 'PUT',

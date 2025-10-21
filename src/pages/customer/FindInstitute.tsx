@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
+import { CalendarIcon, Clock, Loader2, MapPin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -134,27 +134,28 @@ const FindInstitute = () => {
 
         // Transform the aggregated data
         const transformedInstitutes = detailedInstitutes.map((institute, index) => {
-          // Use real coordinates from database, fallback to default if not available
-          const coordinates = institute.latitude && institute.longitude 
+          // Check if institute has real coordinates (not null)
+          const hasRealCoordinates = institute.latitude !== null && institute.longitude !== null;
+          const coordinates = hasRealCoordinates
             ? { lat: institute.latitude, lng: institute.longitude }
             : { lat: 32.0853, lng: 34.7818 }; // Default to Tel Aviv if no coordinates
-          
-          // Calculate accurate distance using Haversine formula
+
+          // Calculate accurate distance using Haversine formula (only if institute has real coordinates)
           const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
             const R = 6371; // Radius of the Earth in kilometers
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
+            const a =
               Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c; // Distance in kilometers
           };
 
-          const distance = userLocation 
+          const distance = (userLocation && hasRealCoordinates)
             ? Number(calculateDistance(userLocation.lat, userLocation.lng, coordinates.lat, coordinates.lng).toFixed(2))
-            : 0; // Show 0 if no user location available
+            : 0; // Show 0 if no user location or no real institute coordinates
           
           // Debug logging
           console.log(`Institute: ${institute.institute_name}, User Location: ${userLocation ? `${userLocation.lat}, ${userLocation.lng}` : 'null'}, Institute Coords: ${coordinates.lat}, ${coordinates.lng}, Distance: ${distance}km`);
@@ -205,13 +206,18 @@ const FindInstitute = () => {
               image: therapist.image_url || '/placeholder.svg'
             })),
             hours: formatBusinessHours(institute.business_hours || []),
-            coordinates
+            coordinates,
+            latitude: hasRealCoordinates ? institute.latitude : null,
+            longitude: hasRealCoordinates ? institute.longitude : null
           };
         });
 
         // Sort institutes by distance (closest first)
         const sortedInstitutes = transformedInstitutes.sort((a, b) => a.distance - b.distance);
 
+        console.log(`Loaded ${sortedInstitutes.length} institutes with coordinates out of ${detailedInstitutes.length} total institutes`);
+
+        // Show all institutes in the list, even those without coordinates
         setAllInstitutes(sortedInstitutes);
         setInstitutes(sortedInstitutes);
         setLoadingProgress(100);
@@ -235,8 +241,19 @@ const FindInstitute = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedService, setSelectedService] = useState('');
-  const [selectedTherapist, setSelectedTherapist] = useState('');
+  const [selectedTherapist, setSelectedTherapist] = useState<{id: string; name: string} | null>(null);
   const [bookingInstitute, setBookingInstitute] = useState<Institute | null>(null);
+
+  // Handler for therapist selection that parses the JSON string
+  const handleTherapistChange = (value: string) => {
+    try {
+      const therapistObj = JSON.parse(value);
+      setSelectedTherapist(therapistObj);
+    } catch (error) {
+      console.error('Error parsing therapist selection:', error);
+      setSelectedTherapist(null);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -359,7 +376,7 @@ const FindInstitute = () => {
   };
   
   const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedTime || !selectedService || !selectedTherapist || !bookingInstitute || !user) {
+    if (!selectedDate || !selectedTime || !selectedService || !bookingInstitute || !user) {
       toast({
         variant: "destructive",
         title: "שגיאה",
@@ -385,6 +402,9 @@ const FindInstitute = () => {
       const appointmentData = {
         user_id: user.id,
         institute_id: bookingInstitute.id,
+        therapist_id: selectedTherapist?.id || null,
+        therapist_name: selectedTherapist?.name || null,
+        institute_name: bookingInstitute.name,
         service_name: selectedService,
         appointment_date: formattedDate,
         appointment_time: selectedTime,
@@ -408,7 +428,7 @@ const FindInstitute = () => {
       // Create local appointment object for immediate UI update
       const newAppointment = {
         id: dbAppointment.id,
-        therapistName: selectedTherapist,
+        therapistName: selectedTherapist?.name || null,
         service: selectedService,
         date: displayDate,
         time: selectedTime,
@@ -428,14 +448,14 @@ const FindInstitute = () => {
       
       toast({
         title: "התור נקבע בהצלחה",
-        description: `נקבע תור ב${bookingInstitute.name} עם ${selectedTherapist} לתאריך ${displayDate}, שעה ${selectedTime}`,
+        description: `נקבע תור ב${bookingInstitute.name} עם ${selectedTherapist?.name || 'מטפל לא ידוע'} לתאריך ${displayDate}, שעה ${selectedTime}`,
       });
       
       // Reset form
       setSelectedDate(undefined);
       setSelectedTime('');
       setSelectedService('');
-      setSelectedTherapist('');
+      setSelectedTherapist(null);
       setBookingInstitute(null);
       
     } catch (error) {
@@ -468,20 +488,22 @@ const FindInstitute = () => {
       )
     : institutes;
 
-  // Create enhanced markers with additional institute details
-  const enhancedMarkers = filteredInstitutes.map(institute => ({
-    id: institute.id,
-    name: institute.name,
-    coordinates: institute.coordinates,
-    address: institute.address,
-    rating: institute.rating,
-    hours: institute.hours,
-    therapists: institute.therapists.map(t => ({
-      name: t.name,
-      specialty: t.specialty,
-      experience: t.experience
-    }))
-  }));
+  // Create enhanced markers with additional institute details (only for institutes with real coordinates)
+  const enhancedMarkers = filteredInstitutes
+    .filter(institute => institute.latitude !== null && institute.longitude !== null)
+    .map(institute => ({
+      id: institute.id,
+      name: institute.name,
+      coordinates: institute.coordinates,
+      address: institute.address,
+      rating: institute.rating,
+      hours: institute.hours,
+      therapists: institute.therapists.map(t => ({
+        name: t.name,
+        specialty: t.specialty,
+        experience: t.experience
+      }))
+    }));
   
   // Generate available times for booking based on business hours
   const getAvailableTimes = (selectedDate: Date | undefined, instituteId: string) => {
@@ -648,11 +670,23 @@ const FindInstitute = () => {
               </TabsContent>
               
               <TabsContent value="map" className="mt-6">
-                <MapComponent 
-                  userLocation={userLocation || { lat: 31.4117, lng: 35.0818 }} // Default to Israel's center if no user location
-                  markers={enhancedMarkers}
-                  onMarkerClick={handleMarkerClick}
-                />
+                {enhancedMarkers.length > 0 ? (
+                  <MapComponent
+                    userLocation={userLocation || { lat: 31.4117, lng: 35.0818 }} // Default to Israel's center if no user location
+                    markers={enhancedMarkers}
+                    onMarkerClick={handleMarkerClick}
+                  />
+                ) : (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                    <MapPin className="h-12 w-12 mx-auto text-blue-500 mb-4" />
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                      מפה זמינה בקרוב
+                    </h3>
+                    <p className="text-blue-600">
+                      אנו עובדים על הוספת מיקומי המכונים למפה. בינתיים תוכל למצוא מכונים ברשימה למעלה.
+                    </p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -806,15 +840,15 @@ const FindInstitute = () => {
             <div className="grid gap-2">
               <label className="text-sm font-medium text-right">בחר מטפל</label>
               <Select
-                value={selectedTherapist}
-                onValueChange={setSelectedTherapist}
+                value={selectedTherapist ? JSON.stringify(selectedTherapist) : ''}
+                onValueChange={handleTherapistChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר מטפל" />
                 </SelectTrigger>
                 <SelectContent>
                   {bookingInstitute?.therapists.map((therapist) => (
-                    <SelectItem key={therapist.id} value={therapist.name}>
+                    <SelectItem key={therapist.id} value={JSON.stringify({id: therapist.id, name: therapist.name})}>
                       {therapist.name} - {therapist.specialty}
                     </SelectItem>
                   ))}

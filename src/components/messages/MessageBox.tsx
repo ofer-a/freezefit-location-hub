@@ -135,7 +135,7 @@ const MessageBox = ({ isOpen, onClose }: MessageBoxProps) => {
                     </div>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                      <span>{getSenderTypeLabel(message.sender_type)}</span>
+                      <span>{getSenderTypeLabel(message.sender_type)}{message.sender_name ? ` - ${message.sender_name}` : ''}</span>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         {new Date(message.created_at).toLocaleDateString('he-IL')}
@@ -179,7 +179,7 @@ const MessageBox = ({ isOpen, onClose }: MessageBoxProps) => {
                     {getMessageTypeLabel(selectedMessage.message_type)}
                   </Badge>
                   <Badge variant="secondary">
-                    {getSenderTypeLabel(selectedMessage.sender_type)}
+                    {getSenderTypeLabel(selectedMessage.sender_type)}{selectedMessage.sender_name ? ` - ${selectedMessage.sender_name}` : ''}
                   </Badge>
                 </div>
                 

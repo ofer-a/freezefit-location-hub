@@ -25,6 +25,8 @@ interface Institute {
   hours: string;
   coordinates: { lat: number; lng: number };
   image_url?: string; // Add optional image_url field for institute profile picture
+  latitude?: number; // Make coordinates optional for institutes without them
+  longitude?: number;
 }
 
 interface InstituteListProps {

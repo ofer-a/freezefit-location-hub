@@ -532,8 +532,10 @@ const UserProfile = () => {
                               <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
                                 <div className="flex justify-between items-start">
                                   <div>
-                                    <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
-                                    <p className="text-gray-700">{appointment.service}</p>
+                                    <p className="text-gray-700 font-medium">{appointment.service}</p>
+                                    {appointment.therapistName && (
+                                      <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
+                                    )}
                                     <div className="flex items-center mt-2">
                                       <Calendar className="h-4 w-4 ml-1" />
                                       <span className="text-sm">{formatHebrewDate(appointment.date)}</span>
@@ -588,8 +590,10 @@ const UserProfile = () => {
                             <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h3 className="font-semibold text-lg">{appointment.customerName}</h3>
-                                  <p className="text-gray-700">{appointment.service}</p>
+                                  <p className="text-gray-700 font-medium">{appointment.service}</p>
+                                  {appointment.therapistName && (
+                                    <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
+                                  )}
                                   <div className="flex items-center mt-2">
                                     <Calendar className="h-4 w-4 ml-1" />
                                     <span className="text-sm">{formatHebrewDate(appointment.date)}</span>

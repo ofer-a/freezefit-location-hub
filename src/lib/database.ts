@@ -218,10 +218,16 @@ export const dbOperations = {
   async createInstituteCoordinates(coordinatesData: Omit<InstituteCoordinates, 'id' | 'created_at' | 'updated_at'>): Promise<InstituteCoordinates> {
     const response = await apiClient.createInstituteCoordinates(coordinatesData);
     if (!response.data) throw new Error(response.error || 'Failed to create coordinates');
-    
+
     // Invalidate cache when coordinates are created (affects detailed institutes)
     invalidateCache([CACHE_KEYS.INSTITUTES_DETAILED]);
-    
+
+    return response.data;
+  },
+
+  async geocodeAddress(address: string): Promise<{latitude: number, longitude: number, display_name: string, address_details: any}> {
+    const response = await apiClient.geocodeAddress(address);
+    if (!response.data) throw new Error(response.error || 'Failed to geocode address');
     return response.data;
   },
 

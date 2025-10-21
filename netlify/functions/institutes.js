@@ -42,12 +42,54 @@ export const handler = async (event, context) => {
 
       case 'POST':
         const { owner_id, institute_name, address, service_name, image_url } = JSON.parse(event.body);
+
+        // Insert the institute first
         const insertResult = await query(
-          `INSERT INTO institutes (owner_id, institute_name, address, service_name, image_url) 
+          `INSERT INTO institutes (owner_id, institute_name, address, service_name, image_url)
            VALUES ($1, $2, $3, $4, $5) RETURNING *`,
           [owner_id, institute_name, address, service_name, image_url]
         );
-        return createResponse(201, insertResult.rows[0]);
+
+        const newInstitute = insertResult.rows[0];
+
+        // Try to geocode the address and create coordinates
+        try {
+          // Use OpenStreetMap Nominatim API for geocoding (free and no API key required)
+          const encodedAddress = encodeURIComponent(address);
+          const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=il&addressdetails=1`;
+
+          const geocodingResponse = await fetch(nominatimUrl, {
+            headers: {
+              'User-Agent': 'FreezeFit-Location-Hub/1.0 (contact@freezefit.com)'
+            }
+          });
+
+          if (geocodingResponse.ok) {
+            const geocodingData = await geocodingResponse.json();
+
+            if (geocodingData.length > 0) {
+              const result = geocodingData[0];
+
+              // Create coordinates for the new institute
+              await query(
+                `INSERT INTO institute_coordinates (institute_id, latitude, longitude, address_verified)
+                 VALUES ($1, $2, $3, $4)`,
+                [newInstitute.id, parseFloat(result.lat), parseFloat(result.lon), true]
+              );
+
+              console.log(`Coordinates created for institute ${newInstitute.id}`);
+            } else {
+              console.warn(`No geocoding results found for address: ${address}`);
+            }
+          } else {
+            console.warn(`Geocoding API error: ${geocodingResponse.status} for address: ${address}`);
+          }
+        } catch (geocodingError) {
+          console.warn('Geocoding failed for institute creation:', geocodingError.message);
+          // Continue without coordinates - institute was created successfully
+        }
+
+        return createResponse(201, newInstitute);
 
       case 'PUT':
         if (!instituteId) {

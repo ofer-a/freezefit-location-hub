@@ -193,7 +193,9 @@ const OrderManagement = () => {
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
                               <p className="text-gray-600">{order.service}, {order.duration}</p>
-                              <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
+                              {order.therapistName && (
+                                <p className="text-sm text-gray-600">מטפל: {order.therapistName}</p>
+                              )}
                             </div>
                           </div>
                           
@@ -253,7 +255,9 @@ const OrderManagement = () => {
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
                               <p className="text-gray-600">{order.service}, {order.duration}</p>
-                              <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
+                              {order.therapistName && (
+                                <p className="text-sm text-gray-600">מטפל: {order.therapistName}</p>
+                              )}
                             </div>
                           </div>
                           
@@ -313,7 +317,6 @@ const OrderManagement = () => {
                             <div>
                               <h3 className="font-bold text-lg">{order.customerName}</h3>
                               <p className="text-gray-600">{order.service}, {order.duration}</p>
-                              <p className="text-sm text-gray-500">טלפון: {order.phone}</p>
                               
                               <div className="mt-3 space-y-1">
                                 <div className="flex items-center text-sm">

@@ -61,10 +61,29 @@ const InstituteSetup = () => {
         image_url: '/placeholder.svg'
       });
 
-      toast({
-        title: "מכון נוצר בהצלחה",
-        description: `המכון "${formData.institute_name}" נוצר בהצלחה`,
-      });
+      // Try to geocode the address and create coordinates
+      try {
+        const geocodingResult = await dbOperations.geocodeAddress(formData.address);
+
+        // Create coordinates for the institute
+        await dbOperations.createInstituteCoordinates({
+          institute_id: institute.id,
+          latitude: geocodingResult.latitude,
+          longitude: geocodingResult.longitude,
+          address_verified: true
+        });
+
+        toast({
+          title: "מכון נוצר בהצלחה",
+          description: `המכון "${formData.institute_name}" נוצר בהצלחה עם מיקום במפה`,
+        });
+      } catch (geocodingError) {
+        console.warn('Geocoding failed, institute created without coordinates:', geocodingError);
+        toast({
+          title: "מכון נוצר בהצלחה",
+          description: `המכון "${formData.institute_name}" נוצר בהצלחה. אנא הוסף קואורדינטות ידנית בדף ניהול המכון`,
+        });
+      }
 
       // Redirect to dashboard
       navigate('/dashboard');

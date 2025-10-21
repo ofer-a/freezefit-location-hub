@@ -31,20 +31,33 @@ export const handler = async (event, context) => {
           const result = await query('SELECT * FROM appointments WHERE id = $1', [appointmentId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/user/')) {
-          // Get appointments by user
+          // Get appointments by user with institute and therapist names
           const userId = path.split('/user/')[1];
-          const result = await query(
-            'SELECT * FROM appointments WHERE user_id = $1 ORDER BY appointment_date DESC, appointment_time DESC',
-            [userId]
-          );
+          const result = await query(`
+            SELECT
+              a.*,
+              i.institute_name,
+              t.name as therapist_name
+            FROM appointments a
+            LEFT JOIN institutes i ON a.institute_id = i.id
+            LEFT JOIN therapists t ON a.therapist_id = t.id
+            WHERE a.user_id = $1
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+          `, [userId]);
           return createResponse(200, result.rows);
         } else if (path.includes('/institute/')) {
-          // Get appointments by institute
+          // Get appointments by institute with user names
           const instituteId = path.split('/institute/')[1];
-          const result = await query(
-            'SELECT * FROM appointments WHERE institute_id = $1 ORDER BY appointment_date DESC, appointment_time DESC',
-            [instituteId]
-          );
+          const result = await query(`
+            SELECT
+              a.*,
+              p.full_name as user_name,
+              p.email as user_email
+            FROM appointments a
+            LEFT JOIN profiles p ON a.user_id = p.id
+            WHERE a.institute_id = $1
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+          `, [instituteId]);
           return createResponse(200, result.rows);
         } else {
           // Get all appointments
@@ -53,11 +66,11 @@ export const handler = async (event, context) => {
         }
 
       case 'POST':
-        const { user_id, institute_id, service_name, appointment_date, appointment_time, status, price } = JSON.parse(event.body);
+        const { user_id, institute_id, therapist_id, therapist_name, institute_name, service_name, appointment_date, appointment_time, status, price } = JSON.parse(event.body);
         const insertResult = await query(
-          `INSERT INTO appointments (user_id, institute_id, service_name, appointment_date, appointment_time, status, price) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-          [user_id, institute_id, service_name, appointment_date, appointment_time, status || 'pending', price]
+          `INSERT INTO appointments (user_id, institute_id, therapist_id, therapist_name, institute_name, service_name, appointment_date, appointment_time, status, price)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+          [user_id, institute_id, therapist_id, therapist_name, institute_name, service_name, appointment_date, appointment_time, status || 'pending', price]
         );
         return createResponse(201, insertResult.rows[0]);
 

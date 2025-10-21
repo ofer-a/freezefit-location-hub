@@ -61,7 +61,8 @@ const ReplyDialog = ({ isOpen, onClose, customerEmail, customerName, originalSub
         content: message.trim(),
         sender_type: 'institute_owner',
         message_type: 'inquiry_reply',
-        is_read: false
+        is_read: false,
+        sender_name: user?.name || 'בעל מכון' // Add sender name
       });
 
       toast({
