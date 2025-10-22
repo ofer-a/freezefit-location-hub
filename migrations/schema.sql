@@ -115,6 +115,8 @@ CREATE TABLE gallery_images (
     institute_id UUID REFERENCES institutes(id),
     image_url TEXT NOT NULL,
     category VARCHAR(100) NOT NULL,
+    image_data BYTEA,
+    image_mime_type VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

@@ -167,24 +167,32 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         }
 
         // Transform database appointments to match our interface
-        const transformedAppointments = allAppointments.map(apt => ({
-          id: apt.id, // Use full UUID to prevent key collisions
-          customerName: apt.user_name || 'משתמש לא ידוע', // Use user name if available, fallback to unknown user
-          service: apt.service_name,
-          date: apt.appointment_date,
-          time: apt.appointment_time,
-          status: apt.status === 'confirmed' ? 'נקבע' as const :
-                  apt.status === 'completed' ? 'הושלם' as const :
-                  apt.status === 'cancelled' ? 'בוטל' as const :
-                  'ממתין לאישור שינוי' as const,
-          duration: '45 דקות', // Default duration - could be loaded from services table
-          phone: apt.phone || '050-1234567', // Use appointment phone or default
-          therapistName: apt.therapist_name || null, // Use therapist name from server data, null if not available
-          therapistId: apt.therapist_id || null, // Therapist ID if available
-          institute: apt.institute_name || 'מכון לא ידוע', // Use institute name from server data
-          instituteId: apt.institute_id, // Keep institute ID for reviews
-          price: parseFloat(apt.price) || 150 // Convert price to number with default value
-        }));
+        const transformedAppointments = allAppointments.map(apt => {
+          // Normalize date to YYYY-MM-DD format (handle both ISO strings and date strings)
+          let normalizedDate = apt.appointment_date;
+          if (typeof normalizedDate === 'string' && normalizedDate.includes('T')) {
+            normalizedDate = normalizedDate.split('T')[0];
+          }
+          
+          return {
+            id: apt.id, // Use full UUID to prevent key collisions
+            customerName: apt.user_name || 'משתמש לא ידוע', // Use user name if available, fallback to unknown user
+            service: apt.service_name,
+            date: normalizedDate, // Normalized date in YYYY-MM-DD format
+            time: apt.appointment_time,
+            status: apt.status === 'confirmed' ? 'נקבע' as const :
+                    apt.status === 'completed' ? 'הושלם' as const :
+                    apt.status === 'cancelled' ? 'בוטל' as const :
+                    'ממתין לאישור שינוי' as const,
+            duration: '45 דקות', // Default duration - could be loaded from services table
+            phone: apt.phone || '050-1234567', // Use appointment phone or default
+            therapistName: apt.therapist_name || null, // Use therapist name from server data, null if not available
+            therapistId: apt.therapist_id || null, // Therapist ID if available
+            institute: apt.institute_name || 'מכון לא ידוע', // Use institute name from server data
+            instituteId: apt.institute_id, // Keep institute ID for reviews
+            price: parseFloat(apt.price) || 150 // Convert price to number with default value
+          };
+        });
 
         // Separate appointments by status
         const confirmed = transformedAppointments.filter(apt => apt.status === 'נקבע');

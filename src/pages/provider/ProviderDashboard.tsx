@@ -96,14 +96,14 @@ const ProviderDashboard = () => {
         const activities = await dbOperations.getActivitiesByInstitute(userInstitutes[0].id, 5);
         
         // Transform activities to match expected format
-        const transformedActivities = activities.map((activity, index) => ({
+        const transformedActivities = Array.isArray(activities) ? activities.map((activity, index) => ({
           id: index + 1,
           type: activity.activity_type,
           message: activity.title,
           time: getRelativeTime(new Date(activity.created_at)),
           description: activity.description,
           color: getActivityColor(activity.activity_type)
-        }));
+        })) : [];
         
         setRecentActivities(transformedActivities);
 
