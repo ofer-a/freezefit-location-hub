@@ -190,6 +190,13 @@ const FindInstitute = () => {
             }).join(', ');
           };
 
+          // Handle institute image - use image_data if available, otherwise use image_url
+          const instituteImageData = institute.image_data;
+          const instituteMimeType = institute.image_mime_type || 'image/jpeg';
+          const instituteImage = instituteImageData && instituteImageData !== 'null'
+            ? `data:${instituteMimeType};base64,${instituteImageData}`
+            : (institute.image_url || '/placeholder.svg');
+
           return {
             id: institute.id,
             name: institute.institute_name,
@@ -197,14 +204,26 @@ const FindInstitute = () => {
             distance,
             rating: institute.average_rating ? parseFloat(institute.average_rating.toFixed(2)) : 0,
             reviewCount: institute.review_count,
-            image_url: institute.image_url || '/placeholder.svg', // Add institute profile picture URL
-            therapists: (institute.therapists || []).map((therapist: any) => ({
-              id: therapist.id,
-              name: therapist.name,
-              specialty: therapist.bio || 'מטפל מוסמך',
-              experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
-              image: therapist.image_url || '/placeholder.svg'
-            })),
+            image_url: instituteImage,
+            therapists: (institute.therapists || []).map((therapist: any) => {
+              const imageUrl = therapist.image_url || '/placeholder.svg';
+              const imageData = therapist.image_data;
+              const mimeType = therapist.image_mime_type || 'image/jpeg';
+
+
+              // Use image_data if available, otherwise use image_url
+              const image = imageData && imageData !== 'null'
+                ? `data:image/jpeg;base64,${imageData}`
+                : imageUrl;
+
+              return {
+                id: therapist.id,
+                name: therapist.name,
+                specialty: therapist.bio || 'מטפל מוסמך',
+                experience: parseInt(therapist.experience?.split(' ')[0] || '5'),
+                image: image
+              };
+            }),
             hours: formatBusinessHours(institute.business_hours || []),
             coordinates,
             latitude: hasRealCoordinates ? institute.latitude : null,

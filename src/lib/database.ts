@@ -46,6 +46,8 @@ export interface Institute {
   address?: string;
   service_name?: string;
   image_url?: string;
+  image_data?: string;
+  image_mime_type?: string;
   created_at?: string;
   updated_at?: string;
 }

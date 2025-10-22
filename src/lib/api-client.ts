@@ -343,16 +343,32 @@ class ApiClient {
 
   // Image upload and retrieval
   async uploadImage(table: string, recordId: string, imageData: string, mimeType: string, imageUrl: string) {
-    return this.request('/image-upload', {
+    console.log('[API-CLIENT] uploadImage called with:');
+    console.log('- table:', table);
+    console.log('- recordId:', recordId);
+    console.log('- imageData length:', imageData?.length || 0);
+    console.log('- imageData first 30 chars:', imageData?.substring(0, 30));
+    console.log('- mimeType:', mimeType);
+    console.log('- imageUrl:', imageUrl);
+    
+    const payload = {
+      table,
+      record_id: recordId,
+      image_data: imageData,
+      mime_type: mimeType,
+      image_url: imageUrl
+    };
+    
+    console.log('[API-CLIENT] Request payload:', JSON.stringify(payload).substring(0, 200));
+    
+    const result = await this.request('/image-upload', {
       method: 'POST',
-      body: JSON.stringify({
-        table,
-        record_id: recordId,
-        image_data: imageData,
-        mime_type: mimeType,
-        image_url: imageUrl
-      }),
+      body: JSON.stringify(payload),
     });
+    
+    console.log('[API-CLIENT] Upload response:', result);
+    
+    return result;
   }
 
   async getImage(table: string, recordId: string) {

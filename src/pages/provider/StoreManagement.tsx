@@ -48,6 +48,8 @@ interface InstituteInfo {
   address?: string;
   service_name?: string;
   image_url?: string;
+  image_data?: string;
+  image_mime_type?: string;
 }
 
 interface CoordinatesInfo {
@@ -244,35 +246,15 @@ const StoreManagement = () => {
         setInstituteInfo(instituteData);
         setEditingInstitute(instituteData);
 
-        // Load institute image if exists
-        // Check if we should try to load binary data (only if image_url points to a stored image)
-        const shouldLoadBinaryData = instituteData.image_url &&
-                                       instituteData.image_url.includes('/.netlify/functions/image-upload');
-
-        if (shouldLoadBinaryData) {
-          // Try to load binary image data from API with timeout
-          try {
-            const imageData = await Promise.race([
-              dbOperations.getImage('institutes', instituteData.id),
-              new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Image load timeout')), 5000)
-              )
-            ]);
-
-            if (imageData && typeof imageData === 'string' && imageData.length > 0) {
-              setInstituteImage(`data:image/jpeg;base64,${imageData}`);
-            } else {
-              setInstituteImage('/placeholder.svg');
-            }
-          } catch (error) {
-            console.log('Image load failed, using placeholder:', error.message);
-            setInstituteImage('/placeholder.svg');
-          }
+        // Load institute image - now comes directly with image_data from API
+        if (instituteData.image_data && instituteData.image_data !== 'null') {
+          // Use image_data if available (already base64 encoded)
+          const mimeType = instituteData.image_mime_type || 'image/jpeg';
+          setInstituteImage(`data:${mimeType};base64,${instituteData.image_data}`);
         } else if (instituteData.image_url) {
-          // Use the image_url directly (e.g., placeholder or external URL)
+          // Fallback to image_url
           setInstituteImage(instituteData.image_url);
         } else {
-          // No image_url at all, keep the default placeholder
           setInstituteImage('/placeholder.svg');
         }
 
@@ -747,6 +729,16 @@ const StoreManagement = () => {
   // Handle institute image upload
   const handleInstituteImageUpload = async (file: File) => {
     try {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "שגיאה",
+          description: "הקובץ גדול מדי. גודל מקסימלי: 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Get file extension from the actual file
       const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -759,6 +751,12 @@ const StoreManagement = () => {
         });
         return;
       }
+
+      console.log('File selected:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
       
       // Convert file to base64
       const reader = new FileReader();
@@ -766,22 +764,31 @@ const StoreManagement = () => {
         try {
           const base64Data = e.target?.result as string;
           const mimeType = file.type;
-          const imageUrl = `/.netlify/functions/image-upload/institutes/${instituteInfo?.id}`;
+          const imageUrl = null; // Don't store URL, only binary data
 
           // Extract just the base64 part (remove data:image/jpeg;base64, prefix)
           const base64Only = base64Data.split(',')[1];
 
           console.log('Uploading image:');
+          console.log('- Institute ID:', instituteInfo?.id);
           console.log('- MIME type:', mimeType);
           console.log('- Base64 length:', base64Only.length);
-          console.log('- First 50 chars:', base64Only.substring(0, 50));
+          console.log('- Image URL:', imageUrl);
+          console.log('- First 30 chars of base64:', base64Only.substring(0, 30));
 
           // Upload image data to database
-          await dbOperations.uploadImage('institutes', instituteInfo?.id || '', base64Only, mimeType, imageUrl);
+          console.log('Calling uploadImage...');
+          const result = await dbOperations.uploadImage('institutes', instituteInfo?.id || '', base64Only, mimeType, imageUrl);
+          console.log('Upload result:', result);
+          console.log('Upload successful!');
+          
+          // Verify the upload by refetching
+          console.log('Verifying upload by refetching institute data...');
+          const verifyInstitutes = await dbOperations.getInstitutesByOwner(user?.id || '');
+          console.log('Refetched institute:', verifyInstitutes[0]);
 
           // Update local state immediately with the uploaded data
           setInstituteImage(base64Data);
-          setEditingInstitute({...editingInstitute, image_url: imageUrl});
           
           toast({
             title: "תמונה עודכנה",
@@ -789,9 +796,14 @@ const StoreManagement = () => {
           });
         } catch (error) {
           console.error('Error uploading image:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            error: error
+          });
           toast({
             title: "שגיאה",
-            description: "לא ניתן לשמור את תמונת המכון",
+            description: `לא ניתן לשמור את תמונת המכון: ${error.message || 'שגיאה לא ידועה'}`,
             variant: "destructive",
           });
         }

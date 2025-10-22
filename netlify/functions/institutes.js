@@ -30,9 +30,31 @@ export const handler = async (event, context) => {
           const result = await query('SELECT * FROM institutes WHERE id = $1', [instituteId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/owner/')) {
-          // Get institutes by owner
+          // Get institutes by owner with image_data as base64
           const ownerId = path.split('/owner/')[1];
-          const result = await query('SELECT * FROM institutes WHERE owner_id = $1', [ownerId]);
+          const result = await query(`
+            SELECT 
+              id,
+              owner_id,
+              institute_name,
+              address,
+              service_name,
+              image_url,
+              CASE 
+                WHEN image_data IS NOT NULL AND LENGTH(image_data) > 0 
+                THEN ENCODE(image_data, 'base64')
+                ELSE NULL
+              END as image_data,
+              image_mime_type,
+              LENGTH(image_data) as image_size_bytes,
+              created_at,
+              updated_at
+            FROM institutes 
+            WHERE owner_id = $1
+          `, [ownerId]);
+          
+          console.log('[INSTITUTES] Query result for owner:', ownerId);
+          console.log('[INSTITUTES] Institute image_data length:', result.rows[0]?.image_size_bytes || 0);
           return createResponse(200, result.rows);
         } else {
           // Get all institutes

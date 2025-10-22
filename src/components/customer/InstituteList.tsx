@@ -12,6 +12,8 @@ interface Therapist {
   specialty: string;
   experience: number;
   image: string;
+  image_data?: string;
+  image_mime_type?: string;
 }
 
 interface Institute {
@@ -39,6 +41,7 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
   const [previewInstitute, setPreviewInstitute] = useState<Institute | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [instituteImages, setInstituteImages] = useState<{[key: string]: string}>({});
+  const [therapistImages, setTherapistImages] = useState<{[key: string]: string}>({});
 
   const handlePreview = (institute: Institute) => {
     setPreviewInstitute(institute);
@@ -81,6 +84,40 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
       loadInstituteImages();
     }
   }, [institutes, instituteImages]);
+
+  // Load therapist images that need to be fetched from API
+  useEffect(() => {
+    const loadTherapistImages = async () => {
+      const imagesToLoad: string[] = [];
+
+      institutes.forEach(institute => {
+        institute.therapists.forEach(therapist => {
+          if (therapist.image && therapist.image.includes('/.netlify/functions/image-upload') && !therapistImages[therapist.id]) {
+            imagesToLoad.push(therapist.id);
+          }
+        });
+      });
+
+      for (const therapistId of imagesToLoad) {
+        try {
+          const imageData = await dbOperations.getImage('therapists', therapistId);
+          if (imageData) {
+            setTherapistImages(prev => ({
+              ...prev,
+              [therapistId]: `data:image/jpeg;base64,${imageData}`
+            }));
+          }
+        } catch (error) {
+          console.log(`Failed to load image for therapist ${therapistId}:`, error);
+          // Keep original image URL or placeholder for failed loads
+        }
+      }
+    };
+
+    if (institutes.length > 0) {
+      loadTherapistImages();
+    }
+  }, [institutes, therapistImages]);
 
   if (institutes.length === 0) {
     return (
@@ -148,18 +185,27 @@ const InstituteList = ({ institutes, selectedInstitute, onBookAppointment }: Ins
               
               <div className="mt-4">
                 <h4 className="font-medium mb-2 text-right">מטפלים:</h4>
-                <div className="flex flex-wrap gap-4 justify-end">
+                <div className="flex flex-wrap gap-4 justify-start">
                   {institute.therapists.map(therapist => (
                     <div key={therapist.id} className="flex items-center">
                       <div className="w-10 h-10 rounded-full overflow-hidden ml-2 bg-gray-200">
                         <img
-                          src={therapist.image}
+                          src={
+                            therapist.image_data && therapist.image_data !== 'null'
+                              ? `data:image/jpeg;base64,${therapist.image_data}`
+                              : therapist.image
+                          }
                           alt={therapist.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.nextElementSibling?.classList.remove('hidden');
+                            // If image_data failed, try fallback to image_url
+                            if (therapist.image_data && therapist.image_mime_type && target.src.includes('base64')) {
+                              target.src = therapist.image;
+                            } else {
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }
                           }}
                         />
                         <div className="w-full h-full flex items-center justify-center hidden">

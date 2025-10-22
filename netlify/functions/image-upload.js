@@ -56,8 +56,14 @@ export const handler = async (event, context) => {
             [table]
           );
 
-          const updateFields = ['image_data = $1', 'image_mime_type = $2', 'image_url = $3'];
-          const updateParams = [imageBuffer, mime_type, image_url];
+          const updateFields = ['image_data = $1', 'image_mime_type = $2'];
+          const updateParams = [imageBuffer, mime_type];
+
+          // Only update image_url if it's provided
+          if (image_url) {
+            updateFields.push(`image_url = $${updateParams.length + 1}`);
+            updateParams.push(image_url);
+          }
 
           if (updatedAtCheck.rows.length > 0) {
             updateFields.push('updated_at = NOW()');

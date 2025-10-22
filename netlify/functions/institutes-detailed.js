@@ -20,6 +20,8 @@ export const handler = async (event, context) => {
         i.address,
         i.service_name,
         i.image_url,
+        ENCODE(i.image_data, 'base64') as image_data,
+        i.image_mime_type,
         i.created_at,
         i.updated_at,
         
@@ -35,9 +37,11 @@ export const handler = async (event, context) => {
               'name', t.name,
               'experience', t.experience,
               'bio', t.bio,
-              'image_url', t.image_url
+              'image_url', t.image_url,
+              'image_data', ENCODE(t.image_data, 'base64'),
+              'image_mime_type', t.image_mime_type
             )
-          ) FILTER (WHERE t.id IS NOT NULL), 
+          ) FILTER (WHERE t.id IS NOT NULL),
           '[]'
         ) as therapists,
         
@@ -66,7 +70,7 @@ export const handler = async (event, context) => {
       LEFT JOIN therapists t ON i.id = t.institute_id
       LEFT JOIN reviews r ON i.id = r.institute_id
       LEFT JOIN business_hours bh ON i.id = bh.institute_id
-      GROUP BY i.id, i.institute_name, i.address, i.service_name, i.image_url, i.created_at, i.updated_at, ic.latitude, ic.longitude
+      GROUP BY i.id, i.institute_name, i.address, i.service_name, i.image_url, i.image_data, i.image_mime_type, i.created_at, i.updated_at, ic.latitude, ic.longitude
       ORDER BY i.institute_name
     `);
 
@@ -77,6 +81,8 @@ export const handler = async (event, context) => {
       address: row.address,
       service_name: row.service_name,
       image_url: row.image_url,
+      image_data: row.image_data,
+      image_mime_type: row.image_mime_type,
       created_at: row.created_at,
       updated_at: row.updated_at,
       latitude: row.latitude ? parseFloat(row.latitude) : null,
