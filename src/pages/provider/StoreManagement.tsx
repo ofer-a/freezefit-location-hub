@@ -40,6 +40,8 @@ interface BusinessHours {
   day: string;
   hours: string;
   isOpen: boolean;
+  openTime?: string;
+  closeTime?: string;
 }
 
 interface InstituteInfo {
@@ -227,13 +229,17 @@ const StoreManagement = () => {
             return {
               day,
               hours: `${dayData.open_time} - ${dayData.close_time}`,
-              isOpen: true
+              isOpen: true,
+              openTime: dayData.open_time || '08:00',
+              closeTime: dayData.close_time || '20:00'
             };
           } else {
             return {
               day,
               hours: 'סגור',
-              isOpen: false
+              isOpen: false,
+              openTime: '08:00',
+              closeTime: '20:00'
             };
           }
         });
@@ -504,12 +510,12 @@ const StoreManagement = () => {
         const existingDay = existingHours.find(h => h.day_of_week === dayIndex);
         
         if (dayHours.isOpen) {
-          const [openTime, closeTime] = dayHours.hours.split(' - ');
+          // Use the separate openTime and closeTime fields
           const businessHoursData = {
             institute_id: instituteId,
             day_of_week: dayIndex,
-            open_time: openTime,
-            close_time: closeTime,
+            open_time: dayHours.openTime || '08:00',
+            close_time: dayHours.closeTime || '20:00',
             is_open: true
           };
           
@@ -549,25 +555,35 @@ const StoreManagement = () => {
           return {
             day,
             hours: `${dayData.open_time} - ${dayData.close_time}`,
-            isOpen: true
+            isOpen: true,
+            openTime: dayData.open_time || '08:00',
+            closeTime: dayData.close_time || '20:00'
           };
         } else {
           return {
             day,
             hours: 'סגור',
-            isOpen: false
+            isOpen: false,
+            openTime: '08:00',
+            closeTime: '20:00'
           };
         }
       });
       
-      setBusinessHours(updatedTransformedHours);
-      setEditingHours(updatedTransformedHours);
-      setShowEditHoursDialog(false);
+      console.log('Updating business hours state:', updatedTransformedHours);
       
-      toast({
-        title: "שעות פעילות עודכנו",
-        description: "שעות הפעילות של העסק עודכנו בהצלחה",
-      });
+      // Update the state with new data
+      setBusinessHours([...updatedTransformedHours]);
+      setEditingHours([...updatedTransformedHours]);
+      
+      // Close dialog and show success message
+      setTimeout(() => {
+        setShowEditHoursDialog(false);
+        toast({
+          title: "שעות פעילות עודכנו",
+          description: "שעות הפעילות של העסק עודכנו בהצלחה",
+        });
+      }, 100);
     } catch (error) {
       console.error('Error updating business hours:', error);
       toast({
@@ -1239,7 +1255,7 @@ const StoreManagement = () => {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {businessHours.map((day, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div key={`${day.day}-${day.hours}`} className="border border-gray-200 rounded-lg p-4">
                         <p className="font-medium text-lg">{day.day}</p>
                         <p className={day.isOpen ? "text-gray-700" : "text-red-500"}>{day.hours}</p>
                       </div>
@@ -1570,7 +1586,7 @@ const StoreManagement = () => {
       
       {/* Edit Business Hours Dialog */}
       <Dialog open={showEditHoursDialog} onOpenChange={setShowEditHoursDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>עריכת שעות פעילות</DialogTitle>
             <DialogDescription>
@@ -1581,19 +1597,9 @@ const StoreManagement = () => {
           <form onSubmit={handleUpdateHours} className="space-y-4 py-4">
             <div className="space-y-4">
               {editingHours.map((day, index) => (
-                <div key={index} className="flex items-center justify-between border-b pb-2">
-                  <span className="font-medium">{day.day}</span>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={day.hours}
-                      onChange={(e) => {
-                        const updated = [...editingHours];
-                        updated[index].hours = e.target.value;
-                        setEditingHours(updated);
-                      }}
-                      className="w-40"
-                      disabled={!day.isOpen}
-                    />
+                <div key={index} className="border-b pb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{day.day}</span>
                     <Button
                       type="button"
                       variant={day.isOpen ? "default" : "outline"}
@@ -1602,8 +1608,12 @@ const StoreManagement = () => {
                         const updated = [...editingHours];
                         updated[index].isOpen = !day.isOpen;
                         if (!day.isOpen) {
-                          updated[index].hours = '8:00 - 20:00';
+                          // Switching from closed to open
+                          updated[index].openTime = '08:00';
+                          updated[index].closeTime = '20:00';
+                          updated[index].hours = '08:00 - 20:00';
                         } else {
+                          // Switching from open to closed
                           updated[index].hours = 'סגור';
                         }
                         setEditingHours(updated);
@@ -1612,6 +1622,40 @@ const StoreManagement = () => {
                       {day.isOpen ? 'פתוח' : 'סגור'}
                     </Button>
                   </div>
+                  {day.isOpen && (
+                    <div className="flex items-center gap-2 mr-4">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`open-${index}`} className="text-sm whitespace-nowrap">משעה:</Label>
+                        <Input
+                          id={`open-${index}`}
+                          type="time"
+                          value={day.openTime || '08:00'}
+                          onChange={(e) => {
+                            const updated = [...editingHours];
+                            updated[index].openTime = e.target.value;
+                            updated[index].hours = `${e.target.value} - ${updated[index].closeTime || '20:00'}`;
+                            setEditingHours(updated);
+                          }}
+                          className="w-32"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`close-${index}`} className="text-sm whitespace-nowrap">עד שעה:</Label>
+                        <Input
+                          id={`close-${index}`}
+                          type="time"
+                          value={day.closeTime || '20:00'}
+                          onChange={(e) => {
+                            const updated = [...editingHours];
+                            updated[index].closeTime = e.target.value;
+                            updated[index].hours = `${updated[index].openTime || '08:00'} - ${e.target.value}`;
+                            setEditingHours(updated);
+                          }}
+                          className="w-32"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
