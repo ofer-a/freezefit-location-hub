@@ -13,20 +13,25 @@ export const handler = async (event, context) => {
     switch (httpMethod) {
       case 'GET':
         if (pathParameters && pathParameters.id) {
-          // Get single gallery image
-          const result = await query('SELECT * FROM gallery_images WHERE id = $1', [pathParameters.id]);
+          // Get single gallery image (exclude binary data)
+          const result = await query(
+            'SELECT id, institute_id, image_url, category, created_at FROM gallery_images WHERE id = $1',
+            [pathParameters.id]
+          );
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/institute/')) {
-          // Get gallery images by institute
+          // Get gallery images by institute (exclude binary data)
           const instituteId = path.split('/institute/')[1];
           const result = await query(
-            'SELECT * FROM gallery_images WHERE institute_id = $1 ORDER BY created_at DESC',
+            'SELECT id, institute_id, image_url, category, created_at FROM gallery_images WHERE institute_id = $1 ORDER BY created_at DESC',
             [instituteId]
           );
           return createResponse(200, result.rows);
         } else {
-          // Get all gallery images
-          const result = await query('SELECT * FROM gallery_images ORDER BY created_at DESC');
+          // Get all gallery images (exclude binary data)
+          const result = await query(
+            'SELECT id, institute_id, image_url, category, created_at FROM gallery_images ORDER BY created_at DESC'
+          );
           return createResponse(200, result.rows);
         }
 
