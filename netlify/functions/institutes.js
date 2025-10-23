@@ -132,10 +132,32 @@ export const handler = async (event, context) => {
         }
 
         values.push(instituteId);
-        const updateResult = await query(
-          `UPDATE institutes SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
+        await query(
+          `UPDATE institutes SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount}`,
           values
         );
+        
+        // Fetch updated institute with image_data as base64 (same as GET endpoint)
+        const updateResult = await query(`
+          SELECT 
+            id,
+            owner_id,
+            institute_name,
+            address,
+            service_name,
+            image_url,
+            CASE 
+              WHEN image_data IS NOT NULL AND LENGTH(image_data) > 0 
+              THEN ENCODE(image_data, 'base64')
+              ELSE NULL
+            END as image_data,
+            image_mime_type,
+            created_at,
+            updated_at
+          FROM institutes 
+          WHERE id = $1
+        `, [instituteId]);
+        
         return createResponse(200, updateResult.rows[0] || null);
 
       case 'DELETE':
