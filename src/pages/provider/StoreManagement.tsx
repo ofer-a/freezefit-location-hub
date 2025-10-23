@@ -874,6 +874,14 @@ const StoreManagement = () => {
       if (updatedInstitute) {
         setInstituteInfo(updatedInstitute);
         
+        // Update institute image from the updated data
+        if (updatedInstitute.image_data && updatedInstitute.image_data !== 'null') {
+          const mimeType = updatedInstitute.image_mime_type || 'image/jpeg';
+          setInstituteImage(`data:${mimeType};base64,${updatedInstitute.image_data}`);
+        } else if (updatedInstitute.image_url) {
+          setInstituteImage(updatedInstitute.image_url);
+        }
+        
         // If address changed, try to update coordinates automatically
         if (addressChanged && editingInstitute.address) {
           try {
