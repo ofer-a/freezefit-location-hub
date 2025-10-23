@@ -327,11 +327,21 @@ const StoreManagement = () => {
         return;
       }
 
+      // Convert date from DD/MM/YYYY to YYYY-MM-DD for PostgreSQL
+      const convertDateFormat = (dateStr: string): string => {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        return dateStr; // Return as is if format is unexpected
+      };
+
       const workshopData = {
         institute_id: userInstitutes[0].id,
         title: newWorkshop.title,
         description: newWorkshop.description,
-        workshop_date: newWorkshop.date,
+        workshop_date: convertDateFormat(newWorkshop.date),
         workshop_time: newWorkshop.time,
         duration: newWorkshop.duration,
         price: newWorkshop.price,

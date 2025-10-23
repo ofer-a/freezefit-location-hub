@@ -42,6 +42,12 @@ async function runAllMigrations() {
       'add-loyalty-system.sql',       // Loyalty/rewards system
       'add-addons-system.sql',        // Add-ons system
       'add-newsletter-table.sql',     // Newsletter
+      'add-appointment-details.sql',  // Appointment details
+      'add-message-sender-name.sql',  // Message sender name
+      'add-phone-to-profiles.sql',    // Phone to profiles
+      'add-profile-status.sql',       // Profile status
+      'add-therapist-status.sql',     // Therapist status
+      'fix-gallery-images.sql',       // Fix gallery images
       // 'data.sql' is excluded - run separately if you need sample data
     ];
     
