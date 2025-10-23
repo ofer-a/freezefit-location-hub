@@ -46,15 +46,12 @@ export const handler = async (event, context) => {
                 ELSE NULL
               END as image_data,
               image_mime_type,
-              LENGTH(image_data) as image_size_bytes,
               created_at,
               updated_at
             FROM institutes 
             WHERE owner_id = $1
           `, [ownerId]);
           
-          console.log('[INSTITUTES] Query result for owner:', ownerId);
-          console.log('[INSTITUTES] Institute image_data length:', result.rows[0]?.image_size_bytes || 0);
           return createResponse(200, result.rows);
         } else {
           // Get all institutes
