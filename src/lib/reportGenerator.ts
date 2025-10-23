@@ -1,17 +1,10 @@
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { ReportData } from './reportTypes';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 export class ReportGenerator {
   static generatePDF(data: ReportData): void {
@@ -47,7 +40,7 @@ export class ReportGenerator {
       ['סה"כ הכנסות', `₪${data.summary.totalRevenue.toLocaleString()}`]
     ];
     
-    doc.autoTable({
+    autoTable(doc, {
       head: [['פרמטר', 'ערך']],
       body: summaryData,
       startY: currentY,
@@ -73,7 +66,7 @@ export class ReportGenerator {
         `₪${service.revenue.toLocaleString()}`
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         head: [['שירות', 'כמות', 'הכנסות']],
         body: servicesData,
         startY: currentY,

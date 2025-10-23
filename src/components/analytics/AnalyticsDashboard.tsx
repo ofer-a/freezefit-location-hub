@@ -8,18 +8,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineCh
 import { Calendar, TrendingUp, Users, DollarSign, Download, Clock } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import { useAuth } from '@/contexts/AuthContext';
 import { dbOperations } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 interface AnalyticsDashboardProps {
   onBack: () => void;
@@ -226,55 +218,58 @@ const AnalyticsDashboard = ({ onBack }: AnalyticsDashboardProps) => {
 
   const pieColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-  const downloadReport = () => {
-    const doc = new jsPDF();
-    
-    // Add Hebrew font support (basic)
-    doc.setFont('helvetica');
-    
-    // Header
-    doc.setFontSize(20);
-    doc.text('דוח ניתוח נתונים', 105, 20, { align: 'center' });
-    
-    doc.setFontSize(12);
-    const periodText = showAllTime ? 'כל הזמנים' : 
-                      timeDirection === 'past' ? `${selectedDays} ימים אחרונים` : 
-                      `${selectedDays} ימים קדימה`;
-    doc.text(`תקופה: ${periodText}`, 20, 35);
-    doc.text(`נוצר בתאריך: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 20, 45);
-    
-    // Summary section
-    doc.setFontSize(14);
-    doc.text('סיכום כללי', 20, 60);
-    
-    const summaryData = [
-      ['סה"כ תורים', totals.totalAppointments.toString()],
-      timeDirection === 'future' ? 
-        ['תורים קבועים', totals.totalAppointments.toString()] :
-        ['תורים שהושלמו', totals.completedAppointments.toString()],
-      timeDirection === 'future' ? 
-        ['הכנסות צפויות', `₪${totals.totalRevenue.toLocaleString()}`] :
-        ['אחוז הצלחה', `${totals.successRate}%`],
-      timeDirection === 'future' ? 
-        ['ממוצע יומי צפוי', Math.round(totals.totalAppointments / parseInt(selectedDays)).toString()] :
-        ['סה"כ הכנסות', `₪${totals.totalRevenue.toLocaleString()}`]
-    ];
-    
-    doc.autoTable({
-      head: [['פרמטר', 'ערך']],
-      body: summaryData,
-      startY: 70,
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185] }
-    });
-    
-    const fileName = `analytics_report_${format(new Date(), 'dd-MM-yyyy')}.pdf`;
-    doc.save(fileName);
+  const downloadReport = async () => {
+    try {
+      // Find the analytics container
+      const element = document.getElementById('analytics-dashboard');
+      if (!element) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן ליצור תמונה של הדוח",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Show loading toast
+      toast({
+        title: "יוצר דוח...",
+        description: "אנא המתן בזמן שיוצר תמונה של הדוח",
+      });
+
+      // Capture the screenshot
+      const canvas = await html2canvas(element, {
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f9fafb',
+        logging: false,
+      });
+
+      // Convert to image and download
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `analytics_report_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.png`;
+      link.click();
+
+      toast({
+        title: "הדוח הורד בהצלחה",
+        description: "תמונת הדוח נשמרה במכשיר שלך",
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן ליצור את הדוח",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div id="analytics-dashboard" className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
