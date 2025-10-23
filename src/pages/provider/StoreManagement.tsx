@@ -866,16 +866,66 @@ const StoreManagement = () => {
     }
 
     try {
+      // Check if address has changed
+      const addressChanged = instituteInfo.address !== editingInstitute.address;
+      
       const updatedInstitute = await dbOperations.updateInstitute(instituteInfo.id, editingInstitute);
       
       if (updatedInstitute) {
         setInstituteInfo(updatedInstitute);
-        setShowEditInstituteDialog(false);
         
-        toast({
-          title: "פרטי המכון עודכנו",
-          description: "פרטי המכון עודכנו בהצלחה",
-        });
+        // If address changed, try to update coordinates automatically
+        if (addressChanged && editingInstitute.address) {
+          try {
+            console.log('Address changed, updating coordinates automatically...');
+            const geocodingResult = await dbOperations.geocodeAddress(editingInstitute.address);
+            
+            const newCoordinates = {
+              latitude: geocodingResult.latitude,
+              longitude: geocodingResult.longitude,
+              address_verified: true
+            };
+            
+            let updatedCoordinates;
+            if (coordinatesInfo) {
+              // Update existing coordinates
+              updatedCoordinates = await dbOperations.updateInstituteCoordinates(instituteInfo.id, newCoordinates);
+            } else {
+              // Create new coordinates
+              updatedCoordinates = await dbOperations.createInstituteCoordinates({
+                institute_id: instituteInfo.id,
+                ...newCoordinates
+              });
+            }
+            
+            if (updatedCoordinates) {
+              const processedCoordinates = {
+                ...updatedCoordinates,
+                latitude: Number(updatedCoordinates.latitude),
+                longitude: Number(updatedCoordinates.longitude)
+              };
+              setCoordinatesInfo(processedCoordinates);
+              
+              toast({
+                title: "פרטי המכון והמיקום עודכנו",
+                description: "פרטי המכון והקואורדינטות עודכנו בהצלחה",
+              });
+            }
+          } catch (geocodingError) {
+            console.warn('Geocoding failed during institute update:', geocodingError);
+            toast({
+              title: "פרטי המכון עודכנו",
+              description: "פרטי המכון עודכנו, אך לא ניתן לעדכן את המיקום אוטומטית. עדכן ידנית במידת הצורך",
+            });
+          }
+        } else {
+          toast({
+            title: "פרטי המכון עודכנו",
+            description: "פרטי המכון עודכנו בהצלחה",
+          });
+        }
+        
+        setShowEditInstituteDialog(false);
       }
     } catch (error) {
       console.error('Error updating institute:', error);

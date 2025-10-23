@@ -26,8 +26,26 @@ export const handler = async (event, context) => {
     switch (httpMethod) {
       case 'GET':
         if (instituteId) {
-          // Get single institute
-          const result = await query('SELECT * FROM institutes WHERE id = $1', [instituteId]);
+          // Get single institute with image_data as base64
+          const result = await query(`
+            SELECT 
+              id,
+              owner_id,
+              institute_name,
+              address,
+              service_name,
+              image_url,
+              CASE 
+                WHEN image_data IS NOT NULL AND LENGTH(image_data) > 0 
+                THEN ENCODE(image_data, 'base64')
+                ELSE NULL
+              END as image_data,
+              image_mime_type,
+              created_at,
+              updated_at
+            FROM institutes 
+            WHERE id = $1
+          `, [instituteId]);
           return createResponse(200, result.rows[0] || null);
         } else if (path.includes('/owner/')) {
           // Get institutes by owner with image_data as base64
@@ -54,8 +72,20 @@ export const handler = async (event, context) => {
           
           return createResponse(200, result.rows);
         } else {
-          // Get all institutes
-          const result = await query('SELECT * FROM institutes ORDER BY institute_name');
+          // Get all institutes (exclude image_data for performance)
+          const result = await query(`
+            SELECT 
+              id,
+              owner_id,
+              institute_name,
+              address,
+              service_name,
+              image_url,
+              created_at,
+              updated_at
+            FROM institutes 
+            ORDER BY institute_name
+          `);
           return createResponse(200, result.rows);
         }
 
