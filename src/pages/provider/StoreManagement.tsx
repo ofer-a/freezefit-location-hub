@@ -250,7 +250,10 @@ const StoreManagement = () => {
         const instituteData = userInstitutes[0];
         console.log('Setting instituteInfo:', instituteData);
         setInstituteInfo(instituteData);
-        setEditingInstitute(instituteData);
+        
+        // Don't include image_data in editingInstitute - it's handled separately
+        const { image_data, image_mime_type, ...editableData } = instituteData;
+        setEditingInstitute(editableData);
 
         // Load institute image - now comes directly with image_data from API
         if (instituteData.image_data && instituteData.image_data !== 'null') {
@@ -291,7 +294,8 @@ const StoreManagement = () => {
         // Ensure instituteInfo is set even on error to prevent infinite loading
         if (userInstitutes.length > 0) {
           setInstituteInfo(userInstitutes[0]);
-          setEditingInstitute(userInstitutes[0]);
+          const { image_data, image_mime_type, ...editableData } = userInstitutes[0];
+          setEditingInstitute(editableData);
           setInstituteImage('/placeholder.svg');
         }
       }
@@ -869,7 +873,10 @@ const StoreManagement = () => {
       // Check if address has changed
       const addressChanged = instituteInfo.address !== editingInstitute.address;
       
-      const updatedInstitute = await dbOperations.updateInstitute(instituteInfo.id, editingInstitute);
+      // Don't send image_data and image_mime_type - images are updated separately via uploadImage
+      const { image_data, image_mime_type, ...instituteDataToUpdate } = editingInstitute;
+      
+      const updatedInstitute = await dbOperations.updateInstitute(instituteInfo.id, instituteDataToUpdate);
       
       if (updatedInstitute) {
         setInstituteInfo(updatedInstitute);
@@ -1171,13 +1178,15 @@ const StoreManagement = () => {
                       <MapPin className="mr-2 h-4 w-4" /> ערוך מיקום
                     </Button>
                     <Button onClick={() => {
-                      setEditingInstitute(instituteInfo || {
+                      // Don't include image_data and image_mime_type - they're handled separately
+                      const { image_data, image_mime_type, ...instituteForEditing } = instituteInfo || {
                         id: '',
                         institute_name: '',
                         address: '',
                         service_name: '',
                         image_url: ''
-                      });
+                      };
+                      setEditingInstitute(instituteForEditing);
                       setShowEditInstituteDialog(true);
                     }}>
                       <Edit className="mr-2 h-4 w-4" /> ערוך פרטים
