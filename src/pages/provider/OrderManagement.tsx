@@ -36,7 +36,8 @@ const OrderManagement = () => {
     rescheduleRequests,
     updateAppointmentStatus,
     approveReschedule,
-    declineReschedule
+    declineReschedule,
+    cancelRescheduleRequest
   } = useData();
   
   // State for orders/appointments
@@ -121,6 +122,16 @@ const OrderManagement = () => {
       variant: "destructive",
       title: "שינוי התור נדחה",
       description: "התור חזר לרשימת התורים המאושרים עם המועד המקורי",
+    });
+  };
+
+  const handleCancelRescheduleRequest = (orderId: string) => {
+    cancelRescheduleRequest(orderId);
+    
+    toast({
+      variant: "destructive",
+      title: "התור בוטל",
+      description: "התור בוטל והועבר להיסטוריית התורים",
     });
   };
 
@@ -338,21 +349,23 @@ const OrderManagement = () => {
                           </div>
                           
                           <div className="mt-4 md:mt-0 flex items-center">
-                            <div className="flex space-x-2 rtl:space-x-reverse">
-                              <Button 
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                                size="sm"
-                                onClick={() => handleApproveReschedule(order.id)}
-                              >
-                                אשר שינוי
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleDeclineReschedule(order.id)}
-                              >
-                                דחה שינוי
-                              </Button>
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex space-x-2 rtl:space-x-reverse">
+                                <Button 
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                  size="sm"
+                                  onClick={() => handleApproveReschedule(order.id)}
+                                >
+                                  אשר שינוי
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleCancelRescheduleRequest(order.id)}
+                                >
+                                  בטל תור
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>

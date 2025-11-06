@@ -4,9 +4,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimePicker } from '@/components/ui/time-picker';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface RescheduleDialogProps {
   isOpen: boolean;
@@ -15,11 +16,6 @@ interface RescheduleDialogProps {
   appointmentId: number;
 }
 
-const availableTimes = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
-];
 
 const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
   isOpen,
@@ -55,7 +51,7 @@ const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>שינוי מועד התור</DialogTitle>
           <DialogDescription>
@@ -95,21 +91,12 @@ const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
 
           {/* Time Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">בחר שעה חדשה:</label>
-            <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
-              {availableTimes.map((time) => (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedTime(time)}
-                  className="text-xs"
-                >
-                  <Clock className="ml-1 h-3 w-3" />
-                  {time}
-                </Button>
-              ))}
-            </div>
+            <TimePicker
+              label="בחר שעה חדשה:"
+              value={selectedTime}
+              onChange={setSelectedTime}
+              placeholder="בחר שעה"
+            />
           </div>
 
           {/* Action Buttons */}

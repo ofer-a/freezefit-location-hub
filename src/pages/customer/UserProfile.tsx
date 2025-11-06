@@ -528,6 +528,7 @@ const UserProfile = () => {
                         <div className="space-y-4">
                           {upcomingAppointments.map(appointment => {
                             const isPending = pendingAppointments.some(apt => apt.id === appointment.id);
+                            const isRescheduleRequest = appointment.requestedDate && appointment.requestedTime;
                             return (
                               <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
                                 <div className="flex justify-between items-start">
@@ -536,19 +537,38 @@ const UserProfile = () => {
                                     {appointment.therapistName && (
                                       <p className="text-sm text-gray-600">מטפל: {appointment.therapistName}</p>
                                     )}
+                                    {isRescheduleRequest ? (
+                                      <div className="mt-2 space-y-1">
+                                        <div className="flex items-center text-sm text-gray-500 line-through">
+                                          <Calendar className="h-3 w-3 ml-1" />
+                                          <span>{formatHebrewDate(appointment.originalDate || appointment.date)}</span>
+                                          <Clock className="h-3 w-3 mx-1 mr-3" />
+                                          <span>{appointment.originalTime || appointment.time}</span>
+                                        </div>
+                                        <div className="flex items-center text-sm font-medium text-blue-600">
+                                          <Calendar className="h-4 w-4 ml-1" />
+                                          <span>{formatHebrewDate(appointment.requestedDate)}</span>
+                                          <Clock className="h-4 w-4 mx-1 mr-3" />
+                                          <span>{appointment.requestedTime}</span>
+                                          <span className="mr-2 text-xs">(מועד מבוקש)</span>
+                                        </div>
+                                      </div>
+                                    ) : (
                                     <div className="flex items-center mt-2">
                                       <Calendar className="h-4 w-4 ml-1" />
                                       <span className="text-sm">{formatHebrewDate(appointment.date)}</span>
                                       <Clock className="h-4 w-4 mx-1 mr-3" />
                                       <span className="text-sm">{appointment.time}</span>
                                     </div>
+                                    )}
                                     {isPending && (
                                       <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
-                                        ממתין לאישור
+                                        ממתין לאישור {isRescheduleRequest && 'שינוי'}
                                       </span>
                                     )}
                                   </div>
                                   <div className="flex gap-2">
+                                    {!isRescheduleRequest && (
                                     <Button 
                                       size="sm"
                                       variant="outline"
@@ -556,6 +576,7 @@ const UserProfile = () => {
                                     >
                                       שינוי תור
                                     </Button>
+                                    )}
                                     <Button 
                                       size="sm"
                                       variant="destructive"

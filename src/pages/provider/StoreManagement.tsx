@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimePicker } from '@/components/ui/time-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, Plus, X, Edit, Save, MapPin, Building, Phone, Upload, Camera } from 'lucide-react';
@@ -1663,7 +1665,7 @@ const StoreManagement = () => {
       
       {/* Edit Business Hours Dialog */}
       <Dialog open={showEditHoursDialog} onOpenChange={setShowEditHoursDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>עריכת שעות פעילות</DialogTitle>
             <DialogDescription>
@@ -1700,37 +1702,30 @@ const StoreManagement = () => {
                     </Button>
                   </div>
                   {day.isOpen && (
-                    <div className="flex items-center gap-2 mr-4">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={`open-${index}`} className="text-sm whitespace-nowrap">משעה:</Label>
-                        <Input
-                          id={`open-${index}`}
-                          type="time"
-                          value={day.openTime || '08:00'}
-                          onChange={(e) => {
-                            const updated = [...editingHours];
-                            updated[index].openTime = e.target.value;
-                            updated[index].hours = `${e.target.value} - ${updated[index].closeTime || '20:00'}`;
-                            setEditingHours(updated);
-                          }}
-                          className="w-32"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={`close-${index}`} className="text-sm whitespace-nowrap">עד שעה:</Label>
-                        <Input
-                          id={`close-${index}`}
-                          type="time"
-                          value={day.closeTime || '20:00'}
-                          onChange={(e) => {
-                            const updated = [...editingHours];
-                            updated[index].closeTime = e.target.value;
-                            updated[index].hours = `${updated[index].openTime || '08:00'} - ${e.target.value}`;
-                            setEditingHours(updated);
-                          }}
-                          className="w-32"
-                        />
-                      </div>
+                    <div className="grid grid-cols-2 gap-3 mr-4 mt-2">
+                      <TimePicker
+                        label="משעה:"
+                        value={day.openTime}
+                        onChange={(time) => {
+                          const updated = [...editingHours];
+                          updated[index].openTime = time;
+                          updated[index].hours = `${time} - ${updated[index].closeTime || '20:00'}`;
+                          setEditingHours(updated);
+                        }}
+                        placeholder="בחר שעת פתיחה"
+                      />
+                      <TimePicker
+                        label="עד שעה:"
+                        value={day.closeTime}
+                        onChange={(time) => {
+                          const updated = [...editingHours];
+                          updated[index].closeTime = time;
+                          updated[index].hours = `${updated[index].openTime || '08:00'} - ${time}`;
+                          setEditingHours(updated);
+                        }}
+                        placeholder="בחר שעת סגירה"
+                        minTime={day.openTime}
+                      />
                     </div>
                   )}
                 </div>

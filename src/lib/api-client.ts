@@ -202,6 +202,13 @@ class ApiClient {
     });
   }
 
+  async updateAppointment(id: string, updates: any) {
+    return this.request(`/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
   // Reviews
   async getReviewsByInstitute(instituteId: string) {
     return this.request(`/reviews/institute/${instituteId}`);

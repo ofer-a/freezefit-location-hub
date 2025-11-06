@@ -48,6 +48,7 @@ async function runAllMigrations() {
       'add-profile-status.sql',       // Profile status
       'add-therapist-status.sql',     // Therapist status
       'fix-gallery-images.sql',       // Fix gallery images
+      'add-reschedule-fields.sql',    // Reschedule tracking fields
       // 'data.sql' is excluded - run separately if you need sample data
     ];
     

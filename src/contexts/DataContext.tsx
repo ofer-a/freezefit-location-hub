@@ -89,6 +89,7 @@ interface DataContextType {
   requestReschedule: (appointmentId: string | number, newDate: string, newTime: string) => void;
   approveReschedule: (appointmentId: string | number) => void;
   declineReschedule: (appointmentId: string | number) => void;
+  cancelRescheduleRequest: (appointmentId: string | number) => void;
   userClub: UserClub;
   redeemGift: (giftId: string) => Promise<void>;
   updateUserClubPoints: (points: number) => void;
@@ -174,6 +175,17 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             normalizedDate = normalizedDate.split('T')[0];
           }
           
+          // Normalize requested and original dates if they exist
+          let normalizedRequestedDate = apt.requested_date;
+          if (normalizedRequestedDate && typeof normalizedRequestedDate === 'string' && normalizedRequestedDate.includes('T')) {
+            normalizedRequestedDate = normalizedRequestedDate.split('T')[0];
+          }
+          
+          let normalizedOriginalDate = apt.original_date;
+          if (normalizedOriginalDate && typeof normalizedOriginalDate === 'string' && normalizedOriginalDate.includes('T')) {
+            normalizedOriginalDate = normalizedOriginalDate.split('T')[0];
+          }
+          
           return {
             id: apt.id, // Use full UUID to prevent key collisions
             customerName: apt.user_name || 'משתמש לא ידוע', // Use user name if available, fallback to unknown user
@@ -190,7 +202,12 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             therapistId: apt.therapist_id || null, // Therapist ID if available
             institute: apt.institute_name || 'מכון לא ידוע', // Use institute name from server data
             instituteId: apt.institute_id, // Keep institute ID for reviews
-            price: parseFloat(apt.price) || 150 // Convert price to number with default value
+            price: parseFloat(apt.price) || 150, // Convert price to number with default value
+            // Add reschedule request fields if they exist
+            originalDate: normalizedOriginalDate || undefined,
+            originalTime: apt.original_time || undefined,
+            requestedDate: normalizedRequestedDate || undefined,
+            requestedTime: apt.requested_time || undefined
           };
         });
 
@@ -202,6 +219,14 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         setConfirmedAppointments(confirmed);
         setPendingAppointments(pending);
         setHistoryAppointments(history);
+        
+        // For providers, populate reschedule requests from pending appointments
+        if (user.role === 'provider') {
+          setRescheduleRequests(pending);
+        } else {
+          // For customers, reschedule requests are shown as pending appointments
+          setRescheduleRequests([]);
+        }
 
       } catch (error) {
         console.error('Error loading appointments:', error);
@@ -320,7 +345,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   // Function to request appointment rescheduling
-  const requestReschedule = (appointmentId: string | number, newDate: string, newTime: string) => {
+  const requestReschedule = async (appointmentId: string | number, newDate: string, newTime: string) => {
     const appointment = confirmedAppointments.find(apt => apt.id.toString() === appointmentId.toString());
     if (appointment) {
       const rescheduleRequest = {
@@ -332,48 +357,196 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         status: 'ממתין לאישור שינוי' as const
       };
       
+      // Update appointment in database with reschedule request details
+      try {
+        await dbOperations.updateAppointment(appointmentId.toString(), {
+          status: 'pending',
+          original_date: appointment.date,
+          original_time: appointment.time,
+          requested_date: newDate,
+          requested_time: newTime
+        });
+      } catch (error) {
+        console.error('Error updating appointment with reschedule request:', error);
+      }
+      
+      // For customers: move from confirmed to pending (they see it as "waiting for approval")
+      // For providers: move to reschedule requests
       setConfirmedAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
+      setPendingAppointments(prev => [...prev, rescheduleRequest]);
       setRescheduleRequests(prev => [...prev, rescheduleRequest]);
     }
   };
 
   // Function to approve reschedule request
-  const approveReschedule = (appointmentId: string | number) => {
+  const approveReschedule = async (appointmentId: string | number) => {
+    console.log('approveReschedule called with ID:', appointmentId);
     const rescheduleRequest = rescheduleRequests.find(apt => apt.id.toString() === appointmentId.toString());
-    if (rescheduleRequest && rescheduleRequest.requestedDate && rescheduleRequest.requestedTime) {
-      const approvedAppointment = {
-        ...rescheduleRequest,
-        date: rescheduleRequest.requestedDate,
-        time: rescheduleRequest.requestedTime,
-        status: 'נקבע' as const,
-        originalDate: undefined,
-        originalTime: undefined,
-        requestedDate: undefined,
-        requestedTime: undefined
-      };
-      
-      setRescheduleRequests(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
-      setConfirmedAppointments(prev => [...prev, approvedAppointment]);
+    console.log('Found reschedule request:', rescheduleRequest);
+    
+    if (!rescheduleRequest) {
+      console.error('Reschedule request not found for ID:', appointmentId);
+      return;
     }
+    
+    // If requested date/time are missing, use the current appointment date/time as requested
+    const requestedDate = rescheduleRequest.requestedDate || rescheduleRequest.date;
+    const requestedTime = rescheduleRequest.requestedTime || rescheduleRequest.time;
+    
+    if (!requestedDate || !requestedTime) {
+      console.error('Cannot find valid date/time for approval:', {
+        requestedDate,
+        requestedTime
+      });
+      return;
+    }
+    
+    const approvedAppointment = {
+      ...rescheduleRequest,
+      date: requestedDate,
+      time: requestedTime,
+      status: 'נקבע' as const,
+      originalDate: undefined,
+      originalTime: undefined,
+      requestedDate: undefined,
+      requestedTime: undefined
+    };
+    
+    console.log('Updating appointment to approved:', approvedAppointment);
+    
+    // Update appointment in database: set new date/time and clear reschedule fields
+    try {
+      await dbOperations.updateAppointment(appointmentId.toString(), {
+        status: 'confirmed',
+        appointment_date: requestedDate,
+        appointment_time: requestedTime,
+        original_date: null,
+        original_time: null,
+        requested_date: null,
+        requested_time: null
+      });
+      console.log('Database update successful');
+    } catch (error) {
+      console.error('Error updating appointment to approved:', error);
+      return;
+    }
+    
+    // Remove from both reschedule requests and pending appointments
+    setRescheduleRequests(prev => {
+      const updated = prev.filter(apt => apt.id.toString() !== appointmentId.toString());
+      console.log('Updated rescheduleRequests:', updated);
+      return updated;
+    });
+    setPendingAppointments(prev => {
+      const updated = prev.filter(apt => apt.id.toString() !== appointmentId.toString());
+      console.log('Updated pendingAppointments:', updated);
+      return updated;
+    });
+    setConfirmedAppointments(prev => {
+      const updated = [...prev, approvedAppointment];
+      console.log('Updated confirmedAppointments:', updated);
+      return updated;
+    });
   };
 
-  // Function to decline reschedule request
-  const declineReschedule = (appointmentId: string | number) => {
+  // Function to decline reschedule request (returns to original date/time)
+  const declineReschedule = async (appointmentId: string | number) => {
+    console.log('declineReschedule called with ID:', appointmentId);
     const rescheduleRequest = rescheduleRequests.find(apt => apt.id.toString() === appointmentId.toString());
-    if (rescheduleRequest && rescheduleRequest.originalDate && rescheduleRequest.originalTime) {
-      const declinedAppointment = {
+    console.log('Found reschedule request:', rescheduleRequest);
+    
+    if (!rescheduleRequest) {
+      console.error('Reschedule request not found for ID:', appointmentId);
+      return;
+    }
+    
+    // If original date/time are missing, we cannot decline - just keep current date/time
+    const originalDate = rescheduleRequest.originalDate || rescheduleRequest.date;
+    const originalTime = rescheduleRequest.originalTime || rescheduleRequest.time;
+    
+    if (!originalDate || !originalTime) {
+      console.error('Cannot find valid original date/time for decline:', {
+        originalDate,
+        originalTime
+      });
+      return;
+    }
+    
+    const declinedAppointment = {
+      ...rescheduleRequest,
+      date: originalDate,
+      time: originalTime,
+      status: 'נקבע' as const,
+      originalDate: undefined,
+      originalTime: undefined,
+      requestedDate: undefined,
+      requestedTime: undefined
+    };
+    
+    console.log('Updating appointment to declined:', declinedAppointment);
+    
+    // Update appointment in database: restore original date/time and clear reschedule fields
+    try {
+      await dbOperations.updateAppointment(appointmentId.toString(), {
+        status: 'confirmed',
+        original_date: null,
+        original_time: null,
+        requested_date: null,
+        requested_time: null
+      });
+      console.log('Database update successful');
+    } catch (error) {
+      console.error('Error updating appointment to declined:', error);
+      return;
+    }
+    
+    setRescheduleRequests(prev => {
+      const updated = prev.filter(apt => apt.id.toString() !== appointmentId.toString());
+      console.log('Updated rescheduleRequests:', updated);
+      return updated;
+    });
+    setPendingAppointments(prev => {
+      const updated = prev.filter(apt => apt.id.toString() !== appointmentId.toString());
+      console.log('Updated pendingAppointments:', updated);
+      return updated;
+    });
+    setConfirmedAppointments(prev => {
+      const updated = [...prev, declinedAppointment];
+      console.log('Updated confirmedAppointments:', updated);
+      return updated;
+    });
+  };
+
+  // Function to cancel appointment from reschedule request
+  const cancelRescheduleRequest = async (appointmentId: string | number) => {
+    const rescheduleRequest = rescheduleRequests.find(apt => apt.id.toString() === appointmentId.toString());
+    if (rescheduleRequest) {
+      const cancelledAppointment = {
         ...rescheduleRequest,
-        date: rescheduleRequest.originalDate,
-        time: rescheduleRequest.originalTime,
-        status: 'נקבע' as const,
+        status: 'בוטל' as const,
         originalDate: undefined,
         originalTime: undefined,
         requestedDate: undefined,
         requestedTime: undefined
       };
       
+      // Update appointment in database to cancelled and clear reschedule fields
+      try {
+        await dbOperations.updateAppointment(appointmentId.toString(), {
+          status: 'cancelled',
+          original_date: null,
+          original_time: null,
+          requested_date: null,
+          requested_time: null
+        });
+      } catch (error) {
+        console.error('Error updating appointment to cancelled:', error);
+      }
+      
+      // Remove from reschedule requests and pending, add to history
       setRescheduleRequests(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
-      setConfirmedAppointments(prev => [...prev, declinedAppointment]);
+      setPendingAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
+      setHistoryAppointments(prev => [...prev, cancelledAppointment]);
     }
   };
 
@@ -590,6 +763,7 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       requestReschedule,
       approveReschedule,
       declineReschedule,
+      cancelRescheduleRequest,
       userClub,
       redeemGift,
       updateUserClubPoints,

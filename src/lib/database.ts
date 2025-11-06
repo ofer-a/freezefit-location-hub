@@ -385,6 +385,11 @@ export const dbOperations = {
     return response.data || null;
   },
 
+  async updateAppointment(id: string, updates: any): Promise<Appointment | null> {
+    const response = await apiClient.updateAppointment(id, updates);
+    return response.data || null;
+  },
+
   // Reviews
   async getReviewsByInstitute(instituteId: string): Promise<Review[]> {
     return withCache(CACHE_KEYS.REVIEWS(instituteId), async () => {
