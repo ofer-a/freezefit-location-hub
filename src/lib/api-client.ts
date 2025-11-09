@@ -72,8 +72,13 @@ class ApiClient {
   }
 
   // Optimized endpoint for getting institutes with all related data
-  async getInstitutesDetailed() {
-    return this.request('/institutes-detailed');
+  // Supports pagination to handle large datasets within Netlify's 6MB limit
+  async getInstitutesDetailed(limit?: number, offset?: number) {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit.toString());
+    if (offset) params.set('offset', offset.toString());
+    const queryString = params.toString();
+    return this.request(`/institutes-detailed${queryString ? `?${queryString}` : ''}`);
   }
 
   async getInstitute(id: string) {

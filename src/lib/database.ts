@@ -185,11 +185,17 @@ export const dbOperations = {
   },
 
   // Optimized method to get institutes with all related data
-  async getInstitutesDetailed(): Promise<any[]> {
-    return withCache(CACHE_KEYS.INSTITUTES_DETAILED, async () => {
-      const response = await apiClient.getInstitutesDetailed();
-      return response.data || [];
-    }, 10 * 60 * 1000) as Promise<any[]>; // Cache for 10 minutes since this is expensive
+  async getInstitutesDetailed(limit?: number, offset?: number): Promise<{institutes: any[], pagination: any}> {
+    // Don't cache paginated requests - fetch all pages
+    const response = await apiClient.getInstitutesDetailed(limit, offset);
+    if (response.data && response.data.institutes) {
+      return response.data;
+    }
+    // Fallback for old format (no pagination)
+    return {
+      institutes: response.data || [],
+      pagination: { limit: limit || 5, offset: offset || 0, total: (response.data || []).length, hasMore: false }
+    };
   },
 
   async getInstitute(id: string): Promise<Institute | null> {

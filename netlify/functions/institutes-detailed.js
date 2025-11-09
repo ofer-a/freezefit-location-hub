@@ -12,7 +12,13 @@ export const handler = async (event, context) => {
       return createResponse(405, null, 'Method not allowed');
     }
 
+    // Parse query parameters for pagination to keep response under 6MB limit
+    const queryParams = new URLSearchParams(event.queryStringParameters || '');
+    const limit = parseInt(queryParams.get('limit') || '5'); // Default to 5 institutes per request to stay under 6MB
+    const offset = parseInt(queryParams.get('offset') || '0');
+
     // Single optimized query to get all institute data with related information
+    // Using pagination to keep response size under Netlify's 6MB limit
     const result = await query(`
       SELECT 
         i.id,
@@ -72,7 +78,12 @@ export const handler = async (event, context) => {
       LEFT JOIN business_hours bh ON i.id = bh.institute_id
       GROUP BY i.id, i.institute_name, i.address, i.service_name, i.image_url, i.image_data, i.image_mime_type, i.created_at, i.updated_at, ic.latitude, ic.longitude
       ORDER BY i.institute_name
-    `);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    // Get total count for pagination info
+    const countResult = await query('SELECT COUNT(*) as total FROM institutes');
+    const total = parseInt(countResult.rows[0].total);
 
     // Transform the data to match the expected format
     const institutes = result.rows.map(row => ({
@@ -93,7 +104,15 @@ export const handler = async (event, context) => {
       business_hours: row.business_hours || []
     }));
 
-    return createResponse(200, institutes);
+    return createResponse(200, {
+      institutes,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + limit < total
+      }
+    });
 
   } catch (error) {
     console.error('Detailed institutes API error:', error);

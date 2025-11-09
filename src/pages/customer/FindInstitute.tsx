@@ -123,17 +123,29 @@ const FindInstitute = () => {
         setLoading(true);
         setLoadingProgress(20);
         
-        // Single API call to get all institute data with aggregated information
-        const detailedInstitutes = await dbOperations.getInstitutesDetailed();
+        // Load all institutes with pagination (5 at a time to stay under 6MB limit)
+        let allInstitutes: any[] = [];
+        let offset = 0;
+        const limit = 5;
+        let hasMore = true;
+
+        while (hasMore) {
+          const result = await dbOperations.getInstitutesDetailed(limit, offset);
+          allInstitutes = [...allInstitutes, ...result.institutes];
+          hasMore = result.pagination.hasMore;
+          offset += limit;
+          setLoadingProgress(60 + (offset / (result.pagination.total || 1)) * 20); // Progress from 60% to 80%
+        }
+
         setLoadingProgress(80);
         
-        if (detailedInstitutes.length === 0) {
+        if (allInstitutes.length === 0) {
           setLoading(false);
           return;
         }
 
         // Transform the aggregated data
-        const transformedInstitutes = detailedInstitutes.map((institute, index) => {
+        const transformedInstitutes = allInstitutes.map((institute, index) => {
           // Check if institute has real coordinates (not null)
           const hasRealCoordinates = institute.latitude !== null && institute.longitude !== null;
           const coordinates = hasRealCoordinates
@@ -233,8 +245,6 @@ const FindInstitute = () => {
 
         // Sort institutes by distance (closest first)
         const sortedInstitutes = transformedInstitutes.sort((a, b) => a.distance - b.distance);
-
-        console.log(`Loaded ${sortedInstitutes.length} institutes with coordinates out of ${detailedInstitutes.length} total institutes`);
 
         // Show all institutes in the list, even those without coordinates
         setAllInstitutes(sortedInstitutes);
