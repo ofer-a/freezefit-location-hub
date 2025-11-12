@@ -222,7 +222,11 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         
         // For providers, populate reschedule requests from pending appointments
         if (user.role === 'provider') {
-          setRescheduleRequests(pending);
+          // Filter for actual reschedule requests - those with both original and requested dates/times
+          const reschedules = pending.filter(apt => 
+            apt.requestedDate && apt.requestedTime && apt.originalDate && apt.originalTime
+          );
+          setRescheduleRequests(reschedules);
         } else {
           // For customers, reschedule requests are shown as pending appointments
           setRescheduleRequests([]);
