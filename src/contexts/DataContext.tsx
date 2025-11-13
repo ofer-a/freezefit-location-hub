@@ -217,18 +217,23 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         const history = transformedAppointments.filter(apt => apt.status === 'הושלם' || apt.status === 'בוטל');
 
         setConfirmedAppointments(confirmed);
-        setPendingAppointments(pending);
         setHistoryAppointments(history);
         
-        // For providers, populate reschedule requests from pending appointments
+        // For providers, separate reschedule requests from regular pending appointments
         if (user.role === 'provider') {
           // Filter for actual reschedule requests - those with both original and requested dates/times
           const reschedules = pending.filter(apt => 
             apt.requestedDate && apt.requestedTime && apt.originalDate && apt.originalTime
           );
+          // Regular pending appointments (without reschedule request fields)
+          const regularPending = pending.filter(apt => 
+            !(apt.requestedDate && apt.requestedTime && apt.originalDate && apt.originalTime)
+          );
           setRescheduleRequests(reschedules);
+          setPendingAppointments(regularPending);
         } else {
           // For customers, reschedule requests are shown as pending appointments
+          setPendingAppointments(pending);
           setRescheduleRequests([]);
         }
 
@@ -393,10 +398,16 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       }
       
       // For customers: move from confirmed to pending (they see it as "waiting for approval")
-      // For providers: move to reschedule requests
+      // For providers: move to reschedule requests only (not to pending)
       setConfirmedAppointments(prev => prev.filter(apt => apt.id.toString() !== appointmentId.toString()));
-      setPendingAppointments(prev => [...prev, rescheduleRequest]);
-      setRescheduleRequests(prev => [...prev, rescheduleRequest]);
+      
+      if (user.role === 'provider') {
+        // For providers: only add to reschedule requests, not to pending
+        setRescheduleRequests(prev => [...prev, rescheduleRequest]);
+      } else {
+        // For customers: add to pending appointments
+        setPendingAppointments(prev => [...prev, rescheduleRequest]);
+      }
     }
   };
 
