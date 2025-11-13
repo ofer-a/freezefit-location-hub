@@ -63,7 +63,7 @@ interface CoordinatesInfo {
 }
 
 const StoreManagement = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -131,7 +131,7 @@ const StoreManagement = () => {
     duration: ''
   });
   
-  const [editingHours, setEditingHours] = useState<BusinessHours[]>(businessHours);
+  const [editingHours, setEditingHours] = useState<BusinessHours[]>([]);
   
   const [editingInstitute, setEditingInstitute] = useState<InstituteInfo>({
     id: '',
@@ -149,6 +149,13 @@ const StoreManagement = () => {
 
   // Institute image state
   const [instituteImage, setInstituteImage] = useState<string>('/placeholder.svg');
+
+  // Wait for authentication check to complete before redirecting
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || user?.role !== 'provider')) {
+      navigate('/login');
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
 
   // Load data from database
   useEffect(() => {
@@ -307,6 +314,16 @@ const StoreManagement = () => {
       loadData();
     }
   }, [user?.id, isAuthenticated, toast, navigate]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated or not a provider (after loading completes)
+  if (!isAuthenticated || user?.role !== 'provider') {
+    return null;
+  }
 
   // Handle new workshop submission
   const handleAddWorkshop = async (e: React.FormEvent) => {

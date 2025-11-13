@@ -13,7 +13,8 @@ import { dbOperations } from '@/lib/database';
 const ProviderDashboard = () => {
   const {
     isAuthenticated,
-    user
+    user,
+    isLoading
   } = useAuth();
   const {
     confirmedAppointments,
@@ -23,100 +24,39 @@ const ProviderDashboard = () => {
   } = useData();
   const navigate = useNavigate();
   const [hasInstitute, setHasInstitute] = useState<boolean | null>(null);
-
-  if (!isAuthenticated) {
-    navigate('/login');
-    return null;
-  }
-
-  // Check if user has an institute
-  useEffect(() => {
-    const checkInstitute = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const institutes = await dbOperations.getInstitutesByOwner(user.id);
-        setHasInstitute(institutes.length > 0);
-        
-        // If no institute, redirect to setup
-        if (institutes.length === 0) {
-          navigate('/institute-setup');
-        }
-      } catch (error) {
-        console.error('Error checking institute:', error);
-        setHasInstitute(false);
-      }
-    };
-
-    checkInstitute();
-  }, [user?.id, navigate]);
-
-  // Calculate statistics from real data
-  const totalAppointments = confirmedAppointments.length + historyAppointments.length + pendingAppointments.length;
-  const completedAppointments = historyAppointments.filter(apt => apt.status === 'הושלם').length;
-  const cancelledAppointments = historyAppointments.filter(apt => apt.status === 'בוטל').length;
-
-  // Get today's appointments
-  const today = new Date().toISOString().split('T')[0];
-  const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today);
-  const todaysAppointmentsCount = todaysAppointments.length;
-  const pendingAppointmentsCount = pendingAppointments.length;
-
-  // Calculate total unique customers from all appointments
-  const uniqueCustomers = new Set([
-    ...confirmedAppointments.map(apt => apt.customerName),
-    ...historyAppointments.map(apt => apt.customerName),
-    ...pendingAppointments.map(apt => apt.customerName)
-  ]).size;
-
-  // Calculate weekly revenue from completed appointments in last 7 days
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const weeklyRevenue = historyAppointments
-    .filter(apt => apt.status === 'הושלם' && new Date(apt.date) >= weekAgo)
-    .reduce((sum, apt) => sum + (Number(apt.price) || 150), 0); // Ensure price is treated as number
-
   // Recent activities state - now loaded from database
   const [recentActivities, setRecentActivities] = useState([]);
-  
   // Gallery images state
   const [galleryImages, setGalleryImages] = useState([]);
 
-  // Load activities from database
+  // Wait for authentication check to complete before redirecting
   useEffect(() => {
-    const loadActivities = async () => {
-      if (!user?.id) return;
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
-      try {
-        // Get user's institutes
-        const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
-        if (userInstitutes.length === 0) return;
+  // Check if user has an institute
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.id) {
+      const checkInstitute = async () => {
+        try {
+          const institutes = await dbOperations.getInstitutesByOwner(user.id);
+          setHasInstitute(institutes.length > 0);
+          
+          // If no institute, redirect to setup
+          if (institutes.length === 0) {
+            navigate('/institute-setup');
+          }
+        } catch (error) {
+          console.error('Error checking institute:', error);
+          setHasInstitute(false);
+        }
+      };
 
-        // Load activities for the first institute
-        const activities = await dbOperations.getActivitiesByInstitute(userInstitutes[0].id, 5);
-        
-        // Transform activities to match expected format
-        const transformedActivities = Array.isArray(activities) ? activities.map((activity, index) => ({
-          id: index + 1,
-          type: activity.activity_type,
-          message: activity.title,
-          time: getRelativeTime(new Date(activity.created_at)),
-          description: activity.description,
-          color: getActivityColor(activity.activity_type)
-        })) : [];
-        
-        setRecentActivities(transformedActivities);
-
-        // Load gallery images for the first institute
-        const gallery = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
-        setGalleryImages(gallery);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    };
-
-    loadActivities();
-  }, [user?.id]);
+      checkInstitute();
+    }
+  }, [isLoading, isAuthenticated, user?.id, navigate]);
 
   // Helper function to get relative time
   const getRelativeTime = (date) => {
@@ -145,6 +85,77 @@ const ProviderDashboard = () => {
       default: return 'gray';
     }
   };
+
+  // Load activities from database
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.id) {
+      const loadActivities = async () => {
+        try {
+          // Get user's institutes
+          const userInstitutes = await dbOperations.getInstitutesByOwner(user.id);
+          if (userInstitutes.length === 0) return;
+
+          // Load activities for the first institute
+          const activities = await dbOperations.getActivitiesByInstitute(userInstitutes[0].id, 5);
+          
+          // Transform activities to match expected format
+          const transformedActivities = Array.isArray(activities) ? activities.map((activity, index) => ({
+            id: index + 1,
+            type: activity.activity_type,
+            message: activity.title,
+            time: getRelativeTime(new Date(activity.created_at)),
+            description: activity.description,
+            color: getActivityColor(activity.activity_type)
+          })) : [];
+          
+          setRecentActivities(transformedActivities);
+
+          // Load gallery images for the first institute
+          const gallery = await dbOperations.getGalleryImagesByInstitute(userInstitutes[0].id);
+          setGalleryImages(gallery);
+        } catch (error) {
+          console.error('Error loading data:', error);
+        }
+      };
+
+      loadActivities();
+    }
+  }, [isLoading, isAuthenticated, user?.id]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated (after loading completes)
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Calculate statistics from real data
+  const totalAppointments = confirmedAppointments.length + historyAppointments.length + pendingAppointments.length;
+  const completedAppointments = historyAppointments.filter(apt => apt.status === 'הושלם').length;
+  const cancelledAppointments = historyAppointments.filter(apt => apt.status === 'בוטל').length;
+
+  // Get today's appointments
+  const today = new Date().toISOString().split('T')[0];
+  const todaysAppointments = confirmedAppointments.filter(apt => apt.date === today);
+  const todaysAppointmentsCount = todaysAppointments.length;
+  const pendingAppointmentsCount = pendingAppointments.length;
+
+  // Calculate total unique customers from all appointments
+  const uniqueCustomers = new Set([
+    ...confirmedAppointments.map(apt => apt.customerName),
+    ...historyAppointments.map(apt => apt.customerName),
+    ...pendingAppointments.map(apt => apt.customerName)
+  ]).size;
+
+  // Calculate weekly revenue from completed appointments in last 7 days
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weeklyRevenue = historyAppointments
+    .filter(apt => apt.status === 'הושלם' && new Date(apt.date) >= weekAgo)
+    .reduce((sum, apt) => sum + (Number(apt.price) || 150), 0); // Ensure price is treated as number
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -13,9 +13,26 @@ import { dbOperations } from '@/lib/database';
 import { Building2, MapPin, Phone, Mail, AlertTriangle } from 'lucide-react';
 
 const InstituteSetup = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Wait for authentication check to complete before redirecting
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || user?.role !== 'provider')) {
+      navigate('/login');
+    }
+  }, [authLoading, isAuthenticated, user, navigate]);
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated or not a provider (after loading completes)
+  if (!isAuthenticated || user?.role !== 'provider') {
+    return null;
+  }
   
   const [formData, setFormData] = useState({
     institute_name: '',

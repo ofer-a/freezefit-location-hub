@@ -26,7 +26,7 @@ interface Appointment {
 }
 
 const OrderManagement = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { 
@@ -43,12 +43,22 @@ const OrderManagement = () => {
   // State for orders/appointments
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Check authentication
+  // Wait for authentication check to complete before redirecting
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'provider') {
+    if (!isLoading && (!isAuthenticated || user?.role !== 'provider')) {
       navigate('/login');
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isLoading, isAuthenticated, user, navigate]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated or not a provider (after loading completes)
+  if (!isAuthenticated || user?.role !== 'provider') {
+    return null;
+  }
 
   const handleApprove = async (orderId: string) => {
     try {

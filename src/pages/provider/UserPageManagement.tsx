@@ -35,13 +35,35 @@ interface Therapist {
 }
 
 const UserPageManagement = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
+  const [showNewTherapistDialog, setShowNewTherapistDialog] = useState(false);
+  const [showNewImageDialog, setShowNewImageDialog] = useState(false);
+  const [selectedTherapist, setSelectedTherapist] = useState<string | null>(null);
+  const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
+  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id'>>({
+    name: '',
+    experience: '',
+    bio: ''
+  });
+  const [newImage, setNewImage] = useState<Omit<GalleryImage, 'id' | 'url'>>({
+    title: ''
+  });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
+
+  // Wait for authentication check to complete before redirecting
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || user?.role !== 'provider')) {
+      navigate('/login');
+    }
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   // Load therapists from database
   useEffect(() => {
@@ -186,30 +208,16 @@ const UserPageManagement = () => {
       });
     }
   };
-  
-  const [gallery, setGallery] = useState<GalleryImage[]>([]);
 
-  // Dialog states
-  const [showNewTherapistDialog, setShowNewTherapistDialog] = useState(false);
-  const [showNewImageDialog, setShowNewImageDialog] = useState(false);
-  
-  // Selected therapist for removal
-  const [selectedTherapist, setSelectedTherapist] = useState<string | null>(null);
-  const [showRemoveTherapistDialog, setShowRemoveTherapistDialog] = useState(false);
-  
-  // Form states
-  const [newTherapist, setNewTherapist] = useState<Omit<Therapist, 'id'>>({
-    name: '',
-    experience: '',
-    bio: ''
-  });
-  
-  const [newImage, setNewImage] = useState<Omit<GalleryImage, 'id' | 'url'>>({
-    title: ''
-  });
-  
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [therapistImageFile, setTherapistImageFile] = useState<File | null>(null);
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated or not a provider (after loading completes)
+  if (!isAuthenticated || user?.role !== 'provider') {
+    return null;
+  }
 
   // Handle therapist image upload for existing therapists
   const handleTherapistImageUpload = async (therapistId: string, file: File) => {

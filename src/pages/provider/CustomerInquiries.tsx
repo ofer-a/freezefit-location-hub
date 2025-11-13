@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -12,7 +12,7 @@ import { MessageSquare, Calendar, ArrowLeft, Search, CheckCircle } from 'lucide-
 import ReplyDialog from '@/components/messages/ReplyDialog';
 
 const CustomerInquiries = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const { contactInquiries } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,9 +30,20 @@ const CustomerInquiries = () => {
     inquiry.subject.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Check if user is authenticated and is a provider
+  // Wait for authentication check to complete before redirecting
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || user?.role !== 'provider')) {
+      navigate('/login');
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return null;
+  }
+
+  // Redirect if not authenticated or not a provider (after loading completes)
   if (!isAuthenticated || user?.role !== 'provider') {
-    navigate('/login');
     return null;
   }
 
