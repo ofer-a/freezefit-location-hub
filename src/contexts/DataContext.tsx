@@ -352,6 +352,24 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const requestReschedule = async (appointmentId: string | number, newDate: string, newTime: string) => {
     const appointment = confirmedAppointments.find(apt => apt.id.toString() === appointmentId.toString());
     if (appointment) {
+      // Convert date to ISO format (yyyy-MM-dd) for PostgreSQL compatibility
+      const convertDateToISO = (dateStr: string): string => {
+        // If already in ISO format (yyyy-MM-dd), return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return dateStr;
+        }
+        // If in dd/MM/yyyy format, convert to yyyy-MM-dd
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+          const [day, month, year] = dateStr.split('/');
+          return `${year}-${month}-${day}`;
+        }
+        // If it's an ISO string with time, extract just the date part
+        if (dateStr.includes('T')) {
+          return dateStr.split('T')[0];
+        }
+        return dateStr; // Fallback
+      };
+
       const rescheduleRequest = {
         ...appointment,
         originalDate: appointment.date,
@@ -365,9 +383,9 @@ const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       try {
         await dbOperations.updateAppointment(appointmentId.toString(), {
           status: 'pending',
-          original_date: appointment.date,
+          original_date: convertDateToISO(appointment.date),
           original_time: appointment.time,
-          requested_date: newDate,
+          requested_date: convertDateToISO(newDate),
           requested_time: newTime
         });
       } catch (error) {

@@ -28,7 +28,8 @@ const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
 
   const handleConfirm = () => {
     if (selectedDate && selectedTime) {
-      const formattedDate = format(selectedDate, 'dd/MM/yyyy');
+      // Format date as ISO (yyyy-MM-dd) for database compatibility
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       onConfirm(formattedDate, selectedTime);
       onClose();
       setSelectedDate(undefined);
